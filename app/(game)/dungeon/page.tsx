@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatLootScreen from "@/app/components/CombatLootScreen";
 import PageLoader from "@/app/components/PageLoader";
@@ -115,6 +116,142 @@ type DungeonScreen =
   | { kind: "complete"; dungeon: DungeonInfo; fightResult: FightResult }
   | { kind: "defeat"; dungeon: DungeonInfo; fightResult: FightResult };
 
+/* ────────────────── Boss loot preview data ────────────────── */
+
+type PossibleDrop = {
+  name: string;
+  rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
+  slot: string;
+};
+
+const RARITY_COLORS: Record<string, string> = {
+  common: "text-slate-300 border-slate-600 bg-slate-800/50",
+  uncommon: "text-green-300 border-green-600 bg-green-900/30",
+  rare: "text-blue-300 border-blue-600 bg-blue-900/30",
+  epic: "text-purple-300 border-purple-600 bg-purple-900/30",
+  legendary: "text-amber-300 border-amber-600 bg-amber-900/30",
+};
+
+const RARITY_ICON: Record<string, string> = {
+  common: "⚪",
+  uncommon: "🟢",
+  rare: "🔵",
+  epic: "🟣",
+  legendary: "🟠",
+};
+
+const SLOT_ICON: Record<string, string> = {
+  weapon: "⚔️",
+  helmet: "🪖",
+  chest: "🛡️",
+  gloves: "🧤",
+  boots: "👢",
+  accessory: "💍",
+  legs: "🦿",
+};
+
+/** Generate possible loot preview for a boss based on dungeon + boss index */
+const getBossPossibleDrops = (
+  dungeonIndex: number,
+  bossIndex: number,
+): PossibleDrop[] => {
+  const isFinalBoss = bossIndex === 9;
+  const isLateBoss = bossIndex >= 7;
+  const isMidBoss = bossIndex >= 4;
+
+  const slots = ["weapon", "helmet", "chest", "gloves", "boots"];
+  const slot = slots[(dungeonIndex + bossIndex) % slots.length];
+
+  const drops: PossibleDrop[] = [];
+
+  if (isFinalBoss) {
+    drops.push({
+      name: `Legendary ${slot === "weapon" ? "Blade" : slot === "helmet" ? "Crown" : slot === "chest" ? "Plate" : slot === "gloves" ? "Gauntlets" : "Greaves"}`,
+      rarity: "legendary",
+      slot,
+    });
+    drops.push({
+      name: `Epic ${slots[(dungeonIndex + bossIndex + 1) % slots.length] === "weapon" ? "Sword" : "Armor Piece"}`,
+      rarity: "epic",
+      slot: slots[(dungeonIndex + bossIndex + 1) % slots.length],
+    });
+  } else if (isLateBoss) {
+    drops.push({
+      name: `Epic ${slot === "weapon" ? "Weapon" : "Armor"}`,
+      rarity: "epic",
+      slot,
+    });
+    drops.push({
+      name: `Rare ${slots[(dungeonIndex + bossIndex + 2) % slots.length] === "weapon" ? "Blade" : "Guard"}`,
+      rarity: "rare",
+      slot: slots[(dungeonIndex + bossIndex + 2) % slots.length],
+    });
+  } else if (isMidBoss) {
+    drops.push({
+      name: `Rare Equipment`,
+      rarity: "rare",
+      slot,
+    });
+    drops.push({
+      name: `Uncommon Piece`,
+      rarity: "uncommon",
+      slot: slots[(dungeonIndex + bossIndex + 1) % slots.length],
+    });
+  } else {
+    drops.push({
+      name: `Common Equipment`,
+      rarity: "common",
+      slot,
+    });
+    drops.push({
+      name: `Uncommon Item`,
+      rarity: "uncommon",
+      slot: slots[(dungeonIndex + bossIndex + 1) % slots.length],
+    });
+  }
+
+  return drops;
+};
+
+/** Boss-specific emoji avatars for visual variety */
+const BOSS_AVATARS: Record<string, string> = {
+  "Straw Dummy": "🎯", "Rusty Automaton": "🤖", "Barrel Golem": "🛢️",
+  "Plank Knight": "🪵", "Flying Francis": "🦟", "Scarecrow Mage": "🧙",
+  "Mud Troll": "🧌", "Possessed Mannequin": "🪆", "Iron Dummy": "🗡️",
+  "Drill Sergeant Grizzle": "💪", "Ghost": "👻", "Skeleton Archer": "💀",
+  "Shambling Zombie": "🧟", "Tomb Spider": "🕷️", "Bone Golem": "🦴",
+  "Banshee": "😱", "Crypt Knight": "⚔️", "Wraith": "🌫️",
+  "Lich Apprentice": "📖", "Necromancer Voss": "☠️", "Spore Sprite": "✨",
+  "Mushroom Brute": "🍄", "Vine Strangler": "🌿", "Poison Toad": "🐸",
+  "Mycelium Golem": "🌲", "Rot Witch": "🧪", "Fungal Hydra": "🐉",
+  "Sporeling Hive Mind": "🧠", "Blight Treant": "🌳", "The Overgrowth": "🌺",
+  "Ember Rat": "🐀", "Magma Slime": "🫧", "Mine Foreman": "⛏️",
+  "Lava Beetle": "🪲", "Cinder Elemental": "🔥", "Soot Dragon Whelp": "🐲",
+  "Obsidian Guardian": "🗿", "Flame Witch": "🔮", "Infernal Siege Engine": "💣",
+  "Pyrax the Molten King": "👑", "Frost Wisp": "❄️", "Ice Wolf": "🐺",
+  "Glacier Troll": "🏔️", "Frozen Sentinel": "🧊", "Blizzard Harpy": "🦅",
+  "Crystal Golem": "💎", "Frost Wyvern": "🐉", "Ice Lich": "🥶",
+  "Permafrost Colossus": "🗻", "Glacius the Eternal": "🌀",
+  "Light Sprite": "💡", "Radiant Archer": "🏹", "Crystal Beast": "🦄",
+  "Solar Monk": "☀️", "Golden Golem": "🏆", "Seraph Guardian": "👼",
+  "Prism Dragon": "🌈", "Light Weaver": "🕸️", "Solar Colossus": "🌞",
+  "The Heart of the Ray": "💛", "Shadow Wisp": "🌑", "Dark Stalker": "🦇",
+  "Void Spider": "🕷️", "Shade Knight": "🗡️", "Eclipse Wolf": "🌒",
+  "Nightborne Mage": "🪄", "Abyss Hydra": "🐙", "Shadow Dragon": "🐲",
+  "Void Colossus": "⬛", "The Whispering Dark": "👁️",
+  "Gear Sprite": "⚡", "Clockwork Hound": "🐕", "Piston Golem": "🏗️",
+  "Sawblade Dancer": "💿", "Tesla Turret": "⚡", "Steam Knight": "♨️",
+  "Gear Dragon": "⚙️", "Grand Mechanist": "🔧", "Siege Automaton": "🤖",
+  "The Grand Engine": "🏭", "Depth Crawler": "🦀", "Angler Horror": "🐡",
+  "Coral Golem": "🪸", "Siren": "🧜", "Kraken Spawn": "🦑",
+  "Abyssal Leviathan": "🐋", "Deep Sea Dragon": "🐉", "Drowned Admiral": "⚓",
+  "Tidal Colossus": "🌊", "Charybdis the Devourer": "🌀",
+  "Imp Swarm": "😈", "Hellhound Alpha": "🐕‍🦺", "Flame Demoness": "💃",
+  "Iron Demon": "🦾", "Pit Fiend": "👿", "Soul Reaver": "💀",
+  "Infernal Dragon": "🐉", "Dark Seraph": "😇", "The Throne Guardian": "🛡️",
+  "Archfiend Malachar": "👑",
+};
+
 /* ────────────────── Lore data ────────────────── */
 
 type DungeonLore = {
@@ -134,6 +271,54 @@ const DUNGEON_LORE: Record<string, DungeonLore> = {
     quote: {
       text: "If you can't beat wood — the darkness will swallow you.",
       author: "Old Instructor Fang",
+    },
+  },
+  desecrated_catacombs: {
+    tagline: "Where the dead refuse to rest",
+    paragraphs: [
+      "Beneath the old cemetery lies a labyrinth of crumbling tombs and forgotten kings.",
+      "The dead here don't sleep — they patrol. Skeletons rattle through the halls, ghosts wail in the dark, and the Necromancer's will binds them all.",
+      "Teal runes glow on the walls, remnants of wards that once kept the dead sealed. Now they only light the way for adventurers brave — or foolish — enough to enter.",
+    ],
+    quote: {
+      text: "The dead don't forgive trespassers. They collect them.",
+      author: "Gravedigger Mort",
+    },
+  },
+  fungal_grotto: {
+    tagline: "The spores whisper secrets",
+    paragraphs: [
+      "Deep below the marshlands, a cave system thrums with alien life. Giant mushrooms glow in colors that don't exist on the surface.",
+      "The air is thick with spores — some heal, some hallucinate, some kill. The Mushroom Brutes guard their territory with fungal fury.",
+      "At the heart of the grotto, the Overgrowth stirs — the cave itself is alive, and it doesn't want visitors.",
+    ],
+    quote: {
+      text: "Don't breathe too deep. The grotto remembers everyone who inhaled its secrets.",
+      author: "Herbalist Willow",
+    },
+  },
+  scorched_mines: {
+    tagline: "Heat rises from below",
+    paragraphs: [
+      "Once a prosperous gold mine, now a hellscape of molten rock and fire spirits. The miners dug too deep and woke something beneath the stone.",
+      "Lava rivers flow where mine carts once rolled. Magma slimes bubble happily on the rocks, and the Molten King rules from his obsidian chamber.",
+      "The ore here is priceless — if you can survive the heat long enough to mine it.",
+    ],
+    quote: {
+      text: "We found gold. Then the gold found fire. Then the fire found us.",
+      author: "Last journal of Foreman Gruk",
+    },
+  },
+  frozen_abyss: {
+    tagline: "Where even fire freezes",
+    paragraphs: [
+      "At the bottom of the world lies a cavern of eternal winter. Ice crystals older than civilization line the walls, and the silence is absolute.",
+      "Frozen warriors stand trapped in ice — some from armies long forgotten, some from last week. The Ice Wolves hunt anything with warmth.",
+      "Glacius the Eternal waits at the deepest point. They say he was once a fire mage who tried to melt the abyss. The abyss won.",
+    ],
+    quote: {
+      text: "Cold doesn't kill you. It preserves you. Forever.",
+      author: "Frostbitten Scout",
     },
   },
   realm_of_light: {
@@ -160,6 +345,57 @@ const DUNGEON_LORE: Record<string, DungeonLore> = {
       author: "Guild Legend",
     },
   },
+  clockwork_citadel: {
+    tagline: "Gears never stop turning",
+    paragraphs: [
+      "An ancient fortress built by a mad inventor who wanted to create perpetual motion — and succeeded. The gears haven't stopped in a thousand years.",
+      "Every wall moves, every floor shifts, every corridor rearranges. The clockwork creatures that patrol the halls were built to maintain the machine. Now they maintain it against intruders.",
+      "At the center spins the Grand Engine — a consciousness born from a million turning gears.",
+    ],
+    quote: {
+      text: "The citadel doesn't have traps. The citadel IS the trap.",
+      author: "Escaped prisoner, name unknown",
+    },
+  },
+  abyssal_depths: {
+    tagline: "Beneath the world, something waits",
+    paragraphs: [
+      "Below the deepest ocean trench lies a cavern that shouldn't exist. Bioluminescent horrors drift through the dark water, and sunken ruins hint at a civilization that worshipped the deep.",
+      "The Kraken's tentacles reach from crevices too dark to see into. The Siren's song echoes off ancient coral, luring fighters to watery graves.",
+      "Charybdis the Devourer lurks at the bottom — a living whirlpool that has swallowed ships, armies, and hope.",
+    ],
+    quote: {
+      text: "The ocean floor is littered with the bones of those who thought they were ready.",
+      author: "Admiral Ghost-Eye",
+    },
+  },
+  infernal_throne: {
+    tagline: "The final descent into madness",
+    paragraphs: [
+      "The last dungeon. The deepest pit. Where the Archfiend Malachar sits upon his obsidian throne and waits for challengers.",
+      "Rivers of hellfire flow between broken platforms. Imp swarms darken the crimson sky. Demons of every rank guard the path to the throne — and each one is a nightmare given form.",
+      "No one has defeated Malachar. The throne room is littered with the weapons of those who tried.",
+    ],
+    quote: {
+      text: "He doesn't fight because he must. He fights because he's bored. That's what makes him terrifying.",
+      author: "The Last Champion",
+    },
+  },
+};
+
+/* ────────────────── Dungeon images ────────────────── */
+
+const DUNGEON_IMAGES: Record<string, string> = {
+  training_camp: "/images/generated/dungeon-training-camp.png",
+  desecrated_catacombs: "/images/generated/dungeon-desecrated-catacombs.png",
+  fungal_grotto: "/images/generated/dungeon-fungal-grotto.png",
+  scorched_mines: "/images/generated/dungeon-scorched-mines.png",
+  frozen_abyss: "/images/generated/dungeon-frozen-abyss.png",
+  realm_of_light: "/images/generated/dungeon-realm-of-light.png",
+  shadow_realm: "/images/generated/dungeon-shadow-realm.png",
+  clockwork_citadel: "/images/generated/dungeon-clockwork-citadel.png",
+  abyssal_depths: "/images/generated/dungeon-abyssal-depths.png",
+  infernal_throne: "/images/generated/dungeon-infernal-throne.png",
 };
 
 /* ────────────────── Component ────────────────── */
@@ -174,6 +410,8 @@ function DungeonContent() {
   const [fighting, setFighting] = useState(false);
   const [screen, setScreen] = useState<DungeonScreen>({ kind: "list" });
   const [error, setError] = useState<string | null>(null);
+  const [selectedBoss, setSelectedBoss] = useState<number | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   /* ── Load character + dungeons ── */
   const loadData = useCallback(async () => {
@@ -301,6 +539,7 @@ function DungeonContent() {
   const handleBackToList = () => {
     loadData();
     setScreen({ kind: "list" });
+    setSelectedBoss(null);
     setError(null);
     window.dispatchEvent(new Event("character-updated"));
   };
@@ -491,137 +730,314 @@ function DungeonContent() {
   }
 
   /* ══════════════════════════════════════════
-     DETAIL — dungeon info with lore
+     DETAIL — dungeon map + boss details (по образцу скриншота)
      ══════════════════════════════════════════ */
   if (screen.kind === "detail") {
     const { dungeon } = screen;
-    const lore = DUNGEON_LORE[dungeon.id];
     const canAfford = character.currentStamina >= dungeon.staminaCost;
     const canStart = dungeon.unlocked && !dungeon.completed && canAfford;
+    const dungeonIndex = dungeons.findIndex((d) => d.id === dungeon.id);
+    const selectedBossIndex = selectedBoss ?? dungeon.bossIndex;
+    const activeBoss = dungeon.bosses[selectedBossIndex] ?? dungeon.bosses[0];
+    const isBossDefeated = selectedBossIndex < dungeon.bossIndex;
+    const isBossCurrent = selectedBossIndex === dungeon.bossIndex && !dungeon.completed;
+    const isBossLocked = selectedBossIndex > dungeon.bossIndex && !dungeon.completed;
+    const possibleDrops = getBossPossibleDrops(dungeonIndex, selectedBossIndex);
 
     return (
       <div className="flex min-h-full flex-col p-4 lg:p-6">
-        {/* Header */}
-        <div className="mb-6 flex items-center gap-3">
+        {/* Top bar: Back + dungeon name + progress + stamina */}
+        <div className="mb-4 flex items-center gap-3">
           <button
             type="button"
-            onClick={handleBackToList}
+            onClick={() => { setSelectedBoss(null); handleBackToList(); }}
             aria-label="Back to dungeons"
+            tabIndex={0}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-sm text-slate-400 transition hover:bg-slate-700 hover:text-white"
           >
             ←
           </button>
-          <div>
-            <h1 className="text-xl font-bold text-white">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-bold text-white lg:text-xl">
               {dungeon.theme.icon} {dungeon.name}
             </h1>
-            <p className="text-xs text-slate-500">{dungeon.subtitle}</p>
+            <p className="text-[10px] text-slate-500">{dungeon.subtitle}</p>
           </div>
-          <span className="ml-auto rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300">
+          <span className="shrink-0 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300">
             ⚡ {dungeon.staminaCost} Energy
           </span>
         </div>
 
-        {/* Lore section */}
-        {lore && (
-          <div className={`mb-6 rounded-2xl border border-slate-700/40 bg-gradient-to-b ${dungeon.theme.cardBg} p-5`}>
-            <p className="mb-3 text-xs font-medium italic text-slate-400">{lore.tagline}</p>
-            <div className="mb-3 space-y-2">
-              {lore.paragraphs.map((p, i) => (
-                <p key={i} className="text-xs leading-relaxed text-slate-400/90">{p}</p>
-              ))}
+        {/* Two-column layout: Boss Map (left) + Boss Detail (right) */}
+        <div className="flex flex-1 flex-col gap-4 lg:flex-row">
+          {/* ─── Left: Boss Map ─── */}
+          <div className={`relative flex-shrink-0 overflow-hidden rounded-2xl border border-slate-700/50 bg-gradient-to-b ${dungeon.theme.cardBg} lg:w-[340px]`}>
+            {/* Dungeon title bar inside map */}
+            <div className="border-b border-slate-700/40 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  {dungeon.bossIndex}/{dungeon.bosses.length} Defeated
+                </span>
+                {dungeon.completed && (
+                  <span className="rounded bg-green-900/50 px-2 py-0.5 text-[10px] font-bold text-green-400">
+                    COMPLETE
+                  </span>
+                )}
+              </div>
+              {/* Progress bar */}
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    dungeon.completed
+                      ? "bg-green-500"
+                      : "bg-gradient-to-r from-amber-600 to-amber-400"
+                  }`}
+                  style={{ width: `${dungeon.completed ? 100 : Math.round((dungeon.bossIndex / dungeon.bosses.length) * 100)}%` }}
+                />
+              </div>
             </div>
-            {lore.quote && (
-              <blockquote className="border-l-2 border-slate-600/50 pl-3">
-                <p className="text-[11px] italic leading-relaxed text-slate-500">
-                  &ldquo;{lore.quote.text}&rdquo;
+
+            {/* Boss nodes — vertical path */}
+            <div className="custom-scrollbar max-h-[500px] overflow-y-auto p-3 lg:max-h-[600px]">
+              <div className="relative flex flex-col items-center gap-1">
+                {dungeon.bosses.map((boss, idx) => {
+                  const defeated = boss.index < dungeon.bossIndex;
+                  const current = boss.index === dungeon.bossIndex && !dungeon.completed;
+                  const locked = boss.index > dungeon.bossIndex && !dungeon.completed;
+                  const isSelected = selectedBossIndex === boss.index;
+                  const avatar = BOSS_AVATARS[boss.name] ?? "❓";
+
+                  return (
+                    <div key={boss.index} className="flex w-full flex-col items-center">
+                      {/* Connecting line */}
+                      {idx > 0 && (
+                        <div
+                          className={`h-3 w-0.5 ${
+                            defeated ? "bg-green-600/60" : current ? "bg-amber-600/40" : "bg-slate-700/40"
+                          }`}
+                        />
+                      )}
+
+                      {/* Boss node button */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBoss(boss.index)}
+                        aria-label={`Select boss ${boss.name}`}
+                        tabIndex={0}
+                        className={`
+                          group flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all
+                          ${isSelected
+                            ? "border-amber-500/70 bg-amber-950/30 shadow-lg shadow-amber-900/20 ring-1 ring-amber-500/30"
+                            : defeated
+                              ? "border-green-800/30 bg-green-950/10 hover:bg-green-950/20"
+                              : current
+                                ? "border-amber-700/40 bg-amber-950/15 hover:bg-amber-950/25"
+                                : "border-slate-800/40 bg-slate-900/20 opacity-60 hover:opacity-80"
+                          }
+                        `}
+                      >
+                        {/* Avatar circle */}
+                        <div
+                          className={`
+                            relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl shadow-md
+                            ${defeated
+                              ? "bg-gradient-to-br from-green-800 to-green-900"
+                              : current
+                                ? `bg-gradient-to-br ${dungeon.theme.gradient} ring-2 ring-amber-500/50`
+                                : locked
+                                  ? "bg-slate-800/80"
+                                  : "bg-slate-800"
+                            }
+                          `}
+                        >
+                          {locked ? "🔒" : avatar}
+                          {defeated && (
+                            <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[8px]">
+                              ✓
+                            </div>
+                          )}
+                          {current && (
+                            <div className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-amber-500" />
+                          )}
+                        </div>
+
+                        {/* Boss info */}
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-xs font-bold ${
+                            isSelected ? "text-amber-300" : defeated ? "text-green-400/80" : current ? "text-white" : "text-slate-500"
+                          }`}>
+                            {boss.name}
+                          </p>
+                          <p className="truncate text-[10px] text-slate-600">
+                            Level {boss.level}
+                          </p>
+                        </div>
+
+                        {/* Boss index badge */}
+                        <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
+                          defeated ? "bg-green-900/40 text-green-500" : current ? "bg-amber-900/40 text-amber-400" : "bg-slate-800 text-slate-600"
+                        }`}>
+                          {boss.index + 1}/{dungeon.bosses.length}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* ─── Right: Boss Detail Panel ─── */}
+          <div className="flex flex-1 flex-col">
+            {/* Boss large preview */}
+            <div className={`relative mb-4 overflow-hidden rounded-2xl border border-slate-700/50 bg-gradient-to-b ${dungeon.theme.cardBg}`}>
+              {/* Boss avatar (large) */}
+              <div className="flex flex-col items-center px-6 pb-4 pt-6">
+                <div
+                  className={`
+                    mb-4 flex h-28 w-28 items-center justify-center rounded-2xl text-6xl shadow-xl
+                    ${isBossDefeated
+                      ? "bg-gradient-to-br from-green-800/50 to-green-900/50 ring-2 ring-green-700/50"
+                      : isBossCurrent
+                        ? `bg-gradient-to-br ${dungeon.theme.gradient} ring-2 ring-amber-500/60`
+                        : "bg-slate-800/80 ring-2 ring-slate-700/50"
+                    }
+                  `}
+                >
+                  {isBossLocked ? "🔒" : (BOSS_AVATARS[activeBoss.name] ?? "❓")}
+                </div>
+
+                {/* Name + level */}
+                <div className="text-center">
+                  <h2 className={`text-lg font-bold ${
+                    isBossDefeated ? "text-green-400" : isBossCurrent ? "text-amber-300" : "text-slate-500"
+                  }`}>
+                    {isBossLocked ? "???" : activeBoss.name}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Level {activeBoss.level} · Boss {selectedBossIndex + 1}/{dungeon.bosses.length}
+                  </p>
+                </div>
+
+                {/* Status badge */}
+                <div className="mt-2">
+                  {isBossDefeated && (
+                    <span className="rounded-full bg-green-900/40 px-3 py-1 text-[11px] font-bold text-green-400">
+                      ✅ Defeated
+                    </span>
+                  )}
+                  {isBossCurrent && (
+                    <span className="animate-pulse rounded-full bg-amber-900/40 px-3 py-1 text-[11px] font-bold text-amber-400">
+                      ⚔️ Current Target
+                    </span>
+                  )}
+                  {isBossLocked && (
+                    <span className="rounded-full bg-slate-800/60 px-3 py-1 text-[11px] font-bold text-slate-500">
+                      🔒 Locked
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="border-t border-slate-700/30 px-6 py-4">
+                <p className="text-sm leading-relaxed text-slate-400">
+                  {isBossLocked
+                    ? "Defeat the previous boss to reveal this enemy."
+                    : activeBoss.description}
                 </p>
-                <cite className="mt-0.5 block text-[10px] not-italic text-slate-600">
-                  — {lore.quote.author}
-                </cite>
-              </blockquote>
+              </div>
+            </div>
+
+            {/* Possible Loot */}
+            <div className="mb-4 rounded-2xl border border-slate-700/40 bg-slate-900/50 p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span>🎁</span> Possible Loot
+              </h3>
+              <div className="space-y-2">
+                {possibleDrops.map((drop, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${RARITY_COLORS[drop.rarity]}`}
+                  >
+                    <span className="text-sm">{SLOT_ICON[drop.slot] ?? "📦"}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold">{drop.name}</p>
+                      <p className="text-[10px] capitalize opacity-70">{drop.rarity} · {drop.slot}</p>
+                    </div>
+                    <span className="text-sm">{RARITY_ICON[drop.rarity]}</span>
+                  </div>
+                ))}
+                <div className="flex items-center gap-3 rounded-lg border border-yellow-700/30 bg-yellow-900/20 px-3 py-2 text-yellow-300/80">
+                  <span className="text-sm">🪙</span>
+                  <p className="text-xs font-bold">
+                    Gold Reward
+                    <span className="ml-1 font-normal opacity-70">
+                      ~{20 + dungeonIndex * 30 + Math.floor((20 + dungeonIndex * 30) * selectedBossIndex * 0.2)} gold
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <p className="mb-3 text-sm text-red-400" role="alert">{error}</p>
+            )}
+
+            {/* Fight button — only for current boss */}
+            {isBossCurrent && !dungeon.completed ? (
+              <button
+                type="button"
+                onClick={() => handleStart(dungeon)}
+                disabled={!canStart || starting}
+                aria-label="Fight Boss"
+                tabIndex={0}
+                className={`
+                  w-full rounded-2xl px-6 py-4 text-base font-bold text-white shadow-lg transition
+                  ${canStart
+                    ? "bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 shadow-red-900/40 hover:from-red-500 hover:via-orange-500 hover:to-amber-500 hover:shadow-xl"
+                    : "bg-slate-800 text-slate-500"
+                  }
+                  disabled:opacity-50
+                `}
+              >
+                {starting
+                  ? "Preparing…"
+                  : !canAfford
+                    ? `Not enough stamina (need ${dungeon.staminaCost})`
+                    : `⚔️ FIGHT`}
+              </button>
+            ) : dungeon.completed ? (
+              <div className="rounded-xl border border-green-800/40 bg-green-950/20 px-4 py-3 text-center text-sm font-medium text-green-400">
+                ✅ Dungeon Completed
+              </div>
+            ) : isBossDefeated ? (
+              <div className="rounded-xl border border-green-800/30 bg-green-950/10 px-4 py-3 text-center text-xs text-green-400/60">
+                This boss has already been defeated
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-700/30 bg-slate-900/30 px-4 py-3 text-center text-xs text-slate-500">
+                Defeat boss {selectedBossIndex} first to unlock this fight
+              </div>
             )}
           </div>
-        )}
-
-        {/* Boss progress */}
-        <div className="mb-6">
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
-            Bosses ({dungeon.bossIndex}/{dungeon.bosses.length})
-          </h2>
-          <div className="space-y-2">
-            {dungeon.bosses.map((boss) => {
-              const isDefeated = boss.index < dungeon.bossIndex;
-              const isCurrent = boss.index === dungeon.bossIndex && !dungeon.completed;
-              return (
-                <div
-                  key={boss.index}
-                  className={`flex items-center gap-3 rounded-xl border p-3 transition ${
-                    isCurrent
-                      ? "border-amber-500/50 bg-amber-950/20"
-                      : isDefeated
-                        ? "border-green-800/30 bg-green-950/10"
-                        : "border-slate-800/50 bg-slate-900/30 opacity-50"
-                  }`}
-                >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800/80 text-sm">
-                    {isDefeated ? "✅" : isCurrent ? "⚔️" : "🔒"}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-sm font-bold ${isCurrent ? "text-amber-400" : isDefeated ? "text-green-400/70" : "text-slate-600"}`}>
-                      {boss.name}
-                    </p>
-                    <p className="truncate text-[10px] text-slate-600">{boss.description}</p>
-                  </div>
-                  <span className="text-[10px] text-slate-600">Lv.{boss.level}</span>
-                </div>
-              );
-            })}
-          </div>
         </div>
-
-        {/* Error */}
-        {error && (
-          <p className="mb-4 text-sm text-red-400" role="alert">{error}</p>
-        )}
-
-        {/* Action button */}
-        {dungeon.completed ? (
-          <div className="rounded-xl border border-green-800/40 bg-green-950/20 px-4 py-3 text-center text-sm font-medium text-green-400">
-            ✅ Dungeon Completed
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => handleStart(dungeon)}
-            disabled={!canStart || starting}
-            aria-label="Enter Dungeon"
-            className={`
-              w-full rounded-2xl px-6 py-4 text-sm font-bold text-white shadow-lg transition
-              ${
-                canStart
-                  ? "bg-gradient-to-r from-amber-600 to-orange-600 shadow-amber-900/40 hover:from-amber-500 hover:to-orange-500 hover:shadow-xl"
-                  : "bg-slate-800 text-slate-500"
-              }
-              disabled:opacity-50
-            `}
-          >
-            {starting
-              ? "Preparing…"
-              : !dungeon.unlocked
-                ? "🔒 Locked"
-                : !canAfford
-                  ? `Not enough stamina (need ${dungeon.staminaCost})`
-                  : `⚔️ Fight ${dungeon.currentBoss?.name ?? "Boss"} (⚡ ${dungeon.staminaCost})`}
-          </button>
-        )}
       </div>
     );
   }
 
   /* ══════════════════════════════════════════
-     LIST — dungeon picker
+     LIST — dungeon carousel (S&F style)
      ══════════════════════════════════════════ */
+  const handleScrollCarousel = (direction: "left" | "right") => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const cardWidth = el.querySelector<HTMLElement>(".dungeon-card")?.offsetWidth ?? 320;
+    const scrollAmount = cardWidth + 20;
+    el.scrollBy({ left: direction === "right" ? scrollAmount : -scrollAmount, behavior: "smooth" });
+  };
+
   return (
     <div className="flex min-h-full flex-col p-4 lg:p-6">
       {/* Header */}
@@ -651,90 +1067,163 @@ function DungeonContent() {
         <p className="mb-4 text-sm text-red-400" role="alert">{error}</p>
       )}
 
-      {/* Dungeon grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-        {dungeons.map((dungeon) => {
-          const progressPercent = Math.round(
-            (dungeon.bossIndex / dungeon.bosses.length) * 100
-          );
+      {/* Dungeon carousel */}
+      <div className="relative flex-1">
+        {/* Navigation arrows */}
+        <button
+          type="button"
+          onClick={() => handleScrollCarousel("left")}
+          aria-label="Previous dungeon"
+          className="carousel-nav-btn left-2"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          onClick={() => handleScrollCarousel("right")}
+          aria-label="Next dungeon"
+          className="carousel-nav-btn right-2"
+        >
+          ›
+        </button>
 
-          return (
-            <button
-              key={dungeon.id}
-              type="button"
-              onClick={() =>
-                dungeon.unlocked
-                  ? setScreen({ kind: "detail", dungeon })
-                  : undefined
-              }
-              disabled={!dungeon.unlocked}
-              aria-label={`${dungeon.unlocked ? "Open" : "Locked"} ${dungeon.name}`}
-              tabIndex={0}
-              className={`
-                group relative w-full overflow-hidden rounded-2xl border-2 text-left
-                transition-all duration-300
-                ${
-                  dungeon.unlocked
-                    ? `border-slate-700/40 ${dungeon.theme.borderGlow} hover:border-slate-600 cursor-pointer`
-                    : "border-slate-800/30 opacity-40 grayscale cursor-not-allowed"
-                }
-              `}
-            >
-              {/* Background */}
-              <div className={`absolute inset-0 bg-gradient-to-r ${dungeon.theme.cardBg} opacity-90`} />
+        {/* Cards scroll container */}
+        <div ref={carouselRef} className="dungeon-carousel px-8 py-4">
+          {dungeons.map((dungeon) => {
+            const progressPercent = Math.round(
+              (dungeon.bossIndex / dungeon.bosses.length) * 100
+            );
+            const isLocked = !dungeon.unlocked;
+            const dungeonImage = DUNGEON_IMAGES[dungeon.id];
+            const lore = DUNGEON_LORE[dungeon.id];
 
-              {/* Content */}
-              <div className="relative flex items-center gap-4 p-4">
-                {/* Icon */}
-                <div
-                  className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${dungeon.theme.gradient} shadow-lg`}
-                >
-                  <span className="text-2xl drop-shadow-md">{dungeon.theme.icon}</span>
+            return (
+              <button
+                key={dungeon.id}
+                type="button"
+                onClick={() => {
+                  if (dungeon.unlocked) {
+                    setSelectedBoss(null);
+                    setScreen({ kind: "detail", dungeon });
+                  }
+                }}
+                disabled={isLocked}
+                aria-label={`${dungeon.unlocked ? "Open" : "Locked"} ${dungeon.name}`}
+                tabIndex={0}
+                className={`
+                  dungeon-card group relative flex flex-col overflow-hidden rounded-2xl border-2 text-left
+                  ${
+                    isLocked
+                      ? "dungeon-card-locked border-slate-800/40"
+                      : "dungeon-card-active dungeon-card-shimmer border-amber-600/50 cursor-pointer"
+                  }
+                `}
+              >
+                {/* ── Card image ── */}
+                <div className="relative aspect-[2/3] w-full overflow-hidden bg-slate-900">
+                  {dungeonImage ? (
+                    <Image
+                      src={dungeonImage}
+                      alt={dungeon.name}
+                      fill
+                      sizes="320px"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      priority
+                    />
+                  ) : (
+                    <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${dungeon.theme.gradient}`}>
+                      <span className="text-6xl drop-shadow-lg">{dungeon.theme.icon}</span>
+                    </div>
+                  )}
+
+                  {/* Gradient overlay at bottom */}
+                  <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
+
+                  {/* Lock overlay */}
+                  {isLocked && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-slate-950/60">
+                      <span className="text-4xl">🔒</span>
+                      <span className="text-xs font-medium text-slate-400">
+                        Lv. {dungeon.minLevel}+ required
+                      </span>
+                      {dungeon.prevDungeonId && (
+                        <span className="text-[10px] text-slate-500">
+                          Complete previous dungeon
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Completed badge */}
+                  {dungeon.completed && (
+                    <div className="absolute right-3 top-3 z-10 rounded-lg bg-green-600/90 px-2.5 py-1 text-xs font-bold text-white shadow-lg backdrop-blur-sm">
+                      ✅ COMPLETE
+                    </div>
+                  )}
+
+                  {/* Stamina cost badge */}
+                  {!isLocked && (
+                    <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-bold text-amber-400 shadow-lg backdrop-blur-sm">
+                      ⚡ {dungeon.staminaCost}
+                    </div>
+                  )}
                 </div>
 
-                {/* Info */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-white">{dungeon.name}</h3>
-                    {dungeon.completed && (
-                      <span className="rounded bg-green-900/50 px-1.5 py-0.5 text-[9px] font-bold text-green-400">
-                        COMPLETE
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-slate-500">{dungeon.subtitle}</p>
+                {/* ── Card info panel ── */}
+                <div className={`relative z-10 flex flex-1 flex-col gap-2.5 bg-gradient-to-b ${dungeon.theme.cardBg} p-4`}>
+                  {/* Title */}
+                  <h3 className="text-lg font-bold leading-tight text-white">
+                    {dungeon.name}
+                  </h3>
+
+                  {/* Description */}
+                  <p className="line-clamp-3 text-xs leading-relaxed text-slate-400">
+                    {lore?.paragraphs?.[0] ?? dungeon.subtitle}
+                  </p>
 
                   {/* Progress bar */}
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          dungeon.completed
-                            ? "bg-green-500"
-                            : "bg-gradient-to-r from-amber-600 to-amber-400"
-                        }`}
-                        style={{ width: `${dungeon.completed ? 100 : progressPercent}%` }}
-                      />
+                  {!isLocked && (
+                    <div className="mt-auto pt-2">
+                      <div className="mb-1.5 flex items-center justify-between text-[10px]">
+                        <span className="font-medium text-slate-500">
+                          {dungeon.completed ? "All bosses defeated" : `Boss ${dungeon.bossIndex + 1} of ${dungeon.bosses.length}`}
+                        </span>
+                        <span className="font-bold text-slate-400">
+                          {dungeon.bossIndex}/{dungeon.bosses.length}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800/80">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${
+                            dungeon.completed
+                              ? "bg-gradient-to-r from-green-500 to-emerald-400"
+                              : "bg-gradient-to-r from-amber-600 to-orange-400"
+                          }`}
+                          style={{ width: `${dungeon.completed ? 100 : progressPercent}%` }}
+                        />
+                      </div>
                     </div>
-                    <span className="text-[10px] text-slate-500">
-                      {dungeon.bossIndex}/{dungeon.bosses.length}
-                    </span>
-                  </div>
+                  )}
+
+                  {/* Level requirement */}
+                  {isLocked && (
+                    <div className="mt-auto flex items-center gap-2 pt-2">
+                      <div className="h-1 w-1 rounded-full bg-slate-600" />
+                      <span className="text-[10px] text-slate-600">
+                        Reach level {dungeon.minLevel}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Cost / Level badge */}
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span className="rounded-md bg-black/30 px-2 py-0.5 text-[10px] font-bold text-amber-400 backdrop-blur-sm">
-                    ⚡ {dungeon.staminaCost}
-                  </span>
-                  <span className="text-[10px] text-slate-600">
-                    Lv. {dungeon.minLevel}+
-                  </span>
-                </div>
-              </div>
-            </button>
-          );
-        })}
+                {/* ── Bottom border glow ── */}
+                {!isLocked && (
+                  <div className="absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

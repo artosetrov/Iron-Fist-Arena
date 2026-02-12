@@ -8,6 +8,7 @@ import type {
 } from "./types";
 import type { AbilityDef } from "./abilities";
 import { getAbilitiesForClass, getAbilityById } from "./abilities";
+import { getBossAbilityById } from "./boss-abilities";
 import { computeDerivedStats, getEffectiveStats } from "./stats";
 import { calcPhysicalDamage, calcMagicDamage, rollCrit, rollDodge } from "./damage";
 import { MAX_TURNS } from "./constants";
@@ -188,6 +189,28 @@ const applySelfBuff = (
   });
 };
 
+/** Resolve ability by id: checks class abilities first, then boss abilities. */
+const resolveAbility = (
+  attacker: CombatantState,
+  actionId: string,
+): AbilityDef | undefined => {
+  const classAbility = getAbilityById(attacker.class, actionId);
+  if (classAbility) return classAbility;
+  return getBossAbilityById(actionId);
+};
+
+/** Pick an action for the enemy (boss). ~60% chance to use a skill if available. */
+const getEnemyAction = (enemy: CombatantState): "basic" | string => {
+  const ids = enemy.bossAbilityIds;
+  if (!ids || ids.length === 0) return "basic";
+
+  const available = ids.filter((id) => (enemy.abilityCooldowns[id] ?? 0) <= 0);
+  if (available.length > 0 && Math.random() < 0.6) {
+    return available[Math.floor(Math.random() * available.length)];
+  }
+  return "basic";
+};
+
 export const runCombat = (
   player: CombatantState,
   enemy: CombatantState,
@@ -248,7 +271,7 @@ export const runCombat = (
     let effectiveAction: string = action;
 
     if (!isBasic) {
-      ability = getAbilityById(attacker.class, action);
+      ability = resolveAbility(attacker, action);
       if (ability && (attacker.abilityCooldowns[ability.id] ?? 0) <= 0) {
         // FIX: firstStrikeOnly — ability only works if this is attacker's first strike
         if (ability.firstStrikeOnly && !attacker.isFirstStrike) {
@@ -399,7 +422,7 @@ export const runCombat = (
     decrementCooldowns(enemy);
 
     if (!isStunned(first)) {
-      const action = first.id === player.id ? getPlayerAction() : "basic";
+      const action = first.id === player.id ? getPlayerAction() : getEnemyAction(first);
       resolveAttack(first, second, action, turn);
     } else {
       first.statusEffects = first.statusEffects.filter((s) => s.type !== "stun" || s.duration > 1);
@@ -415,7 +438,7 @@ export const runCombat = (
     if (second.currentHp <= 0) break;
 
     if (!isStunned(second)) {
-      const action = second.id === player.id ? getPlayerAction() : "basic";
+      const action = second.id === player.id ? getPlayerAction() : getEnemyAction(second);
       resolveAttack(second, first, action, turn);
     } else {
       second.statusEffects = second.statusEffects.filter((s) => s.type !== "stun" || s.duration > 1);

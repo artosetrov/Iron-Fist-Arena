@@ -60,6 +60,8 @@ export interface CombatantState {
   statusEffects: StatusEffect[];
   isFirstStrike?: boolean;
   abilityCooldowns: Record<string, number>;
+  /** Boss-specific ability IDs (from boss-catalog). Undefined for players. */
+  bossAbilityIds?: string[];
 }
 
 export interface CombatLogEntry {

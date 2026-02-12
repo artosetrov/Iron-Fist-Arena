@@ -12,6 +12,7 @@ import {
   BOSSES_PER_DUNGEON,
   DUNGEONS,
 } from "@/lib/game/dungeon";
+import { getBossCatalogEntry } from "@/lib/game/boss-catalog";
 import {
   rollRarity,
   rollDropChance,
@@ -93,6 +94,12 @@ export async function POST(
     });
     enemyState.currentHp = state.bossCurrentHp;
     enemyState.maxHp = bs.maxHp;
+
+    // Attach boss abilities from catalog
+    const catalogEntry = getBossCatalogEntry(state.dungeonId, state.bossIndex);
+    if (catalogEntry) {
+      enemyState.bossAbilityIds = catalogEntry.abilityIds;
+    }
 
     const result = runCombat(playerState, enemyState, []);
 
