@@ -6,6 +6,8 @@ import Image from "next/image";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatLootScreen from "@/app/components/CombatLootScreen";
 import PageLoader from "@/app/components/PageLoader";
+import { BOSS_CATALOG } from "@/lib/game/boss-catalog";
+import { BOSS_ABILITIES } from "@/lib/game/boss-abilities";
 
 /* ────────────────── Types ────────────────── */
 
@@ -93,6 +95,7 @@ type FightResult = {
   enemySnapshot?: CombatantSnapshot;
   goldEarned?: number;
   xpEarned?: number;
+  ratingEarned?: number;
   droppedItem?: { itemId: string | null; rarity: string } | null;
   bossIndex?: number;
   nextBossIndex?: number;
@@ -250,6 +253,20 @@ const BOSS_AVATARS: Record<string, string> = {
   "Iron Demon": "🦾", "Pit Fiend": "👿", "Soul Reaver": "💀",
   "Infernal Dragon": "🐉", "Dark Seraph": "😇", "The Throne Guardian": "🛡️",
   "Archfiend Malachar": "👑",
+};
+
+/** Boss-specific image paths (override emoji avatars when present) */
+const BOSS_IMAGES: Record<string, string> = {
+  "Straw Dummy": "/images/generated/boss-straw-dummy.png",
+  "Rusty Automaton": "/images/generated/boss-rusty-automaton.png",
+  "Barrel Golem": "/images/generated/boss-barrel-golem.png",
+  "Plank Knight": "/images/generated/boss-plank-knight.png",
+  "Flying Francis": "/images/generated/boss-flying-francis.png",
+  "Scarecrow Mage": "/images/generated/boss-scarecrow-mage.png",
+  "Mud Troll": "/images/generated/boss-mud-troll.png",
+  "Possessed Mannequin": "/images/generated/boss-possessed-mannequin.png",
+  "Iron Dummy": "/images/generated/boss-iron-dummy.png",
+  "Drill Sergeant Grizzle": "/images/generated/boss-drill-sergeant-grizzle.png",
 };
 
 /* ────────────────── Lore data ────────────────── */
@@ -581,6 +598,7 @@ function DungeonContent() {
         rewards={{
           gold: screen.fightResult.goldEarned,
           xp: screen.fightResult.xpEarned,
+          rating: screen.fightResult.ratingEarned,
           droppedItem: screen.fightResult.droppedItem,
         }}
         onContinue={handleLootContinue}
@@ -631,37 +649,49 @@ function DungeonContent() {
               / {dungeon.bosses.length}
             </span>
           </div>
-          <h2 className="mb-1 text-lg font-bold text-red-400">{boss.name}</h2>
-          <p className="mb-3 text-xs italic text-slate-500">{boss.description}</p>
+          {/* Boss avatar + info centered */}
+          <div className="mx-auto w-72">
+            {BOSS_IMAGES[boss.name] && (
+              <div className="mb-3 flex h-72 w-72 items-center justify-center overflow-hidden rounded-2xl shadow-lg">
+                <Image
+                  src={BOSS_IMAGES[boss.name]}
+                  alt={boss.name}
+                  width={1024}
+                  height={1024}
+                  className="h-full w-full object-contain"
+                  sizes="288px"
+                />
+              </div>
+            )}
+            <h2 className="mb-1 text-center text-lg font-bold text-red-400">{boss.name}</h2>
+            <p className="mb-3 text-center text-xs italic text-slate-500">{boss.description}</p>
 
-          {/* HP bar */}
-          <div className="mb-1 flex justify-between text-xs text-slate-400">
-            <span>HP</span>
-            <span>
-              {boss.hp} / {boss.maxHp}
-            </span>
+            {/* HP bar */}
+            <div className="relative mb-4 h-6 w-full overflow-hidden rounded-full bg-slate-700">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500"
+                style={{ width: `${hpPercent}%` }}
+              />
+              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                {boss.hp} / {boss.maxHp}
+              </span>
+            </div>
+
+            {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+
+            {/* Actions */}
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={handleFight}
+                disabled={fighting}
+                aria-label="Fight Boss"
+                className="rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-900/40 transition hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
+              >
+                {fighting ? "Fighting…" : "⚔️ Fight Boss"}
+              </button>
+            </div>
           </div>
-          <div className="h-3 w-full overflow-hidden rounded-full bg-slate-700">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500"
-              style={{ width: `${hpPercent}%` }}
-            />
-          </div>
-        </div>
-
-        {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
-
-        {/* Actions */}
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={handleFight}
-            disabled={fighting}
-            aria-label="Fight Boss"
-            className="rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-900/40 transition hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
-          >
-            {fighting ? "Fighting…" : "⚔️ Fight Boss"}
-          </button>
         </div>
       </div>
     );
@@ -840,17 +870,30 @@ function DungeonContent() {
                         <div
                           className={`
                             relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl shadow-md
-                            ${defeated
-                              ? "bg-gradient-to-br from-green-800 to-green-900"
-                              : current
-                                ? `bg-gradient-to-br ${dungeon.theme.gradient} ring-2 ring-amber-500/50`
-                                : locked
-                                  ? "bg-slate-800/80"
-                                  : "bg-slate-800"
+                            ${!locked && BOSS_IMAGES[boss.name]
+                              ? "bg-transparent"
+                              : defeated
+                                ? "bg-gradient-to-br from-green-800 to-green-900"
+                                : current
+                                  ? `bg-gradient-to-br ${dungeon.theme.gradient} ring-2 ring-amber-500/50`
+                                  : locked
+                                    ? "bg-slate-800/80"
+                                    : "bg-slate-800"
                             }
                           `}
                         >
-                          {locked ? "🔒" : avatar}
+                          {locked ? "🔒" : BOSS_IMAGES[boss.name] ? (
+                            <div className="h-full w-full overflow-hidden rounded-xl">
+                              <Image
+                                src={BOSS_IMAGES[boss.name]}
+                                alt={boss.name}
+                                width={1024}
+                                height={1024}
+                                className="h-full w-full object-contain"
+                                sizes="44px"
+                              />
+                            </div>
+                          ) : avatar}
                           {defeated && (
                             <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[8px]">
                               ✓
@@ -888,96 +931,157 @@ function DungeonContent() {
           </div>
 
           {/* ─── Right: Boss Detail Panel ─── */}
-          <div className="flex flex-1 flex-col">
+          <div className="order-first flex flex-1 flex-col lg:order-none">
             {/* Boss large preview */}
             <div className={`relative mb-4 overflow-hidden rounded-2xl border border-slate-700/50 bg-gradient-to-b ${dungeon.theme.cardBg}`}>
               {/* Boss avatar (large) */}
               <div className="flex flex-col items-center px-6 pb-4 pt-6">
+                {/* Level + boss index — large, above avatar */}
+                <p className="mb-1 text-sm font-bold text-slate-300">
+                  Level {activeBoss.level} · Boss {selectedBossIndex + 1}/{dungeon.bosses.length}
+                </p>
+                {isBossCurrent && (
+                  <span className="mb-3 inline-block animate-pulse rounded-full bg-amber-900/40 px-3 py-1 text-[11px] font-bold text-amber-400">
+                    ⚔️ Current Target
+                  </span>
+                )}
+                {isBossLocked && (
+                  <span className="mb-3 inline-block rounded-full bg-slate-800/60 px-3 py-1 text-[11px] font-bold text-slate-500">
+                    🔒 Locked
+                  </span>
+                )}
+                {isBossDefeated && <div className="mb-3" />}
+
                 <div
                   className={`
-                    mb-4 flex h-28 w-28 items-center justify-center rounded-2xl text-6xl shadow-xl
-                    ${isBossDefeated
-                      ? "bg-gradient-to-br from-green-800/50 to-green-900/50 ring-2 ring-green-700/50"
-                      : isBossCurrent
-                        ? `bg-gradient-to-br ${dungeon.theme.gradient} ring-2 ring-amber-500/60`
-                        : "bg-slate-800/80 ring-2 ring-slate-700/50"
+                    mb-4 flex h-56 w-56 items-center justify-center rounded-2xl text-6xl shadow-xl overflow-hidden
+                    ${!isBossLocked && BOSS_IMAGES[activeBoss.name]
+                      ? "bg-transparent"
+                      : isBossDefeated
+                        ? "bg-gradient-to-br from-green-800/50 to-green-900/50 ring-2 ring-green-700/50"
+                        : isBossCurrent
+                          ? `bg-gradient-to-br ${dungeon.theme.gradient} ring-2 ring-amber-500/60`
+                          : "bg-slate-800/80 ring-2 ring-slate-700/50"
                     }
                   `}
                 >
-                  {isBossLocked ? "🔒" : (BOSS_AVATARS[activeBoss.name] ?? "❓")}
+                  {isBossLocked ? "🔒" : BOSS_IMAGES[activeBoss.name] ? (
+                    <Image
+                      src={BOSS_IMAGES[activeBoss.name]}
+                      alt={activeBoss.name}
+                      width={1024}
+                      height={1024}
+                      className="h-full w-full object-contain"
+                      sizes="224px"
+                    />
+                  ) : (BOSS_AVATARS[activeBoss.name] ?? "❓")}
                 </div>
 
-                {/* Name + level */}
+                {/* Name + Description */}
                 <div className="text-center">
                   <h2 className={`text-lg font-bold ${
                     isBossDefeated ? "text-green-400" : isBossCurrent ? "text-amber-300" : "text-slate-500"
                   }`}>
                     {isBossLocked ? "???" : activeBoss.name}
                   </h2>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    Level {activeBoss.level} · Boss {selectedBossIndex + 1}/{dungeon.bosses.length}
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    {isBossLocked
+                      ? "Defeat the previous boss to reveal this enemy."
+                      : activeBoss.description}
                   </p>
+
+                  {/* Boss Abilities — inline under description */}
+                  {!isBossLocked && (() => {
+                    const catalogEntry = BOSS_CATALOG.find(
+                      (b) => b.dungeonId === dungeon.id && b.bossIndex === selectedBossIndex,
+                    );
+                    if (!catalogEntry) return null;
+                    const abilityMap = new Map(BOSS_ABILITIES.map((a) => [a.id, a]));
+                    const abilities = catalogEntry.abilityIds
+                      .map((id) => abilityMap.get(id))
+                      .filter(Boolean);
+                    if (abilities.length === 0) return null;
+
+                    const TYPE_ICON: Record<string, string> = {
+                      physical: "⚔️",
+                      magic: "✨",
+                      buff: "🛡️",
+                    };
+                    const TYPE_COLOR: Record<string, string> = {
+                      physical: "text-red-400",
+                      magic: "text-blue-400",
+                      buff: "text-amber-400",
+                    };
+
+                    return (
+                      <div className="mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-1">
+                        {abilities.map((ability) => {
+                          if (!ability) return null;
+                          return (
+                            <span
+                              key={ability.id}
+                              className={`inline-flex items-center gap-1 text-[11px] font-medium ${TYPE_COLOR[ability.type] ?? "text-slate-400"}`}
+                              title={[
+                                ability.type === "buff"
+                                  ? ability.selfBuff
+                                    ? Object.entries(ability.selfBuff).map(([k, v]) => `+${Math.round(v * 100)}% ${k}`).join(", ")
+                                    : ability.dodgeBonus ? `+${ability.dodgeBonus}% dodge` : "buff"
+                                  : `${ability.multiplier}x${ability.hits && ability.hits > 1 ? ` ×${ability.hits}` : ""}`,
+                                ability.status ? `${Math.round(ability.status.chance * 100)}% ${ability.status.type}` : null,
+                                ability.armorBreak ? `-${Math.round(ability.armorBreak * 100)}% armor` : null,
+                                ability.critBonus ? `+${ability.critBonus}% crit` : null,
+                                `CD ${ability.cooldown}`,
+                              ].filter(Boolean).join(" · ")}
+                            >
+                              <span className="text-xs">{TYPE_ICON[ability.type] ?? "❓"}</span>
+                              {ability.name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                {/* Status badge */}
-                <div className="mt-2">
-                  {isBossDefeated && (
-                    <span className="rounded-full bg-green-900/40 px-3 py-1 text-[11px] font-bold text-green-400">
-                      ✅ Defeated
-                    </span>
-                  )}
-                  {isBossCurrent && (
-                    <span className="animate-pulse rounded-full bg-amber-900/40 px-3 py-1 text-[11px] font-bold text-amber-400">
-                      ⚔️ Current Target
-                    </span>
-                  )}
-                  {isBossLocked && (
-                    <span className="rounded-full bg-slate-800/60 px-3 py-1 text-[11px] font-bold text-slate-500">
-                      🔒 Locked
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="border-t border-slate-700/30 px-6 py-4">
-                <p className="text-sm leading-relaxed text-slate-400">
-                  {isBossLocked
-                    ? "Defeat the previous boss to reveal this enemy."
-                    : activeBoss.description}
-                </p>
-              </div>
-            </div>
-
-            {/* Possible Loot */}
-            <div className="mb-4 rounded-2xl border border-slate-700/40 bg-slate-900/50 p-4">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                <span>🎁</span> Possible Loot
-              </h3>
-              <div className="space-y-2">
-                {possibleDrops.map((drop, i) => (
-                  <div
-                    key={i}
-                    className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${RARITY_COLORS[drop.rarity]}`}
-                  >
-                    <span className="text-sm">{SLOT_ICON[drop.slot] ?? "📦"}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold">{drop.name}</p>
-                      <p className="text-[10px] capitalize opacity-70">{drop.rarity} · {drop.slot}</p>
+                {/* Possible Loot — inventory-style cells under boss name */}
+                {!isBossLocked && (
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                    {possibleDrops.map((drop, i) => {
+                      const rarityBorder: Record<string, string> = {
+                        common: "border-slate-400",
+                        uncommon: "border-green-500",
+                        rare: "border-blue-500",
+                        epic: "border-purple-500",
+                        legendary: "border-amber-500",
+                      };
+                      const rarityBg: Record<string, string> = {
+                        common: "bg-slate-800/60",
+                        uncommon: "bg-green-950/60",
+                        rare: "bg-blue-950/60",
+                        epic: "bg-purple-950/60",
+                        legendary: "bg-amber-950/60",
+                      };
+                      return (
+                        <div
+                          key={i}
+                          className={`flex h-11 w-11 items-center justify-center rounded-md border-2 transition-all hover:brightness-125 ${rarityBorder[drop.rarity] ?? "border-slate-400"} ${rarityBg[drop.rarity] ?? "bg-slate-800/60"}`}
+                          title={`${drop.name} — ${drop.rarity} ${drop.slot}`}
+                        >
+                          <span className="text-lg">{SLOT_ICON[drop.slot] ?? "📦"}</span>
+                        </div>
+                      );
+                    })}
+                    <div
+                      className="flex h-11 w-11 items-center justify-center rounded-md border-2 border-yellow-700/40 bg-yellow-900/30 transition-all hover:brightness-125"
+                      title={`Gold ~${20 + dungeonIndex * 30 + Math.floor((20 + dungeonIndex * 30) * selectedBossIndex * 0.2)}g`}
+                    >
+                      <span className="text-lg">🪙</span>
                     </div>
-                    <span className="text-sm">{RARITY_ICON[drop.rarity]}</span>
                   </div>
-                ))}
-                <div className="flex items-center gap-3 rounded-lg border border-yellow-700/30 bg-yellow-900/20 px-3 py-2 text-yellow-300/80">
-                  <span className="text-sm">🪙</span>
-                  <p className="text-xs font-bold">
-                    Gold Reward
-                    <span className="ml-1 font-normal opacity-70">
-                      ~{20 + dungeonIndex * 30 + Math.floor((20 + dungeonIndex * 30) * selectedBossIndex * 0.2)} gold
-                    </span>
-                  </p>
-                </div>
+                )}
+
               </div>
+
             </div>
 
             {/* Error */}

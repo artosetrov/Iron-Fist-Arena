@@ -12,6 +12,7 @@ type Entry = {
   pvpWins: number;
   pvpLosses: number;
   highestPvpRank: string;
+  currentRank: string;
 };
 
 const CLASS_LABEL: Record<string, string> = {
@@ -19,6 +20,22 @@ const CLASS_LABEL: Record<string, string> = {
   rogue: "Rogue",
   mage: "Mage",
   tank: "Tank",
+};
+
+/** Tailwind color classes per rank tier */
+const RANK_COLOR: Record<string, string> = {
+  Bronze: "text-amber-600",
+  Silver: "text-slate-300",
+  Gold: "text-yellow-400",
+  Platinum: "text-cyan-400",
+  Diamond: "text-blue-400",
+  Master: "text-purple-400",
+  Grandmaster: "text-red-400",
+};
+
+const getRankColor = (rank: string): string => {
+  const tier = rank.split(" ")[0];
+  return RANK_COLOR[tier] ?? "text-slate-400";
 };
 
 export default function LeaderboardPage() {
@@ -53,6 +70,8 @@ export default function LeaderboardPage() {
           type="button"
           onClick={() => { setError(null); setLoading(true); window.location.reload(); }}
           className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-700"
+          tabIndex={0}
+          aria-label="Retry loading leaderboard"
         >
           Retry
         </button>
@@ -105,7 +124,9 @@ export default function LeaderboardPage() {
                   {" / "}
                   <span className="text-red-400">{e.pvpLosses}</span>
                 </td>
-                <td className="px-3 py-2">{e.highestPvpRank}</td>
+                <td className={`px-3 py-2 font-semibold ${getRankColor(e.currentRank)}`}>
+                  {e.currentRank}
+                </td>
               </tr>
             ))}
           </tbody>

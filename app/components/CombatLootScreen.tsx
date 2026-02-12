@@ -8,6 +8,7 @@ import Image from "next/image";
 type LootReward = {
   gold?: number;
   xp?: number;
+  rating?: number;
   droppedItem?: { itemId: string | null; rarity: string } | null;
 };
 
@@ -38,6 +39,20 @@ const ORIGIN_IMAGE: Record<string, string> = {
   skeleton: "/images/generated/origin-skeleton.png",
   demon: "/images/generated/origin-demon.png",
   dogfolk: "/images/generated/origin-dogfolk.png",
+};
+
+/** Boss-specific image paths (override emoji avatars when present) */
+const BOSS_IMAGES: Record<string, string> = {
+  "Straw Dummy": "/images/generated/boss-straw-dummy.png",
+  "Rusty Automaton": "/images/generated/boss-rusty-automaton.png",
+  "Barrel Golem": "/images/generated/boss-barrel-golem.png",
+  "Plank Knight": "/images/generated/boss-plank-knight.png",
+  "Flying Francis": "/images/generated/boss-flying-francis.png",
+  "Scarecrow Mage": "/images/generated/boss-scarecrow-mage.png",
+  "Mud Troll": "/images/generated/boss-mud-troll.png",
+  "Possessed Mannequin": "/images/generated/boss-possessed-mannequin.png",
+  "Iron Dummy": "/images/generated/boss-iron-dummy.png",
+  "Drill Sergeant Grizzle": "/images/generated/boss-drill-sergeant-grizzle.png",
 };
 
 const RARITY_COLOR: Record<string, string> = {
@@ -105,8 +120,17 @@ const CombatLootScreen = ({
 
         {/* Enemy avatar */}
         <div className="flex flex-col items-center px-6 pt-5">
-          <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900">
-            {enemy.origin && ORIGIN_IMAGE[enemy.origin] ? (
+          <div className={`relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl ${BOSS_IMAGES[enemy.name] ? "bg-transparent" : "border border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900"}`}>
+            {BOSS_IMAGES[enemy.name] ? (
+              <Image
+                src={BOSS_IMAGES[enemy.name]}
+                alt={enemy.name}
+                width={1024}
+                height={1024}
+                className="h-full w-full object-contain"
+                sizes="80px"
+              />
+            ) : enemy.origin && ORIGIN_IMAGE[enemy.origin] ? (
               <Image
                 src={ORIGIN_IMAGE[enemy.origin]}
                 alt={enemy.origin}
@@ -145,6 +169,16 @@ const CombatLootScreen = ({
               </span>
               <span className="text-sm font-bold text-blue-400">
                 +{rewards.xp} XP
+              </span>
+            </div>
+          )}
+          {rewards.rating !== undefined && rewards.rating > 0 && (
+            <div className="flex flex-col items-center gap-1 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3">
+              <span className="text-2xl" aria-hidden="true">
+                ⚔️
+              </span>
+              <span className="text-sm font-bold text-cyan-400">
+                +{rewards.rating} Rating
               </span>
             </div>
           )}

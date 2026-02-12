@@ -57,10 +57,11 @@ model Character {
   maxStamina         Int      @default(100) @map("max_stamina")
   lastStaminaUpdate  DateTime @default(now()) @map("last_stamina_update")
 
-  pvpRating      Int    @default(1000) @map("pvp_rating")
+  pvpRating      Int    @default(0) @map("pvp_rating")
   pvpWins        Int    @default(0) @map("pvp_wins")
   pvpLosses      Int    @default(0) @map("pvp_losses")
   pvpWinStreak   Int    @default(0) @map("pvp_win_streak")
+  pvpLossStreak  Int    @default(0) @map("pvp_loss_streak")
   highestPvpRank String @default("Bronze V") @map("highest_pvp_rank")
 
   createdAt  DateTime @default(now()) @map("created_at")

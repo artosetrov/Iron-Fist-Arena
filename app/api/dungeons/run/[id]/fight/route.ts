@@ -24,6 +24,7 @@ import type { CharacterClass, CharacterOrigin } from "@prisma/client";
 import { Rarity } from "@prisma/client";
 import { applyLevelUp } from "@/lib/game/levelUp";
 import { updateDailyQuestProgress } from "@/lib/game/quests";
+import { ratingForBossKill, ratingForDungeonComplete, getRankFromRating, rankOrder } from "@/lib/game/elo";
 
 export async function POST(
   request: Request,
@@ -126,6 +127,11 @@ export async function POST(
       state.bossIndex
     );
 
+    // Rating reward based on boss level
+    const currentBoss = dungeon.bosses[state.bossIndex];
+    const bossLevel = currentBoss?.level ?? 1;
+    const ratingEarned = ratingForBossKill(bossLevel);
+
     state.rewards.gold += goldEarned;
     state.rewards.xp += xpEarned;
 
@@ -144,11 +150,15 @@ export async function POST(
     const dungeonComplete = nextBossIndex >= dungeon.bosses.length;
 
     // Apply completion bonus
+    let completionRatingBonus = 0;
     if (dungeonComplete) {
       const bonus = getDungeonCompletionBonus(Math.max(0, dungeonIndex));
       state.rewards.gold += bonus.gold;
       state.rewards.xp += bonus.xp;
+      completionRatingBonus = ratingForDungeonComplete(dungeon.minLevel);
     }
+
+    const totalRatingEarned = ratingEarned + completionRatingBonus;
 
     let newItemId: string | null = null;
     let droppedItemType: string | null = null;
@@ -220,6 +230,13 @@ export async function POST(
         },
       });
 
+      // Rating update (same for both paths)
+      const newRating = character.pvpRating + totalRatingEarned;
+      const newRank = getRankFromRating(newRating);
+      const highestRank = rankOrder(newRank) > rankOrder(character.highestPvpRank)
+        ? newRank
+        : character.highestPvpRank;
+
       if (dungeonComplete) {
         // Apply total rewards
         const levelUp = applyLevelUp({
@@ -237,6 +254,8 @@ export async function POST(
             level: levelUp.level,
             statPointsAvailable: levelUp.statPointsAvailable,
             currentHp: levelUp.currentHp,
+            pvpRating: newRating,
+            highestPvpRank: highestRank,
           },
         });
         await tx.dungeonRun.delete({ where: { id: runId } });
@@ -257,6 +276,8 @@ export async function POST(
             level: bossLevelUp.level,
             statPointsAvailable: bossLevelUp.statPointsAvailable,
             currentHp: bossLevelUp.currentHp,
+            pvpRating: newRating,
+            highestPvpRank: highestRank,
           },
         });
         await tx.dungeonRun.delete({ where: { id: runId } });
@@ -277,6 +298,7 @@ export async function POST(
         rewards: state.rewards,
         goldEarned,
         xpEarned,
+        ratingEarned: totalRatingEarned,
         droppedItem: droppedItem
           ? { itemId: newItemId, rarity: droppedItem.rarity, itemType: droppedItemType }
           : null,
@@ -293,6 +315,7 @@ export async function POST(
       enemySnapshot: result.enemySnapshot,
       goldEarned,
       xpEarned,
+      ratingEarned: totalRatingEarned,
       droppedItem: droppedItem
         ? { itemId: newItemId, rarity: droppedItem.rarity, itemType: droppedItemType }
         : null,

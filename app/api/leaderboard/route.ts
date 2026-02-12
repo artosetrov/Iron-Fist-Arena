@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { getCurrentSeasonNumber } from "@/lib/db/season";
+import { getRankFromRating } from "@/lib/game/elo";
 
 export async function GET(request: Request) {
   try {
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
     const withRank = characters.map((c, i) => ({
       rank: i + 1,
       ...c,
+      currentRank: getRankFromRating(c.pvpRating),
     }));
 
     return NextResponse.json({

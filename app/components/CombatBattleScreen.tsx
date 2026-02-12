@@ -73,6 +73,20 @@ const ORIGIN_IMAGE: Record<string, string> = {
   dogfolk: "/images/generated/origin-dogfolk.png",
 };
 
+/** Boss-specific image paths (override emoji avatars when present) */
+const BOSS_IMAGES: Record<string, string> = {
+  "Straw Dummy": "/images/generated/boss-straw-dummy.png",
+  "Rusty Automaton": "/images/generated/boss-rusty-automaton.png",
+  "Barrel Golem": "/images/generated/boss-barrel-golem.png",
+  "Plank Knight": "/images/generated/boss-plank-knight.png",
+  "Flying Francis": "/images/generated/boss-flying-francis.png",
+  "Scarecrow Mage": "/images/generated/boss-scarecrow-mage.png",
+  "Mud Troll": "/images/generated/boss-mud-troll.png",
+  "Possessed Mannequin": "/images/generated/boss-possessed-mannequin.png",
+  "Iron Dummy": "/images/generated/boss-iron-dummy.png",
+  "Drill Sergeant Grizzle": "/images/generated/boss-drill-sergeant-grizzle.png",
+};
+
 const CLASS_GRADIENT: Record<string, string> = {
   warrior: "from-red-900 to-red-950",
   rogue: "from-emerald-900 to-emerald-950",
@@ -196,9 +210,18 @@ const FighterCard = ({
     >
       {/* Avatar */}
       <div
-        className={`relative flex h-32 flex-col items-center justify-center overflow-hidden bg-gradient-to-b ${gradient}`}
+        className={`relative flex h-32 flex-col items-center justify-center overflow-hidden ${BOSS_IMAGES[snapshot.name] ? "bg-transparent" : `bg-gradient-to-b ${gradient}`}`}
       >
-        {snapshot.origin && ORIGIN_IMAGE[snapshot.origin] ? (
+        {BOSS_IMAGES[snapshot.name] ? (
+          <Image
+            src={BOSS_IMAGES[snapshot.name]}
+            alt={snapshot.name}
+            width={1024}
+            height={1024}
+            className="h-full w-full object-contain"
+            sizes="220px"
+          />
+        ) : snapshot.origin && ORIGIN_IMAGE[snapshot.origin] ? (
           <Image
             src={ORIGIN_IMAGE[snapshot.origin]}
             alt={snapshot.origin}
@@ -305,12 +328,14 @@ const CombatBattleScreen = ({
 
   /* Cleanup all timeouts and reset module counter on unmount */
   useEffect(() => {
+    const ids = timeoutIds.current;
+    const interval = intervalRef;
     return () => {
-      timeoutIds.current.forEach(clearTimeout);
-      timeoutIds.current.clear();
-      if (intervalRef.current) {
-        clearTimeout(intervalRef.current);
-        intervalRef.current = null;
+      ids.forEach(clearTimeout);
+      ids.clear();
+      if (interval.current) {
+        clearTimeout(interval.current);
+        interval.current = null;
       }
       floatIdCounter = 0;
     };
@@ -496,21 +521,23 @@ const CombatBattleScreen = ({
   /** Auto-proceed to loot screen after battle ends */
   useEffect(() => {
     if (!isFinished) return;
+    const ids = timeoutIds.current;
     const tid = setTimeout(() => {
-      timeoutIds.current.delete(tid);
+      ids.delete(tid);
       onComplete();
     }, 2000);
-    timeoutIds.current.add(tid);
+    ids.add(tid);
     return () => {
       clearTimeout(tid);
-      timeoutIds.current.delete(tid);
+      ids.delete(tid);
     };
   }, [isFinished, onComplete]);
 
   /** Start playback on mount */
   useEffect(() => {
+    const ids = timeoutIds.current;
     const timer = setTimeout(() => {
-      timeoutIds.current.delete(timer);
+      ids.delete(timer);
       if (log.length > 0) {
         setCurrentStep(0);
         processEntry(log[0]);
@@ -519,10 +546,10 @@ const CombatBattleScreen = ({
         setIsPlaying(false);
       }
     }, 600);
-    timeoutIds.current.add(timer);
+    ids.add(timer);
     return () => {
       clearTimeout(timer);
-      timeoutIds.current.delete(timer);
+      ids.delete(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -1,10 +1,11 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
+import { goldCostForStatTraining } from "@/lib/game/stat-training";
 import { NextResponse } from "next/server";
 
 /**
  * GDD §3.2 — Stat allocation (free stat points from level-ups)
- * + Gold training: buy +1 stat for gold (cost = 100 × currentStatValue)
+ * + Gold training: buy +1 stat for gold (exponential cost curve)
  *
  * Soft caps per GDD §2.1:
  *   STR 300, AGI 250, VIT 400, END 300, INT 300, WIS 250, LCK 200, CHA 150
@@ -36,11 +37,6 @@ const SOFT_CAP: Record<StatKey, number> = {
 };
 
 const HARD_CAP = 999;
-
-/** Gold cost to train +1 stat point via gold */
-const goldCostForStat = (currentValue: number): number => {
-  return 100 * currentValue;
-};
 
 export async function POST(
   request: Request,
@@ -123,7 +119,7 @@ export async function POST(
     }
 
     // mode === "gold"
-    const cost = goldCostForStat(currentValue);
+    const cost = goldCostForStatTraining(currentValue);
 
     if (character.gold < cost) {
       return NextResponse.json(

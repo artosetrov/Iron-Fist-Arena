@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import PageLoader from "@/app/components/PageLoader";
 import { xpForLevel } from "@/lib/game/progression";
+import { goldCostForStatTraining } from "@/lib/game/stat-training";
 
 /* ────────────────── Types ────────────────── */
 
@@ -327,8 +328,6 @@ const InventoryCell = ({ inv, onEquip, onHoverItem, onSelectItem }: InvCellProps
 
 /* ────────────────── Tab: Attributes ────────────────── */
 
-/** Gold cost = 100 × currentStatValue */
-const goldCostForStat = (currentValue: number): number => 100 * currentValue;
 
 type AttrTabProps = {
   stats: CharStats;
@@ -406,7 +405,7 @@ const AttributesTab = ({
       <div className="grid grid-cols-2 gap-2">
         {rows.map((r) => {
           const isUpgradeable = r.statKey !== null;
-          const cost = isUpgradeable ? goldCostForStat(r.value) : 0;
+          const cost = isUpgradeable ? goldCostForStatTraining(r.value) : 0;
           const canAfford = upgradeMode === "gold" ? gold >= cost : canUpgradeWithPoints;
           const canUpgrade = isUpgradeable && hasMode && canAfford && r.value < 999;
 
@@ -421,32 +420,43 @@ const AttributesTab = ({
                   {r.secondary}
                   <span className="ml-1 text-slate-300">{r.secondaryValue}</span>
                 </p>
-                {isUpgradeable && upgradeMode === "gold" && (
-                  <p className="mt-0.5 text-[9px] text-yellow-500/70">
-                    {cost.toLocaleString()} gold
-                  </p>
-                )}
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-lg font-bold text-white">{r.value}</span>
                 {isUpgradeable && (
-                  <button
-                    type="button"
-                    disabled={!canUpgrade || isAllocating}
-                    onClick={() => r.statKey && onAllocate(r.statKey, upgradeMode)}
-                    className={`flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold transition
-                      ${canUpgrade && !isAllocating
-                        ? upgradeMode === "points"
-                          ? "bg-indigo-600 text-white hover:bg-indigo-500"
-                          : "bg-yellow-600 text-white hover:bg-yellow-500"
-                        : "cursor-not-allowed bg-slate-700/50 text-slate-600"
-                      }
-                    `}
-                    aria-label={`Upgrade ${r.label}`}
-                    tabIndex={0}
-                  >
-                    +
-                  </button>
+                  <div className="group/btn relative">
+                    <button
+                      type="button"
+                      disabled={!canUpgrade || isAllocating}
+                      onClick={() => r.statKey && onAllocate(r.statKey, upgradeMode)}
+                      className={`flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold transition
+                        ${canUpgrade && !isAllocating
+                          ? upgradeMode === "points"
+                            ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                            : "bg-yellow-600 text-white hover:bg-yellow-500"
+                          : "cursor-not-allowed bg-slate-700/50 text-slate-600"
+                        }
+                      `}
+                      aria-label={`Upgrade ${r.label}${upgradeMode === "gold" ? ` for ${cost.toLocaleString()} gold` : ""}`}
+                      tabIndex={0}
+                    >
+                      +
+                    </button>
+                    <div
+                      className="pointer-events-none absolute -top-9 right-0 z-50 hidden whitespace-nowrap rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs shadow-lg group-hover/btn:block"
+                      role="tooltip"
+                    >
+                      {upgradeMode === "gold" ? (
+                        <span className={canAfford ? "text-yellow-400" : "text-red-400"}>
+                          {cost.toLocaleString()} gold
+                        </span>
+                      ) : (
+                        <span className={canUpgradeWithPoints ? "text-indigo-300" : "text-red-400"}>
+                          1 SP
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

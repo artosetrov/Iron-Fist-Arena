@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { runCombat, buildCombatantState } from "@/lib/game/combat";
-import { ratingChange, getRankFromRating } from "@/lib/game/elo";
+import { ratingChange, getRankFromRating, applyLossProtection, rankOrder } from "@/lib/game/elo";
 import { spendStamina, STAMINA_COST } from "@/lib/game/stamina";
 import { getCurrentSeasonNumber } from "@/lib/db/season";
 import {
@@ -135,12 +135,16 @@ export async function POST(request: Request) {
     const playerWon = winnerId === character.id;
     const oppWon = winnerId === opponent.id;
 
-    const delta1 = draw
+    // GDD §6.2 — ELO delta + §6.4 loss protection
+    const rawDelta1 = draw
       ? 0
       : ratingChange(character.pvpRating, opponent.pvpRating, playerWon ? 1 : 0);
-    const delta2 = draw
+    const rawDelta2 = draw
       ? 0
       : ratingChange(opponent.pvpRating, character.pvpRating, oppWon ? 1 : 0);
+
+    const delta1 = applyLossProtection(character.pvpRating, rawDelta1, character.pvpLossStreak);
+    const delta2 = applyLossProtection(opponent.pvpRating, rawDelta2, opponent.pvpLossStreak);
 
     const newRating1 = Math.max(0, character.pvpRating + delta1);
     const newRating2 = Math.max(0, opponent.pvpRating + delta2);
@@ -160,7 +164,9 @@ export async function POST(request: Request) {
       : scaleXpByLevel(XP_REWARD.PVP_LOSS, character.level);
 
     const newWinStreak1 = playerWon ? character.pvpWinStreak + 1 : 0;
+    const newLossStreak1 = playerWon ? 0 : character.pvpLossStreak + 1;
     const newWinStreak2 = oppWon ? opponent.pvpWinStreak + 1 : 0;
+    const newLossStreak2 = oppWon ? 0 : opponent.pvpLossStreak + 1;
 
     const afterXp = character.currentXp + xp1;
     const afterGold = character.gold + gold1;
@@ -195,6 +201,12 @@ export async function POST(request: Request) {
         },
       });
 
+      // Only update highestPvpRank if the new rank is higher (GDD §6.3)
+      const newRank1 = getRankFromRating(newRating1);
+      const highestRank1 = rankOrder(newRank1) > rankOrder(character.highestPvpRank)
+        ? newRank1
+        : character.highestPvpRank;
+
       await tx.character.update({
         where: { id: character.id },
         data: {
@@ -202,7 +214,8 @@ export async function POST(request: Request) {
           pvpWins: { increment: playerWon ? 1 : 0 },
           pvpLosses: { increment: playerWon ? 0 : 1 },
           pvpWinStreak: newWinStreak1,
-          highestPvpRank: getRankFromRating(newRating1),
+          pvpLossStreak: newLossStreak1,
+          highestPvpRank: highestRank1,
           gold: levelUp.gold,
           currentXp: levelUp.currentXp,
           level: levelUp.level,
@@ -213,6 +226,11 @@ export async function POST(request: Request) {
         },
       });
 
+      const newRank2 = getRankFromRating(newRating2);
+      const highestRank2 = rankOrder(newRank2) > rankOrder(opponent!.highestPvpRank)
+        ? newRank2
+        : opponent!.highestPvpRank;
+
       await tx.character.update({
         where: { id: opponent!.id },
         data: {
@@ -220,7 +238,8 @@ export async function POST(request: Request) {
           pvpWins: { increment: oppWon ? 1 : 0 },
           pvpLosses: { increment: oppWon ? 0 : 1 },
           pvpWinStreak: newWinStreak2,
-          highestPvpRank: getRankFromRating(newRating2),
+          pvpLossStreak: newLossStreak2,
+          highestPvpRank: highestRank2,
           gold: { increment: gold2 },
           currentXp: { increment: xp2 },
         },

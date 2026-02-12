@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PageLoader from "@/app/components/PageLoader";
+import { STAMINA_POTIONS, type StaminaPotion } from "@/lib/game/potion-catalog";
 
 /* ────────────────── Constants ────────────────── */
 
@@ -29,6 +30,8 @@ type Character = {
   characterName: string;
   gold: number;
   level: number;
+  currentStamina: number;
+  maxStamina: number;
 };
 
 const RARITY_CONFIG: Record<
@@ -126,7 +129,7 @@ const CLASS_LABELS: Record<string, string> = {
   tank: "Tank",
 };
 
-type Tab = "all" | ItemType;
+type Tab = "all" | ItemType | "potions";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "all", label: "All", icon: "🏪" },
@@ -137,6 +140,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "legs", label: "Leggings", icon: "👖" },
   { key: "boots", label: "Boots", icon: "🥾" },
   { key: "accessory", label: "Accessories", icon: "💍" },
+  { key: "potions", label: "Potions", icon: "🧪" },
 ];
 
 const RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
@@ -492,6 +496,139 @@ const BuyToast = ({ itemName, onClose }: { itemName: string; onClose: () => void
   );
 };
 
+/* ────────────────── Potion Card ────────────────── */
+
+const PotionCard = ({
+  potion,
+  canAfford,
+  currentStamina,
+  maxStamina,
+  onBuy,
+  buying,
+}: {
+  potion: StaminaPotion;
+  canAfford: boolean;
+  currentStamina: number;
+  maxStamina: number;
+  onBuy: (id: string) => void;
+  buying: string | null;
+}) => {
+  const [hovered, setHovered] = useState(false);
+  const isBuying = buying === potion.id;
+  const staminaAfter = Math.min(200, currentStamina + potion.staminaRestore);
+  const atCap = currentStamina >= 200;
+
+  return (
+    <div
+      className={`
+        group relative flex flex-col overflow-hidden rounded-xl border transition-all duration-300
+        border-emerald-700/50 bg-emerald-950/20
+        shadow-[0_0_16px_rgba(16,185,129,0.08)]
+        hover:scale-[1.02] hover:brightness-110
+      `}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      role="article"
+      aria-label={potion.name}
+    >
+      {/* Top badge */}
+      <div className="flex items-center justify-between px-3 pt-3">
+        <span className="rounded-md bg-emerald-900/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+          Consumable
+        </span>
+        <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+          +{potion.staminaRestore} ⚡
+        </span>
+      </div>
+
+      {/* Icon + name */}
+      <div className="flex flex-col items-center px-3 pb-2 pt-3">
+        <div
+          className={`
+            mb-2 flex h-16 w-16 items-center justify-center rounded-xl border-2 
+            border-emerald-700/50 bg-slate-900/80 text-3xl transition-transform duration-300
+            ${hovered ? "scale-110 rotate-3" : ""}
+          `}
+        >
+          {potion.icon}
+        </div>
+        <p className="text-center text-sm font-bold leading-tight text-emerald-400">{potion.name}</p>
+      </div>
+
+      {/* Description */}
+      <div className="mx-3 mb-2">
+        <p className="text-[10px] italic text-slate-500">{potion.description}</p>
+      </div>
+
+      {/* Stamina preview */}
+      <div className="mx-3 mb-2 space-y-1.5 rounded-lg border border-slate-700/30 bg-slate-900/40 px-2.5 py-2">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-slate-400">⚡ Stamina</span>
+          <span className="font-bold text-emerald-400">+{potion.staminaRestore}</span>
+        </div>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-slate-400">After use</span>
+          <span className="font-medium text-slate-300">
+            {staminaAfter} / {maxStamina}
+          </span>
+        </div>
+        {/* Stamina bar */}
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-500"
+            style={{ width: `${Math.min(100, (staminaAfter / maxStamina) * 100)}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Daily limit */}
+      <div className="mx-3 mb-2 rounded-lg border border-amber-700/30 bg-amber-950/20 px-2.5 py-1.5">
+        <p className="text-[10px] font-medium text-amber-400/80">
+          ✦ Daily limit: {potion.dailyLimit} per day
+        </p>
+      </div>
+
+      {/* Price + Buy */}
+      <div className="mt-auto border-t border-slate-700/30 bg-slate-900/40 px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-lg">🪙</span>
+            <span className={`text-sm font-bold ${canAfford ? "text-yellow-400" : "text-red-400"}`}>
+              {potion.goldCost.toLocaleString()}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onBuy(potion.id)}
+            disabled={!canAfford || isBuying || atCap}
+            className={`
+              rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-200
+              ${canAfford && !atCap
+                ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-500 hover:to-emerald-400 hover:shadow-emerald-500/30 active:scale-95"
+                : "cursor-not-allowed bg-slate-800 text-slate-600"
+              }
+              disabled:opacity-60
+            `}
+            aria-label={`Buy ${potion.name}`}
+            tabIndex={0}
+          >
+            {isBuying ? (
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-3 animate-spin rounded-full border border-white/30 border-t-white" />
+                ...
+              </span>
+            ) : atCap ? (
+              "Full"
+            ) : (
+              "Buy"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ────────────────── Main Shop ────────────────── */
 
 function ShopContent() {
@@ -509,6 +646,7 @@ function ShopContent() {
   const [rarityFilter, setRarityFilter] = useState<Rarity | "all">("all");
   const [sortBy, setSortBy] = useState<"price_asc" | "price_desc" | "level" | "rarity">("rarity");
   const [goldModalOpen, setGoldModalOpen] = useState(false);
+  const [buyingPotion, setBuyingPotion] = useState<string | null>(null);
 
   /* ── Load data ── */
   useEffect(() => {
@@ -538,6 +676,7 @@ function ShopContent() {
 
   /* ── Filter & sort ── */
   const filteredItems = useMemo(() => {
+    if (activeTab === "potions") return [];
     let result = [...items];
 
     if (activeTab !== "all") {
@@ -602,9 +741,46 @@ function ShopContent() {
     setGoldModalOpen(false);
   }, []);
 
+  /* ── Buy potion handler ── */
+  const handleBuyPotion = useCallback(
+    async (potionId: string) => {
+      if (!characterId || buyingPotion) return;
+      setError(null);
+      setBuyingPotion(potionId);
+      try {
+        const res = await fetch("/api/shop/buy-potion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ characterId, potionId }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const potion = STAMINA_POTIONS.find((p) => p.id === potionId);
+          setCharacter((c) =>
+            c
+              ? {
+                  ...c,
+                  gold: c.gold - (potion?.goldCost ?? 0),
+                  currentStamina: data.currentStamina ?? c.currentStamina,
+                }
+              : null
+          );
+          setToast(`⚡ +${data.staminaRestored ?? 0} Stamina`);
+        } else {
+          setError(data.error ?? "Purchase error");
+        }
+      } catch {
+        setError("Network error");
+      } finally {
+        setBuyingPotion(null);
+      }
+    },
+    [characterId, buyingPotion]
+  );
+
   /* ── Category counts ── */
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: items.length };
+    const counts: Record<string, number> = { all: items.length, potions: STAMINA_POTIONS.length };
     for (const item of items) {
       counts[item.itemType] = (counts[item.itemType] ?? 0) + 1;
     }
@@ -631,21 +807,38 @@ function ShopContent() {
             </div>
           </div>
 
-          {/* Gold display — clickable to open purchase modal */}
-          <button
-            type="button"
-            onClick={() => setGoldModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl border border-amber-700/40 bg-gradient-to-r from-amber-900/30 to-amber-950/50 px-4 py-2 shadow-lg shadow-amber-500/5 transition-all duration-200 hover:border-amber-600/60 hover:shadow-amber-500/15 hover:brightness-110 active:scale-95"
-            aria-label="Buy Gold"
-            tabIndex={0}
-          >
-            <span className="text-xl">🪙</span>
-            <div className="text-left">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-amber-600">Gold</p>
-              <p className="text-lg font-black tabular-nums text-yellow-400">{character.gold.toLocaleString()}</p>
+          <div className="flex items-center gap-3">
+            {/* Stamina display */}
+            <div
+              className="flex items-center gap-2 rounded-xl border border-emerald-700/40 bg-gradient-to-r from-emerald-900/30 to-emerald-950/50 px-4 py-2 shadow-lg shadow-emerald-500/5"
+              aria-label="Current Stamina"
+            >
+              <span className="text-xl">⚡</span>
+              <div className="text-left">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-600">Stamina</p>
+                <p className="text-lg font-black tabular-nums text-emerald-400">
+                  {character.currentStamina}
+                  <span className="text-sm font-medium text-emerald-600">/{character.maxStamina}</span>
+                </p>
+              </div>
             </div>
-            <span className="ml-1 text-lg text-amber-500/60">+</span>
-          </button>
+
+            {/* Gold display — clickable to open purchase modal */}
+            <button
+              type="button"
+              onClick={() => setGoldModalOpen(true)}
+              className="flex items-center gap-2 rounded-xl border border-amber-700/40 bg-gradient-to-r from-amber-900/30 to-amber-950/50 px-4 py-2 shadow-lg shadow-amber-500/5 transition-all duration-200 hover:border-amber-600/60 hover:shadow-amber-500/15 hover:brightness-110 active:scale-95"
+              aria-label="Buy Gold"
+              tabIndex={0}
+            >
+              <span className="text-xl">🪙</span>
+              <div className="text-left">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-amber-600">Gold</p>
+                <p className="text-lg font-black tabular-nums text-yellow-400">{character.gold.toLocaleString()}</p>
+              </div>
+              <span className="ml-1 text-lg text-amber-500/60">+</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -700,60 +893,77 @@ function ShopContent() {
         </div>
       </div>
 
-      {/* ── Filters row ── */}
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        {/* Rarity filter */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Rarity:</span>
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setRarityFilter("all")}
-              className={`rounded-md px-2 py-1 text-[11px] font-medium transition ${rarityFilter === "all" ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-300"}`}
-              aria-label="All rarities"
-              aria-pressed={rarityFilter === "all"}
-              tabIndex={0}
+      {/* ── Filters row (hidden on potions tab) ── */}
+      {activeTab !== "potions" && (
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          {/* Rarity filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Rarity:</span>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setRarityFilter("all")}
+                className={`rounded-md px-2 py-1 text-[11px] font-medium transition ${rarityFilter === "all" ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-300"}`}
+                aria-label="All rarities"
+                aria-pressed={rarityFilter === "all"}
+                tabIndex={0}
+              >
+                All
+              </button>
+              {RARITY_ORDER.map((r) => {
+                const conf = RARITY_CONFIG[r];
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRarityFilter(r)}
+                    className={`rounded-md px-2 py-1 text-[11px] font-medium transition ${rarityFilter === r ? `${conf.badge}` : "text-slate-500 hover:text-slate-300"}`}
+                    aria-label={conf.label}
+                    aria-pressed={rarityFilter === r}
+                    tabIndex={0}
+                  >
+                    {conf.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sort */}
+          <div className="ml-auto flex items-center gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-1.5 text-xs text-slate-300 outline-none transition focus:border-indigo-500"
+              aria-label="Sort items"
             >
-              All
-            </button>
-            {RARITY_ORDER.map((r) => {
-              const conf = RARITY_CONFIG[r];
-              return (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRarityFilter(r)}
-                  className={`rounded-md px-2 py-1 text-[11px] font-medium transition ${rarityFilter === r ? `${conf.badge}` : "text-slate-500 hover:text-slate-300"}`}
-                  aria-label={conf.label}
-                  aria-pressed={rarityFilter === r}
-                  tabIndex={0}
-                >
-                  {conf.label}
-                </button>
-              );
-            })}
+              <option value="rarity">By rarity</option>
+              <option value="price_asc">Price ↑</option>
+              <option value="price_desc">Price ↓</option>
+              <option value="level">By level</option>
+            </select>
           </div>
         </div>
+      )}
 
-        {/* Sort */}
-        <div className="ml-auto flex items-center gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Sort:</span>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-1.5 text-xs text-slate-300 outline-none transition focus:border-indigo-500"
-            aria-label="Sort items"
-          >
-            <option value="rarity">By rarity</option>
-            <option value="price_asc">Price ↑</option>
-            <option value="price_desc">Price ↓</option>
-            <option value="level">By level</option>
-          </select>
+      {/* ── Potions Grid ── */}
+      {activeTab === "potions" ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {STAMINA_POTIONS.map((potion) => (
+            <PotionCard
+              key={potion.id}
+              potion={potion}
+              canAfford={character.gold >= potion.goldCost}
+              currentStamina={character.currentStamina}
+              maxStamina={character.maxStamina}
+              onBuy={handleBuyPotion}
+              buying={buyingPotion}
+            />
+          ))}
         </div>
-      </div>
-
-      {/* ── Item Grid ── */}
-      {filteredItems.length > 0 ? (
+      ) : /* ── Item Grid ── */
+      filteredItems.length > 0 ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredItems.map((item) => (
             <ItemCard
