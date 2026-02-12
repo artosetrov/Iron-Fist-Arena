@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { getMaxHp } from "@/lib/game/stats";
+import { applyRegen } from "@/lib/game/stamina";
 import { NextResponse } from "next/server";
 import {
   BASE_CRIT_CHANCE,
@@ -47,6 +48,24 @@ export async function GET(request: Request) {
     const equipped = character.equipment.filter((e) => e.isEquipped);
     const unequipped = character.equipment.filter((e) => !e.isEquipped);
 
+    // Apply stamina regen
+    const lastUpdate =
+      character.lastStaminaUpdate instanceof Date
+        ? character.lastStaminaUpdate
+        : new Date(character.lastStaminaUpdate);
+    const { currentStamina, lastStaminaUpdate } = applyRegen({
+      currentStamina: character.currentStamina,
+      maxStamina: character.maxStamina,
+      lastStaminaUpdate: lastUpdate,
+      isVip: false,
+    });
+    if (currentStamina !== character.currentStamina || lastStaminaUpdate.getTime() !== lastUpdate.getTime()) {
+      await prisma.character.update({
+        where: { id: character.id },
+        data: { currentStamina, lastStaminaUpdate },
+      });
+    }
+
     // Derived stats per GDD §2
     const str = character.strength;
     const agi = character.agility;
@@ -88,6 +107,8 @@ export async function GET(request: Request) {
         pvpWins: character.pvpWins,
         pvpLosses: character.pvpLosses,
         statPointsAvailable: character.statPointsAvailable,
+        currentStamina,
+        maxStamina: character.maxStamina,
         stats: { str, agi, vit, end, int, wis, lck, cha },
         derived: {
           physicalDamage,

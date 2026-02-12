@@ -8,6 +8,7 @@ import { xpForLevel } from "@/lib/game/progression";
 import { goldCostForStatTraining } from "@/lib/game/stat-training";
 import { isWeaponTwoHanded } from "@/lib/game/item-catalog";
 import { MAX_STAT_VALUE } from "@/lib/game/balance";
+import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 
 /* ────────────────── Types ────────────────── */
 
@@ -69,6 +70,8 @@ type CharacterData = {
   pvpWins: number;
   pvpLosses: number;
   statPointsAvailable: number;
+  currentStamina: number;
+  maxStamina: number;
   stats: CharStats;
   derived: DerivedStats;
 };
@@ -82,12 +85,19 @@ type ApiResponse = {
 
 /* ────────────────── Constants ────────────────── */
 
+const CLASS_ICON: Record<string, string> = {
+  warrior: "⚔️",
+  rogue: "🗡️",
+  mage: "🔮",
+  tank: "🛡️",
+};
+
 const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/generated/origin-human.png",
-  orc: "/images/generated/origin-orc.png",
-  skeleton: "/images/generated/origin-skeleton.png",
-  demon: "/images/generated/origin-demon.png",
-  dogfolk: "/images/generated/origin-dogfolk.png",
+  human: "/images/origins/origin-human.png",
+  orc: "/images/origins/origin-orc.png",
+  skeleton: "/images/origins/origin-skeleton.png",
+  demon: "/images/origins/origin-demon.png",
+  dogfolk: "/images/origins/origin-dogfolk.png",
 };
 
 const SLOT_ORDER = ["helmet", "weapon", "weapon_offhand", "chest", "gloves", "legs", "boots", "necklace", "ring", "accessory", "amulet", "belt", "relic"] as const;
@@ -800,7 +810,7 @@ function InventoryContent() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [characterOrigin, setCharacterOrigin] = useState<string | null>(null);
+  const avatarSrc = useCharacterAvatar(characterId);
   const [activeTab, setActiveTab] = useState<"attributes" | "description" | "info">("attributes");
   const [hoveredItem, setHoveredItem] = useState<{ inv: InventoryItem; x: number; y: number } | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -824,19 +834,6 @@ function InventoryContent() {
       if (e instanceof Error && e.name === "AbortError") return;
       setError(e instanceof Error ? e.message : "Error");
     }
-  }, [characterId]);
-
-  /* Fetch character origin for the preloader avatar */
-  useEffect(() => {
-    if (!characterId) return;
-    const controller = new AbortController();
-    fetch(`/api/characters/${characterId}`, { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((char) => {
-        if (char?.origin) setCharacterOrigin(char.origin);
-      })
-      .catch(() => {});
-    return () => controller.abort();
   }, [characterId]);
 
   useEffect(() => {
@@ -986,45 +983,15 @@ function InventoryContent() {
   const bagItems = useMemo(() => data?.unequipped ?? [], [data]);
 
   if (loading || !characterId || !data) {
-    const originImg = characterOrigin ? ORIGIN_IMAGE[characterOrigin] : null;
     const loaderText = !characterId ? "Loading…" : error ? "Retrying…" : "Loading inventory…";
 
-    return (
-      <div className="flex min-h-full items-center justify-center p-8">
-        <div className="text-center">
-          <div className="relative mx-auto mb-4 h-24 w-24">
-            {/* Outer spinner ring */}
-            <div className="absolute inset-0 animate-spin rounded-full border-2 border-slate-700 border-t-indigo-400" />
-            {/* Inner spinner ring */}
-            <div
-              className="absolute inset-1.5 animate-spin rounded-full border-2 border-slate-700 border-t-purple-400"
-              style={{ animationDirection: "reverse", animationDuration: "1.5s" }}
-            />
-            {/* Avatar or fallback emoji */}
-            <div className="absolute inset-3 overflow-hidden rounded-full border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900">
-              {originImg ? (
-                <Image
-                  src={originImg}
-                  alt="Character"
-                  width={256}
-                  height={256}
-                  className="absolute left-1/2 -top-1 w-[280%] max-w-none -translate-x-1/2"
-                  sizes="72px"
-                />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center text-2xl">🎒</span>
-              )}
-            </div>
-          </div>
-          <p className="text-sm text-slate-400">{loaderText}</p>
-        </div>
-      </div>
-    );
+    return <PageLoader emoji="🎒" text={loaderText} avatarSrc={avatarSrc} />;
   }
 
   const { character } = data;
   const xpNeeded = xpForLevel(character.level);
   const xpPercent = xpNeeded > 0 ? Math.min(100, (character.currentXp / xpNeeded) * 100) : 0;
+  const staminaPercent = character.maxStamina > 0 ? Math.min(100, (character.currentStamina / character.maxStamina) * 100) : 0;
 
   const tabs = [
     { key: "attributes" as const, label: "Attributes" },
@@ -1045,12 +1012,13 @@ function InventoryContent() {
           <div className="p-4">
             {/* Equipment paper-doll layout */}
             <div className="flex gap-4">
-              {/* Left column: helmet, chest, gloves, legs */}
+              {/* Left column: helmet, chest, gloves, legs, ring */}
               <div className="flex flex-col items-center gap-2">
                 <EquipmentSlot slotKey="helmet" item={equippedMap.helmet} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="chest" item={equippedMap.chest} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="gloves" item={equippedMap.gloves} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="legs" item={equippedMap.legs} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                <EquipmentSlot slotKey="ring" item={equippedMap.ring} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
               </div>
 
               {/* Center: avatar + name + level */}
@@ -1070,6 +1038,17 @@ function InventoryContent() {
                       {character.class === "warrior" ? "⚔️" : character.class === "rogue" ? "🗡️" : character.class === "mage" ? "🧙" : "🛡️"}
                     </span>
                   )}
+
+                  {/* Level badge — top-right */}
+                  <div className="absolute right-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-amber-500/80 bg-slate-900/90 text-base font-bold text-amber-400 shadow-lg">
+                    {character.level}
+                  </div>
+
+                  {/* Class icon badge — top-left */}
+                  <div className="absolute left-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-slate-500/80 bg-slate-900/90 text-lg shadow-lg">
+                    {CLASS_ICON[character.class] ?? "👤"}
+                  </div>
+
                   <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-6">
                     <p className="text-center text-sm font-bold text-white">{character.characterName}</p>
                   </div>
@@ -1080,11 +1059,21 @@ function InventoryContent() {
                     className="h-full rounded-full bg-gradient-to-r from-green-600 to-green-400 transition-all"
                     style={{ width: `${xpPercent}%` }}
                   />
-                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                  <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                     Lv. {character.level}
                   </span>
                 </div>
-                {/* Weapon slots under avatar: Main Hand + Off Hand + Relic */}
+                {/* Stamina bar */}
+                <div className="relative mt-1 h-4 w-[208px] overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all"
+                    style={{ width: `${staminaPercent}%` }}
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                    ⚡ {character.currentStamina} / {character.maxStamina}
+                  </span>
+                </div>
+                {/* Weapon slots under avatar: Main Hand + Off Hand */}
                 <div className="mt-2 flex items-center gap-2">
                   <EquipmentSlot slotKey="weapon" item={equippedMap.weapon} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                   <EquipmentSlot
@@ -1096,15 +1085,13 @@ function InventoryContent() {
                     locked={mainHandIsTwoHanded}
                     lockReason="Two-handed weapon equipped"
                   />
-                  <EquipmentSlot slotKey="relic" item={equippedMap.relic} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 </div>
               </div>
 
-              {/* Right column: amulet, necklace, ring, accessory, belt, boots */}
+              {/* Right column: relic, amulet, accessory, belt, boots */}
               <div className="flex flex-col items-center gap-2">
+                <EquipmentSlot slotKey="relic" item={equippedMap.relic} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="amulet" item={equippedMap.amulet} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="necklace" item={equippedMap.necklace} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="ring" item={equippedMap.ring} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="accessory" item={equippedMap.accessory} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="belt" item={equippedMap.belt} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="boots" item={equippedMap.boots} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />

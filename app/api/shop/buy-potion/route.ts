@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { getPotionById } from "@/lib/game/potion-catalog";
 import { applyRegen, OVERFLOW_CAP, getMaxStamina } from "@/lib/game/stamina";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,14 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(authUser.id, { prefix: "buy-potion", windowMs: 10_000, maxRequests: 10 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
     }
 
     const body = await request.json().catch(() => ({}));

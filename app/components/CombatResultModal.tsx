@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /* ────────────────── Types ────────────────── */
 
@@ -54,6 +54,26 @@ const pickRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)
 
 /* ────────────────── Component ────────────────── */
 
+/** Staggered reveal: items appear one by one */
+const useStaggeredReveal = (itemCount: number, open: boolean, delayMs = 200) => {
+  const [visibleCount, setVisibleCount] = useState(0);
+
+  useEffect(() => {
+    if (!open) {
+      setVisibleCount(0);
+      return;
+    }
+    // Start reveal after a short initial delay
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 0; i < itemCount; i++) {
+      timers.push(setTimeout(() => setVisibleCount(i + 1), 300 + i * delayMs));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [open, itemCount, delayMs]);
+
+  return visibleCount;
+};
+
 const CombatResultModal = ({
   open,
   onClose,
@@ -65,6 +85,8 @@ const CombatResultModal = ({
 }: CombatResultModalProps) => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const rewardItemCount = rewards ? 3 : trainingRewards ? 2 : 0;
+  const visibleRewards = useStaggeredReveal(rewardItemCount, open);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -161,10 +183,14 @@ const CombatResultModal = ({
           </p>
         </div>
 
-        {/* PvP Rewards */}
+        {/* PvP Rewards — staggered reveal */}
         {rewards && (
           <div className="grid grid-cols-3 gap-2 border-t border-slate-800 px-6 py-4">
-            <div className="rounded-xl bg-amber-900/30 p-3 text-center">
+            <div
+              className={`rounded-xl bg-amber-900/30 p-3 text-center transition-all duration-300 ${
+                visibleRewards >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+              }`}
+            >
               <p className="text-[10px] uppercase tracking-wider text-slate-500">
                 Gold
               </p>
@@ -172,13 +198,21 @@ const CombatResultModal = ({
                 +{rewards.gold}
               </p>
             </div>
-            <div className="rounded-xl bg-blue-900/30 p-3 text-center">
+            <div
+              className={`rounded-xl bg-blue-900/30 p-3 text-center transition-all duration-300 ${
+                visibleRewards >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+              }`}
+            >
               <p className="text-[10px] uppercase tracking-wider text-slate-500">
                 XP
               </p>
               <p className="text-sm font-bold text-blue-400">+{rewards.xp}</p>
             </div>
-            <div className="rounded-xl bg-slate-800/60 p-3 text-center">
+            <div
+              className={`rounded-xl bg-slate-800/60 p-3 text-center transition-all duration-300 ${
+                visibleRewards >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+              }`}
+            >
               <p className="text-[10px] uppercase tracking-wider text-slate-500">
                 Rating
               </p>
@@ -192,17 +226,21 @@ const CombatResultModal = ({
           </div>
         )}
 
-        {/* Training Rewards */}
+        {/* Training Rewards — staggered reveal */}
         {trainingRewards && (
           <div className="border-t border-slate-800 px-6 py-4">
             {trainingRewards.leveledUp && (
-              <div className="mb-3 flex items-center justify-center gap-2 rounded-xl bg-amber-900/40 px-4 py-2.5 border border-amber-600/40">
+              <div className="mb-3 flex items-center justify-center gap-2 rounded-xl bg-amber-900/40 px-4 py-2.5 border border-amber-600/40 animate-bounce">
                 <span className="text-lg" aria-hidden="true">🎉</span>
                 <p className="text-sm font-bold text-amber-300">Level Up!</p>
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-blue-900/30 p-3 text-center">
+              <div
+                className={`rounded-xl bg-blue-900/30 p-3 text-center transition-all duration-300 ${
+                  visibleRewards >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                }`}
+              >
                 <p className="text-[10px] uppercase tracking-wider text-slate-500">
                   XP Earned
                 </p>
@@ -210,7 +248,11 @@ const CombatResultModal = ({
                   +{trainingRewards.xp}
                 </p>
               </div>
-              <div className="rounded-xl bg-slate-800/60 p-3 text-center">
+              <div
+                className={`rounded-xl bg-slate-800/60 p-3 text-center transition-all duration-300 ${
+                  visibleRewards >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                }`}
+              >
                 <p className="text-[10px] uppercase tracking-wider text-slate-500">
                   Remaining
                 </p>

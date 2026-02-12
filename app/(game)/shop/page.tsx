@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PageLoader from "@/app/components/PageLoader";
+import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 import {
   CONSUMABLE_CATALOG,
   type ConsumableDef,
@@ -647,6 +648,7 @@ const ConsumableCard = ({
 function ShopContent() {
   const searchParams = useSearchParams();
   const characterId = searchParams.get("characterId");
+  const avatarSrc = useCharacterAvatar(characterId);
 
   const [character, setCharacter] = useState<Character | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -813,7 +815,7 @@ function ShopContent() {
 
   /* ── Loading state ── */
   if (loading || !character) {
-    return <PageLoader emoji="🪙" text="Loading shop…" />;
+    return <PageLoader emoji="🪙" text="Loading shop…" avatarSrc={avatarSrc} />;
   }
 
   return (

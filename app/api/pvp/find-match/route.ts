@@ -56,18 +56,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Character not found" }, { status: 404 });
     }
 
-    const isVip = !!character.user?.premiumUntil && character.user.premiumUntil > new Date();
-    const staminaResult = spendStamina({
-      currentStamina: character.currentStamina,
-      maxStamina: character.maxStamina,
-      lastStaminaUpdate: character.lastStaminaUpdate,
-      cost: STAMINA_COST.PVP,
-      isVip,
-    });
-    if ("error" in staminaResult) {
-      return NextResponse.json({ error: staminaResult.error }, { status: 400 });
-    }
-
     const seasonNumber = await getCurrentSeasonNumber();
 
     // Find opponent (with equipment for combat stats)
@@ -163,6 +151,19 @@ export async function POST(request: Request) {
     const playerWon = winnerId === character.id;
     const oppWon = winnerId === opponent.id;
 
+    // Compute stamina spend (validation; actual DB write is inside transaction)
+    const isVip = !!character.user?.premiumUntil && character.user.premiumUntil > new Date();
+    const staminaResult = spendStamina({
+      currentStamina: character.currentStamina,
+      maxStamina: character.maxStamina,
+      lastStaminaUpdate: character.lastStaminaUpdate,
+      cost: STAMINA_COST.PVP,
+      isVip,
+    });
+    if ("error" in staminaResult) {
+      return NextResponse.json({ error: staminaResult.error }, { status: 400 });
+    }
+
     // GDD §6.2 — ELO delta + §6.4 loss protection
     const rawDelta1 = draw
       ? 0
@@ -207,8 +208,21 @@ export async function POST(request: Request) {
       maxHp: character.maxHp,
     });
 
-    // FIX: Wrap all DB writes in a single transaction to prevent partial state
+    // All DB writes in a single transaction; re-validate stamina atomically
     await prisma.$transaction(async (tx) => {
+      // Re-read character stamina inside transaction to prevent double-spend
+      const freshChar = await tx.character.findUniqueOrThrow({ where: { id: character.id } });
+      const freshStamina = spendStamina({
+        currentStamina: freshChar.currentStamina,
+        maxStamina: freshChar.maxStamina,
+        lastStaminaUpdate: freshChar.lastStaminaUpdate,
+        cost: STAMINA_COST.PVP,
+        isVip,
+      });
+      if ("error" in freshStamina) {
+        throw new Error(freshStamina.error);
+      }
+
       await tx.pvpMatch.create({
         data: {
           player1Id: character.id,
@@ -251,8 +265,8 @@ export async function POST(request: Request) {
           level: levelUp.level,
           statPointsAvailable: levelUp.statPointsAvailable,
           currentHp: levelUp.currentHp,
-          currentStamina: staminaResult.newStamina,
-          lastStaminaUpdate: staminaResult.newLastUpdate,
+          currentStamina: freshStamina.newStamina,
+          lastStaminaUpdate: freshStamina.newLastUpdate,
         },
       });
 
@@ -304,6 +318,10 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    if (message === "Not enough stamina") {
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
     console.error("[api/pvp/find-match POST]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

@@ -74,18 +74,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Character not found" }, { status: 404 });
     }
 
-    /* ── Daily limit check ── */
-    const todayStart = startOfTodayUTC();
-    const todayCount = await prisma.trainingSession.count({
-      where: { characterId: character.id, playedAt: { gte: todayStart } },
-    });
-    if (todayCount >= TRAINING_MAX_DAILY) {
-      return NextResponse.json(
-        { error: "Daily training limit reached", remaining: 0 },
-        { status: 429 },
-      );
-    }
-
     /* ── Build player combatant ── */
     const playerEqStats = aggregateEquipmentStats(character.equipment ?? []);
     const playerState = buildCombatantState({
@@ -106,8 +94,12 @@ export async function POST(request: Request) {
       equipmentBonuses: playerEqStats,
     });
 
+    /* ── Validate opponent preset ── */
+    const validPresets = Object.keys(DUMMY_CLASS_WEIGHTS);
+    const safePreset = validPresets.includes(opponentPreset) ? opponentPreset : "warrior";
+
     /* ── Build training dummy ── */
-    const preset = DUMMY_CLASS_WEIGHTS[opponentPreset] ?? DUMMY_CLASS_WEIGHTS.warrior;
+    const preset = DUMMY_CLASS_WEIGHTS[safePreset];
     const mult = TRAINING_DUMMY_STAT_MULT;
     const dummyLevel = Math.max(1, character.level + TRAINING_DUMMY_LEVEL_OFFSET);
 
@@ -149,15 +141,23 @@ export async function POST(request: Request) {
     });
     const leveledUp = levelUp.level > character.level;
 
-    /* ── Persist in a transaction ── */
-    await prisma.$transaction(async (tx) => {
+    /* ── Persist in a transaction (daily limit check is INSIDE to prevent race conditions) ── */
+    const todayStart = startOfTodayUTC();
+    const txResult = await prisma.$transaction(async (tx) => {
+      const todayCount = await tx.trainingSession.count({
+        where: { characterId: character.id, playedAt: { gte: todayStart } },
+      });
+      if (todayCount >= TRAINING_MAX_DAILY) {
+        return { limitReached: true as const, remaining: 0 };
+      }
+
       await tx.trainingSession.create({
         data: {
           characterId: character.id,
           xpAwarded,
           won: playerWon,
           turns: combatResult.turns,
-          opponentType: opponentPreset,
+          opponentType: safePreset,
         },
       });
 
@@ -173,9 +173,18 @@ export async function POST(request: Request) {
           },
         });
       }
+
+      return { limitReached: false as const, remaining: TRAINING_MAX_DAILY - todayCount - 1 };
     });
 
-    const remaining = TRAINING_MAX_DAILY - todayCount - 1;
+    if (txResult.limitReached) {
+      return NextResponse.json(
+        { error: "Daily training limit reached", remaining: 0 },
+        { status: 429 },
+      );
+    }
+
+    const remaining = txResult.remaining;
 
     return NextResponse.json({
       ...combatResult,

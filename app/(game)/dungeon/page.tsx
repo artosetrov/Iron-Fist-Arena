@@ -7,8 +7,10 @@ import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatLootScreen from "@/app/components/CombatLootScreen";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
+import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 import { BOSS_CATALOG } from "@/lib/game/boss-catalog";
 import { BOSS_ABILITIES } from "@/lib/game/boss-abilities";
+import { getBossStats } from "@/lib/game/dungeon";
 
 /* ────────────────── Types ────────────────── */
 
@@ -269,16 +271,16 @@ const BOSS_AVATARS: Record<string, string> = {
 
 /** Boss-specific image paths (override emoji avatars when present) */
 const BOSS_IMAGES: Record<string, string> = {
-  "Straw Dummy": "/images/generated/boss-straw-dummy.png",
-  "Rusty Automaton": "/images/generated/boss-rusty-automaton.png",
-  "Barrel Golem": "/images/generated/boss-barrel-golem.png",
-  "Plank Knight": "/images/generated/boss-plank-knight.png",
-  "Flying Francis": "/images/generated/boss-flying-francis.png",
-  "Scarecrow Mage": "/images/generated/boss-scarecrow-mage.png",
-  "Mud Troll": "/images/generated/boss-mud-troll.png",
-  "Possessed Mannequin": "/images/generated/boss-possessed-mannequin.png",
-  "Iron Dummy": "/images/generated/boss-iron-dummy.png",
-  "Drill Sergeant Grizzle": "/images/generated/boss-drill-sergeant-grizzle.png",
+  "Straw Dummy": "/images/bosses/boss-straw-dummy.png",
+  "Rusty Automaton": "/images/bosses/boss-rusty-automaton.png",
+  "Barrel Golem": "/images/bosses/boss-barrel-golem.png",
+  "Plank Knight": "/images/bosses/boss-plank-knight.png",
+  "Flying Francis": "/images/bosses/boss-flying-francis.png",
+  "Scarecrow Mage": "/images/bosses/boss-scarecrow-mage.png",
+  "Mud Troll": "/images/bosses/boss-mud-troll.png",
+  "Possessed Mannequin": "/images/bosses/boss-possessed-mannequin.png",
+  "Iron Dummy": "/images/bosses/boss-iron-dummy.png",
+  "Drill Sergeant Grizzle": "/images/bosses/boss-drill-sergeant-grizzle.png",
 };
 
 /* ────────────────── Lore data ────────────────── */
@@ -415,16 +417,16 @@ const DUNGEON_LORE: Record<string, DungeonLore> = {
 /* ────────────────── Dungeon images ────────────────── */
 
 const DUNGEON_IMAGES: Record<string, string> = {
-  training_camp: "/images/generated/dungeon-training-camp.png",
-  desecrated_catacombs: "/images/generated/dungeon-desecrated-catacombs.png",
-  fungal_grotto: "/images/generated/dungeon-fungal-grotto.png",
-  scorched_mines: "/images/generated/dungeon-scorched-mines.png",
-  frozen_abyss: "/images/generated/dungeon-frozen-abyss.png",
-  realm_of_light: "/images/generated/dungeon-realm-of-light.png",
-  shadow_realm: "/images/generated/dungeon-shadow-realm.png",
-  clockwork_citadel: "/images/generated/dungeon-clockwork-citadel.png",
-  abyssal_depths: "/images/generated/dungeon-abyssal-depths.png",
-  infernal_throne: "/images/generated/dungeon-infernal-throne.png",
+  training_camp: "/images/dungeons/dungeon-training-camp.png",
+  desecrated_catacombs: "/images/dungeons/dungeon-desecrated-catacombs.png",
+  fungal_grotto: "/images/dungeons/dungeon-fungal-grotto.png",
+  scorched_mines: "/images/dungeons/dungeon-scorched-mines.png",
+  frozen_abyss: "/images/dungeons/dungeon-frozen-abyss.png",
+  realm_of_light: "/images/dungeons/dungeon-realm-of-light.png",
+  shadow_realm: "/images/dungeons/dungeon-shadow-realm.png",
+  clockwork_citadel: "/images/dungeons/dungeon-clockwork-citadel.png",
+  abyssal_depths: "/images/dungeons/dungeon-abyssal-depths.png",
+  infernal_throne: "/images/dungeons/dungeon-infernal-throne.png",
 };
 
 /* ────────────────── Component ────────────────── */
@@ -432,6 +434,7 @@ const DUNGEON_IMAGES: Record<string, string> = {
 function DungeonContent() {
   const searchParams = useSearchParams();
   const characterId = searchParams.get("characterId");
+  const avatarSrc = useCharacterAvatar(characterId);
   const [character, setCharacter] = useState<Character | null>(null);
   const [dungeons, setDungeons] = useState<DungeonInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -575,7 +578,7 @@ function DungeonContent() {
 
   /* ── Loading ── */
   if (loading || !character) {
-    return <PageLoader emoji="🏰" text="Loading dungeons…" />;
+    return <PageLoader emoji="🏰" text="Loading dungeons…" avatarSrc={avatarSrc} />;
   }
 
   /* ══════════════════════════════════════════
@@ -673,7 +676,7 @@ function DungeonContent() {
                   onClick={handleFight}
                   disabled={fighting}
                   aria-label="Fight Boss"
-                  className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-900/40 transition hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
+                  className="rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-900/40 transition hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
                 >
                   {fighting ? "Fighting…" : "⚔️ Fight Boss"}
                 </button>
@@ -761,6 +764,11 @@ function DungeonContent() {
     const isBossCurrent = selectedBossIndex === dungeon.bossIndex && !dungeon.completed;
     const isBossLocked = selectedBossIndex > dungeon.bossIndex && !dungeon.completed;
     const possibleDrops = getBossPossibleDrops(dungeonIndex, selectedBossIndex);
+
+    // Calculate boss preview stats based on player level
+    const bossPreviewStats = !isBossLocked
+      ? getBossStats(character.level, activeBoss as Parameters<typeof getBossStats>[1])
+      : null;
 
     return (
       <div className="flex min-h-full flex-col p-4 lg:p-6">
@@ -919,7 +927,7 @@ function DungeonContent() {
           </div>
 
           {/* ─── Right: Boss Detail Panel ─── */}
-          <div className="order-first flex flex-1 flex-col lg:order-none">
+          <div className="order-first flex flex-1 flex-col items-center lg:order-none">
             {/* Status badges above card */}
             <div className="mb-2 flex items-center justify-center gap-2">
               <p className="text-sm font-bold text-slate-300">
@@ -938,16 +946,36 @@ function DungeonContent() {
             </div>
 
             {/* Boss HeroCard */}
+            <div className="w-full max-w-[280px]">
             <HeroCard
               name={isBossLocked ? "???" : activeBoss.name}
               level={activeBoss.level}
-              imageSrc={!isBossLocked ? BOSS_IMAGES[activeBoss.name] : undefined}
               icon={isBossLocked ? "🔒" : (BOSS_AVATARS[activeBoss.name] ?? "❓")}
               description={
                 isBossLocked
                   ? "Defeat the previous boss to reveal this enemy."
                   : activeBoss.description
               }
+              hp={
+                bossPreviewStats
+                  ? { current: bossPreviewStats.maxHp, max: bossPreviewStats.maxHp }
+                  : undefined
+              }
+              stats={
+                bossPreviewStats
+                  ? {
+                      strength: bossPreviewStats.strength,
+                      agility: bossPreviewStats.agility,
+                      intelligence: bossPreviewStats.intelligence,
+                      vitality: bossPreviewStats.vitality,
+                      endurance: bossPreviewStats.endurance,
+                      wisdom: bossPreviewStats.wisdom,
+                      luck: bossPreviewStats.luck,
+                      charisma: bossPreviewStats.charisma,
+                    }
+                  : undefined
+              }
+              statSize="sm"
               disabled={isBossLocked}
             >
               {/* Boss Abilities */}
@@ -1039,6 +1067,7 @@ function DungeonContent() {
                 </div>
               )}
             </HeroCard>
+            </div>
 
             {/* Error */}
             {error && (
@@ -1054,7 +1083,7 @@ function DungeonContent() {
                 aria-label="Fight Boss"
                 tabIndex={0}
                 className={`
-                  mt-4 w-full rounded-2xl px-6 py-4 text-base font-bold text-white shadow-lg transition
+                  mt-4 rounded-2xl px-6 py-4 text-base font-bold text-white shadow-lg transition
                   ${canStart
                     ? "bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 shadow-red-900/40 hover:from-red-500 hover:via-orange-500 hover:to-amber-500 hover:shadow-xl"
                     : "bg-slate-800 text-slate-500"
@@ -1179,8 +1208,8 @@ function DungeonContent() {
                   }
                 `}
               >
-                {/* ── Card image ── */}
-                <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-900">
+                {/* ── Full-height background image ── */}
+                <div className="absolute inset-0 bg-slate-900">
                   {dungeonImage ? (
                     <Image
                       src={dungeonImage}
@@ -1195,60 +1224,60 @@ function DungeonContent() {
                       <span className="text-6xl drop-shadow-lg">{dungeon.theme.icon}</span>
                     </div>
                   )}
-
-                  {/* Gradient overlay at bottom */}
-                  <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
-
-                  {/* Lock overlay */}
-                  {isLocked && (
-                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-slate-950/60">
-                      <span className="text-4xl">🔒</span>
-                      <span className="text-xs font-medium text-slate-400">
-                        Lv. {dungeon.minLevel}+ required
-                      </span>
-                      {dungeon.prevDungeonId && (
-                        <span className="text-[10px] text-slate-500">
-                          Complete previous dungeon
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Completed badge */}
-                  {dungeon.completed && (
-                    <div className="absolute right-3 top-3 z-10 rounded-lg bg-green-600/90 px-2.5 py-1 text-xs font-bold text-white shadow-lg backdrop-blur-sm">
-                      ✅ COMPLETE
-                    </div>
-                  )}
-
-                  {/* Stamina cost badge */}
-                  {!isLocked && (
-                    <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-bold text-amber-400 shadow-lg backdrop-blur-sm">
-                      ⚡ {dungeon.staminaCost}
-                    </div>
-                  )}
                 </div>
 
-                {/* ── Card info panel ── */}
-                <div className={`relative z-10 flex flex-1 flex-col gap-2.5 bg-gradient-to-b ${dungeon.theme.cardBg} p-4`}>
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
+
+                {/* Lock overlay */}
+                {isLocked && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-slate-950/60">
+                    <span className="text-4xl">🔒</span>
+                    <span className="text-xs font-medium text-slate-400">
+                      Lv. {dungeon.minLevel}+ required
+                    </span>
+                    {dungeon.prevDungeonId && (
+                      <span className="text-[10px] text-slate-500">
+                        Complete previous dungeon
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Completed badge */}
+                {dungeon.completed && (
+                  <div className="absolute right-3 top-3 z-10 rounded-lg bg-green-600/90 px-2.5 py-1 text-xs font-bold text-white shadow-lg backdrop-blur-sm">
+                    ✅ COMPLETE
+                  </div>
+                )}
+
+                {/* Stamina cost badge */}
+                {!isLocked && (
+                  <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-bold text-amber-400 shadow-lg backdrop-blur-sm">
+                    ⚡ {dungeon.staminaCost}
+                  </div>
+                )}
+
+                {/* ── Card info panel (overlay at bottom) ── */}
+                <div className="relative z-10 mt-auto flex flex-col gap-2.5 p-4">
                   {/* Title */}
-                  <h3 className="text-lg font-bold leading-tight text-white">
+                  <h3 className="text-lg font-bold leading-tight text-white drop-shadow-lg">
                     {dungeon.name}
                   </h3>
 
                   {/* Description */}
-                  <p className="line-clamp-3 text-xs leading-relaxed text-slate-400">
+                  <p className="line-clamp-3 text-xs leading-relaxed text-slate-300 drop-shadow-md">
                     {lore?.paragraphs?.[0] ?? dungeon.subtitle}
                   </p>
 
                   {/* Progress bar */}
                   {!isLocked && (
-                    <div className="mt-auto pt-2">
+                    <div className="pt-2">
                       <div className="mb-1.5 flex items-center justify-between text-[10px]">
-                        <span className="font-medium text-slate-500">
+                        <span className="font-medium text-slate-400">
                           {dungeon.completed ? "All bosses defeated" : `Boss ${dungeon.bossIndex + 1} of ${dungeon.bosses.length}`}
                         </span>
-                        <span className="font-bold text-slate-400">
+                        <span className="font-bold text-slate-300">
                           {dungeon.bossIndex}/{dungeon.bosses.length}
                         </span>
                       </div>
@@ -1267,7 +1296,7 @@ function DungeonContent() {
 
                   {/* Level requirement */}
                   {isLocked && (
-                    <div className="mt-auto flex items-center gap-2 pt-2">
+                    <div className="flex items-center gap-2 pt-2">
                       <div className="h-1 w-1 rounded-full bg-slate-600" />
                       <span className="text-[10px] text-slate-600">
                         Reach level {dungeon.minLevel}

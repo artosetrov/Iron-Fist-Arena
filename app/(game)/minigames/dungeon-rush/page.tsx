@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatLootScreen from "@/app/components/CombatLootScreen";
 import PageLoader from "@/app/components/PageLoader";
+import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 
 /* ────────────────── Types ────────────────── */
 
@@ -113,6 +114,7 @@ const DungeonRushContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const characterId = searchParams.get("characterId");
+  const avatarSrc = useCharacterAvatar(characterId);
 
   const [character, setCharacter] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
@@ -239,7 +241,7 @@ const DungeonRushContent = () => {
 
   /* ── Loading ── */
   if (loading || !character) {
-    return <PageLoader emoji="🏃" text="Preparing Dungeon Rush..." />;
+    return <PageLoader emoji="🏃" text="Preparing Dungeon Rush..." avatarSrc={avatarSrc} />;
   }
 
   /* ══════════════════════════════════════════

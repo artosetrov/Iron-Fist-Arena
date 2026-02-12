@@ -24,7 +24,7 @@ const MINIGAMES: MinigameCard[] = [
     id: "dungeon-rush",
     title: "Dungeon Rush",
     description: "5-wave PvE gauntlet. Fight mobs, earn XP and Gold!",
-    image: "/images/generated/dungeon-rush.png",
+    image: "/images/minigames/dungeon-rush.png",
     href: "/minigames/dungeon-rush",
     available: true,
     tag: "3 Energy",
@@ -33,7 +33,7 @@ const MINIGAMES: MinigameCard[] = [
     id: "shell-game",
     title: "Shell Game",
     description: "Find the ball under the right cup. Bet gold, track the shuffle, pick wisely!",
-    image: "/images/generated/shell-game.png",
+    image: "/images/minigames/shell-game.png",
     href: "/minigames/shell-game",
     available: true,
     tag: "x2 Payout",
@@ -42,7 +42,7 @@ const MINIGAMES: MinigameCard[] = [
     id: "gold-mine",
     title: "Gold Mine",
     description: "Start mining and collect gold over time. Idle income!",
-    image: "/images/generated/gold-mine.png",
+    image: "/images/minigames/gold-mine.png",
     href: "/minigames/gold-mine",
     available: true,
     tag: "Idle",
@@ -51,7 +51,7 @@ const MINIGAMES: MinigameCard[] = [
     id: "coin-flip",
     title: "Coin Flip",
     description: "Heads or tails? Double or nothing!",
-    image: "/images/generated/coin-flip.png",
+    image: "/images/minigames/coin-flip.png",
     href: "/minigames/coin-flip",
     available: false,
     tag: "Coming Soon",
@@ -60,7 +60,7 @@ const MINIGAMES: MinigameCard[] = [
     id: "dice-roll",
     title: "Dice Roll",
     description: "Roll the dice and test your luck against the house.",
-    image: "/images/generated/dice-roll.png",
+    image: "/images/minigames/dice-roll.png",
     href: "/minigames/dice-roll",
     available: false,
     tag: "Coming Soon",
@@ -89,7 +89,7 @@ const MinigamesContent = () => {
       {/* Background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <Image
-          src="/images/generated/tavern-interior.png"
+          src="/images/minigames/tavern-interior.png"
           alt=""
           fill
           className="object-cover opacity-20"

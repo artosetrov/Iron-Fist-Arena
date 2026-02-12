@@ -21,24 +21,24 @@ export const CLASS_GRADIENT: Record<string, string> = {
 };
 
 export const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/generated/origin-human.png",
-  orc: "/images/generated/origin-orc.png",
-  skeleton: "/images/generated/origin-skeleton.png",
-  demon: "/images/generated/origin-demon.png",
-  dogfolk: "/images/generated/origin-dogfolk.png",
+  human: "/images/origins/origin-human.png",
+  orc: "/images/origins/origin-orc.png",
+  skeleton: "/images/origins/origin-skeleton.png",
+  demon: "/images/origins/origin-demon.png",
+  dogfolk: "/images/origins/origin-dogfolk.png",
 };
 
 export const BOSS_IMAGES: Record<string, string> = {
-  "Straw Dummy": "/images/generated/boss-straw-dummy.png",
-  "Rusty Automaton": "/images/generated/boss-rusty-automaton.png",
-  "Barrel Golem": "/images/generated/boss-barrel-golem.png",
-  "Plank Knight": "/images/generated/boss-plank-knight.png",
-  "Flying Francis": "/images/generated/boss-flying-francis.png",
-  "Scarecrow Mage": "/images/generated/boss-scarecrow-mage.png",
-  "Mud Troll": "/images/generated/boss-mud-troll.png",
-  "Possessed Mannequin": "/images/generated/boss-possessed-mannequin.png",
-  "Iron Dummy": "/images/generated/boss-iron-dummy.png",
-  "Drill Sergeant Grizzle": "/images/generated/boss-drill-sergeant-grizzle.png",
+  "Straw Dummy": "/images/bosses/boss-straw-dummy.png",
+  "Rusty Automaton": "/images/bosses/boss-rusty-automaton.png",
+  "Barrel Golem": "/images/bosses/boss-barrel-golem.png",
+  "Plank Knight": "/images/bosses/boss-plank-knight.png",
+  "Flying Francis": "/images/bosses/boss-flying-francis.png",
+  "Scarecrow Mage": "/images/bosses/boss-scarecrow-mage.png",
+  "Mud Troll": "/images/bosses/boss-mud-troll.png",
+  "Possessed Mannequin": "/images/bosses/boss-possessed-mannequin.png",
+  "Iron Dummy": "/images/bosses/boss-iron-dummy.png",
+  "Drill Sergeant Grizzle": "/images/bosses/boss-drill-sergeant-grizzle.png",
 };
 
 /* ────────────────── Card Frame Colors ────────────────── */
@@ -151,9 +151,20 @@ const HpBar = ({ current, max }: HpBarProps) => {
 
 /* ────────────────── Rating Badge ────────────────── */
 
-const RatingBadge = ({ rating }: { rating: number }) => {
+const CLASS_BADGE_COLOR: Record<string, { border: string; text: string }> = {
+  warrior: { border: "border-red-500/80", text: "text-red-400" },
+  rogue: { border: "border-emerald-500/80", text: "text-emerald-400" },
+  mage: { border: "border-blue-500/80", text: "text-blue-400" },
+  tank: { border: "border-amber-500/80", text: "text-amber-400" },
+};
+
+const DEFAULT_BADGE_COLOR = { border: "border-slate-500/80", text: "text-slate-400" };
+
+const RatingBadge = ({ rating, classKey }: { rating: number; classKey: string }) => {
   const [hovered, setHovered] = useState(false);
   const rank = getRankFromRating(rating);
+  const badgeColor = CLASS_BADGE_COLOR[classKey] ?? DEFAULT_BADGE_COLOR;
+  const classIcon = CLASS_ICON[classKey] ?? "👤";
 
   return (
     <div
@@ -161,12 +172,12 @@ const RatingBadge = ({ rating }: { rating: number }) => {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-red-500/80 bg-slate-900/90 text-base font-bold tabular-nums text-red-400 shadow-lg">
-        {rating}
+      <div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 ${badgeColor.border} bg-slate-900/90 text-lg shadow-lg`}>
+        {classIcon}
       </div>
       {hovered && (
-        <div className="pointer-events-none absolute -bottom-7 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[10px] font-medium text-red-300 shadow-lg">
-          {rank}
+        <div className="pointer-events-none absolute -bottom-7 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[10px] font-medium text-slate-300 shadow-lg">
+          {rank} ({rating})
         </div>
       )}
     </div>
@@ -340,7 +351,7 @@ const HeroCard = memo(({
           )
         ) : (
           <Image
-            src="/images/generated/placeholder-silhouette.png"
+            src="/images/ui/placeholder-silhouette.png"
             alt={name}
             width={1024}
             height={1024}
@@ -365,7 +376,7 @@ const HeroCard = memo(({
 
         {/* Rating badge — top-left */}
         {rating !== undefined && (
-          <RatingBadge rating={rating} />
+          <RatingBadge rating={rating} classKey={classKey} />
         )}
 
         {/* Class icon badge — top-left (only when no rating) */}

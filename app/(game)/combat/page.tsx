@@ -7,6 +7,7 @@ import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatResultModal from "@/app/components/CombatResultModal";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
+import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 
 /* ────────────────── Types ────────────────── */
 
@@ -150,6 +151,7 @@ type ScreenState =
 function CombatContent() {
   const searchParams = useSearchParams();
   const characterId = searchParams.get("characterId");
+  const avatarSrc = useCharacterAvatar(characterId);
   const [character, setCharacter] = useState<Character | null>(null);
   const [preset, setPreset] = useState("warrior");
   const [loading, setLoading] = useState(true);
@@ -239,7 +241,7 @@ function CombatContent() {
   };
 
   if (loading || !character) {
-    return <PageLoader emoji="🎯" text="Loading Training Arena…" />;
+    return <PageLoader emoji="🎯" text="Loading Training Arena…" avatarSrc={avatarSrc} />;
   }
 
   /* ── Battle screen ── */

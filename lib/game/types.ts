@@ -37,7 +37,11 @@ export type StatusEffectType =
   | "armor_break"
   | "blind"
   | "regen"
-  | "berserk";
+  | "berserk"
+  | "str_buff"
+  | "armor_buff"
+  | "resist_buff"
+  | "dodge_buff";
 
 export interface StatusEffect {
   type: StatusEffectType;

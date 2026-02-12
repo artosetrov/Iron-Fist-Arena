@@ -83,6 +83,9 @@ model Character {
   trainingSessions  TrainingSession[]
   goldMineSessions  GoldMineSession[]
 
+  @@index([userId])
+  @@index([pvpRating(sort: Desc)])
+  @@index([level(sort: Desc)])
   @@map("characters")
 }
 
@@ -175,6 +178,7 @@ model EquipmentInventory {
 
   @@index([characterId])
   @@index([characterId, isEquipped])
+  @@index([itemId])
   @@map("equipment_inventory")
 }
 
@@ -218,6 +222,9 @@ model PvpMatch {
   player1 Character @relation("Player1", fields: [player1Id], references: [id])
   player2 Character @relation("Player2", fields: [player2Id], references: [id])
 
+  @@index([player1Id, playedAt(sort: Desc)])
+  @@index([player2Id, playedAt(sort: Desc)])
+  @@index([seasonNumber, playedAt(sort: Desc)])
   @@map("pvp_matches")
 }
 
@@ -289,6 +296,7 @@ model BattlePass {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@unique([characterId, seasonId])
+  @@index([seasonId])
   @@map("battle_pass")
 }
 

@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { GOLD_PACKAGES, type GoldPackageId } from "@/lib/game/balance";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,14 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(user.id, { prefix: "buy-gold", windowMs: 10_000, maxRequests: 3 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
     }
 
     const body = await request.json().catch(() => ({}));
@@ -34,8 +43,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // NOTE: In production, validate payment token from Stripe/etc here
-    // For now this is a simulated purchase (no real payment processing)
+    // SECURITY: Payment validation required. Reject until Stripe/etc is integrated.
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Payment processing not configured" },
+        { status: 503 },
+      );
+    }
+    // DEV ONLY: simulated purchase (no real payment processing)
 
     const character = await prisma.character.findFirst({
       where: { id: characterId, userId: user.id },

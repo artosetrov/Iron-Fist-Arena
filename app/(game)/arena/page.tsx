@@ -7,6 +7,7 @@ import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatResultModal from "@/app/components/CombatResultModal";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
+import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 
 /* ────────────────── Types ────────────────── */
 
@@ -118,6 +119,7 @@ type ScreenState =
 function ArenaContent() {
   const searchParams = useSearchParams();
   const characterId = searchParams.get("characterId");
+  const avatarSrc = useCharacterAvatar(characterId);
   const [character, setCharacter] = useState<Character | null>(null);
   const [opponents, setOpponents] = useState<Opponent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,7 +231,7 @@ function ArenaContent() {
 
   /* ── Loading state ── */
   if (loading || !character) {
-    return <PageLoader emoji="🏟️" text="Loading arena…" />;
+    return <PageLoader emoji="🏟️" text="Loading arena…" avatarSrc={avatarSrc} />;
   }
 
   /* ── Battle screen ── */
@@ -258,7 +260,7 @@ function ArenaContent() {
       {/* Arena background */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <Image
-          src="/images/generated/arena-background.png"
+          src="/images/ui/arena-background.png"
           alt=""
           fill
           className="object-cover opacity-20"

@@ -69,15 +69,19 @@ type ApiPingResult = {
 /* ────────────────── Constants ────────────────── */
 
 const API_ENDPOINTS: { path: string; method: string }[] = [
+  { path: "/api/me", method: "GET" },
   { path: "/api/characters", method: "GET" },
   { path: "/api/combat/simulate", method: "POST" },
+  { path: "/api/pvp/find-match", method: "POST" },
+  { path: "/api/pvp/opponents", method: "GET" },
   { path: "/api/consumables", method: "GET" },
   { path: "/api/dungeons", method: "GET" },
   { path: "/api/inventory", method: "GET" },
   { path: "/api/leaderboard", method: "GET" },
-  { path: "/api/pvp/opponents", method: "GET" },
   { path: "/api/quests/daily", method: "GET" },
   { path: "/api/shop/items", method: "GET" },
+  { path: "/api/stamina/refill", method: "POST" },
+  { path: "/api/minigames/shell-game", method: "POST" },
   { path: "/api/dev/health", method: "GET" },
   { path: "/api/dev/stats", method: "GET" },
 ];
@@ -405,6 +409,77 @@ const GameStatsSection = ({
   </section>
 );
 
+/* ────────────────── Section: Audit Summary ────────────────── */
+
+const AUDIT_ITEMS = [
+  { label: "Status effect type collision", status: "fixed", detail: "Added str_buff, armor_buff, resist_buff, dodge_buff types" },
+  { label: "Cheat Death edge case (1 HP)", status: "fixed", detail: "Changed >= 1 trigger condition" },
+  { label: "Race condition: combat/simulate", status: "fixed", detail: "Daily limit check inside transaction" },
+  { label: "Race condition: pvp/find-match", status: "fixed", detail: "Stamina re-validated atomically in tx" },
+  { label: "Race condition: dungeons/start", status: "fixed", detail: "Stamina + active run check in tx" },
+  { label: "Race condition: dungeon-rush/start", status: "fixed", detail: "Same pattern as dungeons/start" },
+  { label: "Race condition: allocate-stats", status: "fixed", detail: "Entire operation wrapped in tx" },
+  { label: "Free gold exploit: buy-gold", status: "fixed", detail: "Blocked in production until payment integration" },
+  { label: "Draw handling", status: "fixed", detail: "AGI tie-break for exact HP% ties" },
+  { label: "Win streak gold (cumulative)", status: "fixed", detail: "Changed to tiered (highest only)" },
+  { label: "Rate limiting (13 endpoints)", status: "fixed", detail: "Added to all write endpoints" },
+  { label: "Dev routes in production", status: "fixed", detail: "Gated behind NODE_ENV check" },
+  { label: "CSP header", status: "fixed", detail: "Added to next.config.js" },
+  { label: "DB indexes (10 missing)", status: "fixed", detail: "Added to Prisma schema" },
+  { label: "Debug logging in useAdminGuard", status: "fixed", detail: "Removed 6 external fetch calls" },
+  { label: "Duplicate FormInput", status: "fixed", detail: "Extracted to shared component" },
+  { label: "GDD v1 → v3", status: "fixed", detail: "Rating, slots, prestige, formulas synced" },
+  { label: "Set bonuses integration", status: "planned", detail: "Definitions ready, combat integration TBD" },
+  { label: "Prestige system", status: "planned", detail: "Schema ready, logic not implemented" },
+] as const;
+
+const AuditSection = () => (
+  <section className="rounded-xl border border-slate-700/50 bg-slate-900/80">
+    <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-3">
+      <h2 className="text-sm font-bold text-white">Audit Log (v3.0)</h2>
+      <div className="flex items-center gap-2 text-[10px]">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-400">
+          {AUDIT_ITEMS.filter((i) => i.status === "fixed").length} fixed
+        </span>
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-400">
+          {AUDIT_ITEMS.filter((i) => i.status === "planned").length} planned
+        </span>
+      </div>
+    </div>
+    <div className="max-h-80 overflow-y-auto p-5">
+      <div className="space-y-1">
+        {AUDIT_ITEMS.map((item) => (
+          <div
+            key={item.label}
+            className="flex items-start gap-3 rounded-lg border border-slate-700/30 bg-slate-800/40 px-3 py-2"
+          >
+            <div
+              className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${
+                item.status === "fixed"
+                  ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"
+                  : "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.5)]"
+              }`}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-slate-200">{item.label}</p>
+              <p className="text-[10px] text-slate-500">{item.detail}</p>
+            </div>
+            <span
+              className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                item.status === "fixed"
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                  : "border-amber-500/30 bg-amber-500/10 text-amber-400"
+              }`}
+            >
+              {item.status}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
 /* ────────────────── Section: API Ping ────────────────── */
 
 const ApiPingSection = ({
@@ -612,6 +687,7 @@ const DevDashboardContent = () => {
         <HealthSection data={health} loading={healthLoading} onRefresh={fetchHealth} />
         <TestRunnerSection result={testResult} running={testsRunning} onRun={handleRunTests} />
         <GameStatsSection data={stats} loading={statsLoading} onRefresh={fetchStats} />
+        <AuditSection />
         <ApiPingSection results={apiResults} running={apiPinging} onPing={handlePingAll} />
       </div>
     </div>

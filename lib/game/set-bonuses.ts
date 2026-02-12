@@ -3,6 +3,9 @@
  *
  * 4 class sets, each with 2-piece and 4-piece bonuses.
  * Bonuses are computed at runtime from equipped items.
+ *
+ * STATUS: Definitions complete but NOT YET integrated into combat engine.
+ * Integration is planned for a future update. Do not remove.
  */
 
 import type { SetName } from "./item-catalog";

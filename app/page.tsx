@@ -15,7 +15,7 @@ export default function HomePage() {
         {/* Logo */}
         <div className="flex flex-col items-center text-center">
           <Image
-            src="/images/logo.png"
+            src="/images/ui/logo.png"
             alt="BumKnight Arena"
             width={320}
             height={320}

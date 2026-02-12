@@ -27,7 +27,7 @@ const applyDamage = (state: CombatantState, amount: number): { actual: number; c
   const actual = Math.max(1, Math.floor(amount));
   const newHp = state.currentHp - actual;
 
-  if (newHp <= 0 && state.origin && hasCheatDeath(state.origin) && state.currentHp > 1) {
+  if (newHp <= 0 && state.origin && hasCheatDeath(state.origin) && state.currentHp >= 1) {
     const chance = getCheatDeathChance(state.origin);
     if (Math.random() < chance) {
       state.currentHp = 1;
@@ -59,7 +59,7 @@ const getEffectiveArmor = (state: CombatantState): number => {
 
 /** Get effective dodge chance considering dodge bonus buffs */
 const getEffectiveDodge = (state: CombatantState): number => {
-  const dodgeBuff = state.statusEffects.find((s) => s.type === "dodge_buff" as StatusEffectType);
+  const dodgeBuff = state.statusEffects.find((s) => s.type === "dodge_buff");
   return state.derived.dodgeChance + (dodgeBuff?.value ?? 0);
 };
 
@@ -142,9 +142,8 @@ const applySelfBuff = (
 
   for (const [stat, pct] of Object.entries(ability.selfBuff)) {
     if (stat === "str" || stat === "strength") {
-      // Temporary STR buff stored as status effect with value
       caster.statusEffects.push({
-        type: "berserk" as StatusEffectType, // reuse berserk as STR buff marker
+        type: "str_buff",
         duration: 3,
         value: Math.floor(caster.baseStats.strength * pct),
       });
@@ -153,7 +152,7 @@ const applySelfBuff = (
     }
     if (stat === "armor") {
       caster.statusEffects.push({
-        type: "regen" as StatusEffectType, // armor buff marker — separate from heal regen
+        type: "armor_buff",
         duration: 3,
         value: Math.floor(caster.armor * pct),
       });
@@ -161,11 +160,10 @@ const applySelfBuff = (
       buffMessages.push(`+${Math.round(pct * 100)}% Armor`);
     }
     if (stat === "resist") {
-      // Resist buff — reduces incoming status chance. Stored as status.
       caster.statusEffects.push({
-        type: "weaken" as StatusEffectType, // reuse weaken slot for resist buff on self
+        type: "resist_buff",
         duration: 3,
-        value: Math.floor(pct * 100), // store as percentage
+        value: Math.floor(pct * 100),
       });
       buffMessages.push(`+${Math.round(pct * 100)}% Resistance`);
     }
@@ -174,7 +172,7 @@ const applySelfBuff = (
   if (ability.dodgeBonus) {
     const turns = ability.dodgeBonusTurns ?? 2;
     caster.statusEffects.push({
-      type: "blind" as StatusEffectType, // reuse blind slot as dodge buff on self
+      type: "dodge_buff",
       duration: turns,
       value: ability.dodgeBonus,
     });
@@ -471,6 +469,7 @@ export const runCombat = (
     winnerId = player.id;
     loserId = enemy.id;
   } else {
+    // Both alive after MAX_TURNS — higher HP% wins; exact tie goes to player with higher AGI (first-strike advantage)
     const playerHpPct = player.currentHp / player.maxHp;
     const enemyHpPct = enemy.currentHp / enemy.maxHp;
     if (playerHpPct > enemyHpPct) {
@@ -480,7 +479,14 @@ export const runCombat = (
       winnerId = enemy.id;
       loserId = player.id;
     } else {
-      draw = true;
+      // Exact HP% tie — first-strike advantage (higher AGI wins)
+      if (player.baseStats.agility >= enemy.baseStats.agility) {
+        winnerId = player.id;
+        loserId = enemy.id;
+      } else {
+        winnerId = enemy.id;
+        loserId = player.id;
+      }
     }
   }
 

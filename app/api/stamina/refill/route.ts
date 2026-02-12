@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { applyRegen, getMaxStamina, OVERFLOW_CAP } from "@/lib/game/stamina";
 import { STAMINA_REFILL, type StaminaRefillSize } from "@/lib/game/balance";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,14 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(authUser.id, { prefix: "stamina-refill", windowMs: 10_000, maxRequests: 5 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
     }
 
     const body = await request.json().catch(() => ({}));

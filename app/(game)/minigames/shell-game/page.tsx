@@ -360,7 +360,7 @@ const ShellGameContent = () => {
             >
               {/* Ball (under the cup) */}
               <img
-                src="/images/shell-game-ball.png"
+                src="/images/minigames/shell-game-ball.png"
                 alt="Ball"
                 className={`absolute bottom-1 h-8 w-8 transition-opacity duration-300
                   ${ballVisible && isBallHere ? "opacity-100" : "opacity-0"}
@@ -382,7 +382,7 @@ const ShellGameContent = () => {
                 tabIndex={isCupClickable ? 0 : -1}
               >
                 <Image
-                  src="/images/generated/shell-game-cup.png"
+                  src="/images/minigames/shell-game-cup.png"
                   alt={`Cup ${cupIdx + 1}`}
                   width={96}
                   height={112}

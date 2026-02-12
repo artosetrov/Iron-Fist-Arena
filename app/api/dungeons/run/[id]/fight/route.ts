@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { runCombat, buildCombatantState } from "@/lib/game/combat";
 import { aggregateEquipmentStats } from "@/lib/game/equipment-stats";
 import type { DungeonRunState } from "@/app/api/dungeons/start/route";
@@ -46,6 +47,14 @@ export async function POST(
     } = await supabase.auth.getUser();
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(authUser.id, { prefix: "dungeon-fight", windowMs: 5_000, maxRequests: 5 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
     }
 
     const { id: runId } = await params;

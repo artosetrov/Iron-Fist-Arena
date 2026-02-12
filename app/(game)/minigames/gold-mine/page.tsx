@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PageLoader from "@/app/components/PageLoader";
+import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 import {
   GOLD_MINE_BOOST_COST_GEMS,
   GOLD_MINE_SLOT_COST_GEMS,
@@ -77,6 +78,7 @@ const INITIAL_STATE: MineState = {
 const GoldMineContent = () => {
   const searchParams = useSearchParams();
   const characterId = searchParams.get("characterId");
+  const avatarSrc = useCharacterAvatar(characterId);
 
   const [state, setState] = useState<MineState>(INITIAL_STATE);
   const [, setTick] = useState(0); // force re-render for countdown
@@ -265,7 +267,7 @@ const GoldMineContent = () => {
 
   /* ── Render ── */
   if (state.loading) {
-    return <PageLoader emoji="⛏️" text="Loading Gold Mine..." />;
+    return <PageLoader emoji="⛏️" text="Loading Gold Mine..." avatarSrc={avatarSrc} />;
   }
 
   const sessionsBySlot = new Map<number, MineSession>();

@@ -4,6 +4,7 @@ import { goldCostForStatTraining } from "@/lib/game/stat-training";
 import { getMaxHp } from "@/lib/game/stats";
 import { NextResponse } from "next/server";
 import { STAT_SOFT_CAP, STAT_HARD_CAP, type StatKey } from "@/lib/game/balance";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,14 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const rl = checkRateLimit(authUser.id, { prefix: "allocate-stats", windowMs: 5_000, maxRequests: 20 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
+    }
+
     const { id } = await params;
 
     const body = await request.json();
@@ -48,93 +57,95 @@ export async function POST(
 
     const statKey = stat as StatKey;
 
-    const character = await prisma.character.findFirst({
-      where: { id, userId: authUser.id },
-    });
-    if (!character) {
-      return NextResponse.json({ error: "Character not found" }, { status: 404 });
-    }
-
-    const currentValue = character[statKey];
-
-    // Hard cap check
-    if (currentValue >= STAT_HARD_CAP) {
-      return NextResponse.json(
-        { error: `${statKey} is already at hard cap (${STAT_HARD_CAP})` },
-        { status: 400 }
-      );
-    }
-
-    // Soft cap warning (allow exceeding via gold, but warn)
+    // Soft cap for response
     const softCap = STAT_SOFT_CAP[statKey];
 
-    // If vitality changes, recalculate maxHp
-    const derivedUpdates =
-      statKey === "vitality"
-        ? { maxHp: getMaxHp(currentValue + 1) }
-        : {};
-
-    if (mode === "points") {
-      if (character.statPointsAvailable <= 0) {
-        return NextResponse.json(
-          { error: "No stat points available" },
-          { status: 400 }
-        );
+    // Wrap in transaction to prevent race conditions (double-spend stat points or gold)
+    const result = await prisma.$transaction(async (tx) => {
+      const character = await tx.character.findFirst({
+        where: { id, userId: authUser.id },
+      });
+      if (!character) {
+        return { error: "Character not found", status: 404 } as const;
       }
 
-      const updated = await prisma.character.update({
+      const currentValue = character[statKey];
+
+      if (currentValue >= STAT_HARD_CAP) {
+        return { error: `${statKey} is already at hard cap (${STAT_HARD_CAP})`, status: 400 } as const;
+      }
+
+      const derivedUpdates =
+        statKey === "vitality"
+          ? { maxHp: getMaxHp(currentValue + 1) }
+          : {};
+
+      if (mode === "points") {
+        if (character.statPointsAvailable <= 0) {
+          return { error: "No stat points available", status: 400 } as const;
+        }
+
+        const updated = await tx.character.update({
+          where: { id: character.id },
+          data: {
+            [statKey]: currentValue + 1,
+            statPointsAvailable: character.statPointsAvailable - 1,
+            ...derivedUpdates,
+          },
+        });
+
+        return {
+          success: true,
+          stat: statKey,
+          newValue: updated[statKey],
+          statPointsAvailable: updated.statPointsAvailable,
+          gold: updated.gold,
+          mode: "points" as const,
+        };
+      }
+
+      // mode === "gold"
+      const cost = goldCostForStatTraining(currentValue);
+
+      if (character.gold < cost) {
+        return {
+          error: `Not enough gold. Need ${cost}, have ${character.gold}`,
+          cost,
+          gold: character.gold,
+          status: 400,
+        } as const;
+      }
+
+      const updated = await tx.character.update({
         where: { id: character.id },
         data: {
           [statKey]: currentValue + 1,
-          statPointsAvailable: character.statPointsAvailable - 1,
+          gold: character.gold - cost,
           ...derivedUpdates,
         },
       });
 
-      return NextResponse.json({
+      return {
         success: true,
         stat: statKey,
         newValue: updated[statKey],
         statPointsAvailable: updated.statPointsAvailable,
         gold: updated.gold,
-        mode: "points",
-      });
-    }
+        cost,
+        mode: "gold" as const,
+        softCap,
+        isAboveSoftCap: (updated[statKey] as number) > softCap,
+      };
+    });
 
-    // mode === "gold"
-    const cost = goldCostForStatTraining(currentValue);
-
-    if (character.gold < cost) {
+    if ("error" in result) {
       return NextResponse.json(
-        {
-          error: `Not enough gold. Need ${cost}, have ${character.gold}`,
-          cost,
-          gold: character.gold,
-        },
-        { status: 400 }
+        { error: result.error, ...("cost" in result ? { cost: result.cost, gold: result.gold } : {}) },
+        { status: result.status },
       );
     }
 
-    const updated = await prisma.character.update({
-      where: { id: character.id },
-      data: {
-        [statKey]: currentValue + 1,
-        gold: character.gold - cost,
-        ...derivedUpdates,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      stat: statKey,
-      newValue: updated[statKey],
-      statPointsAvailable: updated.statPointsAvailable,
-      gold: updated.gold,
-      cost,
-      mode: "gold",
-      softCap,
-      isAboveSoftCap: updated[statKey] > softCap,
-    });
+    return NextResponse.json(result);
   } catch (error) {
     console.error("[api/characters/[id]/allocate-stats POST]", error);
     return NextResponse.json(

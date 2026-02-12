@@ -56,7 +56,14 @@ alwaysApply: true
 
 ## Технические правила генерации
 
-1. Все изображения сохранять в `/public/images/generated/`
+1. Изображения сохранять в подпапки `/public/images/` по категориям:
+   - Боссы: `/public/images/bosses/`
+   - Классы: `/public/images/classes/`
+   - Расы (origins): `/public/images/origins/`
+   - Подземелья: `/public/images/dungeons/`
+   - Мини-игры: `/public/images/minigames/`
+   - Здания хаба: `/public/images/buildings/`
+   - UI/фоны/общее: `/public/images/ui/`
 2. Формат: **PNG**
 3. Размеры:
    - Персонажи/монстры/объекты: `1024x1024`

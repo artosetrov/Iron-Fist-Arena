@@ -24,12 +24,19 @@ export const scaleXpByLevel = (baseXp: number, enemyLevel: number): number => {
   return Math.floor(baseXp * (1 + enemyLevel / XP_ENEMY_LEVEL_DIVISOR));
 };
 
-/** GDD §6.4 - Gold per match */
+/** GDD §6.4 - Gold per match (tiered streak bonus — only highest applicable) */
 export const goldForPvPWin = (oppRating: number, winStreak: number): number => {
   let gold = PVP_WIN_BASE_GOLD + Math.floor(oppRating / 10);
+
+  // Find the highest applicable streak bonus (tiered, not cumulative)
+  let bestBonus = 0;
   for (const [streak, bonus] of Object.entries(WIN_STREAK_BONUSES)) {
-    if (winStreak >= Number(streak)) gold += bonus;
+    if (winStreak >= Number(streak) && bonus > bestBonus) {
+      bestBonus = bonus;
+    }
   }
+  gold += bestBonus;
+
   return gold;
 };
 

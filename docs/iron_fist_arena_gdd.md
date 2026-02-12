@@ -1,9 +1,9 @@
 # GAME DESIGN DOCUMENT
 ## Browser-Based PvP RPG: "IRON FIST ARENA"
 
-**Version:** 1.0  
-**Document Date:** February 11, 2026  
-**Status:** Production-Ready Master Document  
+**Version:** 3.0  
+**Document Date:** February 12, 2026  
+**Status:** Production-Ready Master Document (Synced with codebase)  
 **Platform:** Web (Desktop + Mobile Responsive)  
 **Tech Stack:** React/Next.js + Supabase/PostgreSQL
 
@@ -449,7 +449,7 @@ Others: 10
 Focus: High crit%, dodge-heavy
 ```
 
-## 3.3 Prestige System
+## 3.3 Prestige System *(PLANNED — Not Yet Implemented)*
 
 **Unlock:** Level 100
 
@@ -900,7 +900,7 @@ Higher floors bias toward +5 rolls
 ## 6.2 ELO Rating System
 
 ```
-Starting_Rating = 1000
+Starting_Rating = 0  (players climb from Bronze V)
 
 Rating_Change = K × (Actual - Expected)
 
@@ -1001,7 +1001,7 @@ XP = 30
 Rating = -8 to -32
 
 Loss Protection:
-- Rating <1000: Cannot lose rating (floor)
+- Rating at 0: Cannot lose rating (absolute floor)
 - Loss streak (3+): -50% rating loss
 ```
 
@@ -1892,7 +1892,8 @@ CREATE TABLE items (
     created_at TIMESTAMP DEFAULT NOW(),
     
     CONSTRAINT valid_item_type CHECK (item_type IN 
-        ('weapon', 'helmet', 'chest', 'gloves', 'legs', 'boots', 'accessory')),
+        ('weapon', 'helmet', 'chest', 'gloves', 'legs', 'boots', 'accessory',
+         'amulet', 'belt', 'relic', 'necklace', 'ring')),
     CONSTRAINT valid_rarity CHECK (rarity IN 
         ('common', 'uncommon', 'rare', 'epic', 'legendary'))
 );
@@ -1922,7 +1923,8 @@ CREATE TABLE equipment_inventory (
     acquired_at TIMESTAMP DEFAULT NOW(),
     
     CONSTRAINT valid_slot CHECK (equipped_slot IN 
-        ('weapon', 'helmet', 'chest', 'gloves', 'legs', 'boots', 'accessory'))
+        ('weapon', 'weapon_offhand', 'helmet', 'chest', 'gloves', 'legs', 'boots',
+         'accessory', 'amulet', 'belt', 'relic', 'necklace', 'ring'))
 );
 
 CREATE INDEX idx_inv_character ON equipment_inventory(character_id);
@@ -2840,21 +2842,82 @@ Version 1.0 - February 11, 2026
 
 ---
 
+---
+
+# APPENDIX A — Single Source of Truth: Formula Reference Table
+
+> **All formulas below are authoritative.** Code in `lib/game/balance.ts` must match exactly.
+
+| System | Formula | Constants |
+|--------|---------|-----------|
+| Physical Damage | `(STR × skillMult) - (END × 0.5)` then armor reduction & crit | `END_DEFENSE_FACTOR = 0.5` |
+| Magic Damage | `(INT × spellMult) - (WIS × 0.4)` then resist & crit | `WIS_DEFENSE_FACTOR = 0.4`, `BASE_SPELL_MULT = 1.2` |
+| Crit Chance | `5% + AGI/10 + LCK/15 + equipment` | cap: 50% |
+| Crit Damage | `1.5 + STR/500` | cap: 2.8x |
+| Dodge | `3% + AGI/8 + equipment` | cap: 40% |
+| Armor Reduction | `Armor / (Armor + 100)` | cap: 75% |
+| Magic Resist | `WIS / (WIS + 150)` | cap: 70% |
+| Resist Chance | `(END/10) + (WIS/15)` | cap: 60% |
+| Max HP | `VIT × 10` | `HP_PER_VIT = 10` |
+| XP for Level N | `100 × N^1.8 + 50 × N` | |
+| Stat Points | `+5 per level, +1 skill point every 5 levels` | |
+| Gold per Level | `100 × newLevel` | |
+| Stamina Regen | `1 per 12 minutes` | max: 100 base, +20 VIP, overflow cap: 200 |
+| ELO Rating | `K × (actual - expected)`, K=32 | Start: 0, Floor: 0 |
+| Loss Streak | `>= 3 losses: -50% rating loss` | |
+| Sell Price | `itemLevel × rarityMult × 10 + statSum × 5` | |
+| Repair Cost | `basePrice × 0.1 × (lostDur / maxDur)` | |
+| Upgrade Chance | `75% - 5% × level` | max level: +10 |
+| Stat Training | `floor(50 × 1.05^statValue)` | exponential gold cost |
+
+# APPENDIX B — Equipment Slot Reference
+
+| Slot | Item Types | Notes |
+|------|-----------|-------|
+| weapon | weapon | Main hand |
+| weapon_offhand | weapon | Off-hand (blocked by two-handed) |
+| helmet | helmet | |
+| chest | chest | |
+| gloves | gloves | |
+| legs | legs | |
+| boots | boots | |
+| accessory | accessory | |
+| amulet | amulet | May have unique passive |
+| belt | belt | |
+| relic | relic | May have unique passive |
+| necklace | necklace | |
+| ring | ring | |
+
+# APPENDIX C — Minigames *(Added v3.0)*
+
+## Gold Mine (Idle)
+- Unlock slots with gold; each slot produces gold over 30 min cycles
+- Reward: `100 + (level × 3)` per cycle
+- Boost with gems for 2x rewards
+
+## Shell Game (Gambling)
+- Bet gold, pick the correct shell (1 in 3 chance)
+- Win: 2.5x bet, Lose: lose bet
+- Server-side secret prevents manipulation
+
+## Dungeon Rush (Wave Mode)
+- 5 waves of increasingly difficult mobs
+- Stamina cost: 3
+- Rewards per wave + full clear bonus
+
+# APPENDIX D — Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | Feb 11, 2026 | Initial GDD |
+| 3.0 | Feb 12, 2026 | Synced with codebase: PvP rating starts at 0 (was 1000), floor at 0 (was 1000), 13 equipment slots (was 7), added minigame docs, marked prestige as planned, added formula reference table |
+
 ## DOCUMENT END
 
-**Total Pages:** ~50+ pages of content  
-**Sections Covered:** 12 major sections  
-**Production Readiness:** ✓ Ready for development  
+**Total Pages:** ~55+ pages of content  
+**Sections Covered:** 12 major sections + 4 appendices  
+**Production Readiness:** ✓ In production  
 
-**Next Steps:**
-1. Review with stakeholders
-2. Create detailed technical specs per feature
-3. Set up development environment
-4. Begin Phase 1 implementation
-5. Establish metrics dashboard
-6. Plan marketing strategy
-
-**Contact:** [Game Designer Contact Info]  
-**Last Updated:** February 11, 2026
+**Last Updated:** February 12, 2026
 
 ---

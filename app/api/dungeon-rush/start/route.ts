@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { spendStamina } from "@/lib/game/stamina";
 import { STAMINA_COST } from "@/lib/game/balance";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   generateRushMob,
   RUSH_WAVES,
@@ -19,6 +20,14 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(authUser.id, { prefix: "rush-start", windowMs: 10_000, maxRequests: 3 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
     }
 
     const body = await request.json().catch(() => ({}));
@@ -73,8 +82,26 @@ export async function POST(request: Request) {
     // Generate first wave mob for preview
     const firstMob = generateRushMob(character.level, 1);
 
-    // Create run + spend stamina atomically
+    // Create run + spend stamina atomically; re-validate inside transaction
     const run = await prisma.$transaction(async (tx) => {
+      const freshChar = await tx.character.findUniqueOrThrow({ where: { id: characterId } });
+      const freshStamina = spendStamina({
+        currentStamina: freshChar.currentStamina,
+        maxStamina: freshChar.maxStamina,
+        lastStaminaUpdate: freshChar.lastStaminaUpdate,
+        cost,
+        isVip: !!character.user?.premiumUntil && character.user.premiumUntil > new Date(),
+      });
+      if ("error" in freshStamina) {
+        throw new Error(freshStamina.error);
+      }
+
+      // Verify no active run atomically
+      const activeRun = await tx.dungeonRun.findFirst({ where: { characterId } });
+      if (activeRun) {
+        throw new Error("You already have an active run");
+      }
+
       const created = await tx.dungeonRun.create({
         data: {
           characterId,
@@ -102,8 +129,8 @@ export async function POST(request: Request) {
       await tx.character.update({
         where: { id: characterId },
         data: {
-          currentStamina: staminaResult.newStamina,
-          lastStaminaUpdate: staminaResult.newLastUpdate,
+          currentStamina: freshStamina.newStamina,
+          lastStaminaUpdate: freshStamina.newLastUpdate,
         },
       });
 
@@ -122,6 +149,10 @@ export async function POST(request: Request) {
       staminaCost: cost,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    if (message === "Not enough stamina" || message.includes("active run")) {
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
     console.error("[api/dungeon-rush/start POST]", error);
     return NextResponse.json(
       { error: "Internal server error" },

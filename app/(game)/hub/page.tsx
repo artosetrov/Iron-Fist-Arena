@@ -24,7 +24,7 @@ const BUILDINGS: HubBuilding[] = [
     id: "dungeon",
     label: "Dungeons",
     href: "/dungeon",
-    image: "/images/building-dungeon.png",
+    image: "/images/buildings/building-dungeon.png",
     top: "42%",
     left: "15%",
     size: "14%",
@@ -33,7 +33,7 @@ const BUILDINGS: HubBuilding[] = [
     id: "arena",
     label: "Arena",
     href: "/arena",
-    image: "/images/building-arena.png",
+    image: "/images/buildings/building-arena.png",
     top: "15%",
     left: "45%",
     size: "14%",
@@ -42,7 +42,7 @@ const BUILDINGS: HubBuilding[] = [
     id: "shop",
     label: "Shop",
     href: "/shop",
-    image: "/images/building-shop.png",
+    image: "/images/buildings/building-shop.png",
     top: "25%",
     left: "65%",
     size: "14%",
@@ -51,7 +51,7 @@ const BUILDINGS: HubBuilding[] = [
     id: "tavern",
     label: "Tavern",
     href: "/minigames",
-    image: "/images/Taverna.png",
+    image: "/images/buildings/Taverna.png",
     top: "48%",
     left: "42%",
     size: "14%",
@@ -60,7 +60,7 @@ const BUILDINGS: HubBuilding[] = [
     id: "training",
     label: "Training",
     href: "/combat",
-    image: "/images/Traning.png",
+    image: "/images/buildings/Traning.png",
     top: "45%",
     left: "68%",
     size: "14%",
@@ -148,7 +148,7 @@ function HubContent() {
     >
       <div className="relative h-full w-max min-w-full">
         <Image
-          src="/images/hub-bg.png"
+          src="/images/ui/hub-bg.png"
           alt="Hub background"
           width={2048}
           height={1024}

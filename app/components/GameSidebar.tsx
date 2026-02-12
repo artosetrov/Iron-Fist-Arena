@@ -44,11 +44,11 @@ const CLASS_ICON: Record<string, string> = {
 };
 
 const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/generated/origin-human.png",
-  orc: "/images/generated/origin-orc.png",
-  skeleton: "/images/generated/origin-skeleton.png",
-  demon: "/images/generated/origin-demon.png",
-  dogfolk: "/images/generated/origin-dogfolk.png",
+  human: "/images/origins/origin-human.png",
+  orc: "/images/origins/origin-orc.png",
+  skeleton: "/images/origins/origin-skeleton.png",
+  demon: "/images/origins/origin-demon.png",
+  dogfolk: "/images/origins/origin-dogfolk.png",
 };
 
 type NavItem = {

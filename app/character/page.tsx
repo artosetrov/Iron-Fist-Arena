@@ -108,18 +108,18 @@ const CLASS_ACCENT: Record<string, string> = {
 const ALL_CLASSES = ["warrior", "rogue", "mage", "tank"] as const;
 
 const CLASS_IMAGE: Record<string, string> = {
-  warrior: "/images/generated/class-warrior.png",
-  rogue: "/images/generated/class-rogue.png",
-  mage: "/images/generated/class-mage.png",
-  tank: "/images/generated/class-tank.png",
+  warrior: "/images/classes/class-warrior.png",
+  rogue: "/images/classes/class-rogue.png",
+  mage: "/images/classes/class-mage.png",
+  tank: "/images/classes/class-tank.png",
 };
 
 const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/generated/origin-human.png",
-  orc: "/images/generated/origin-orc.png",
-  skeleton: "/images/generated/origin-skeleton.png",
-  demon: "/images/generated/origin-demon.png",
-  dogfolk: "/images/generated/origin-dogfolk.png",
+  human: "/images/origins/origin-human.png",
+  orc: "/images/origins/origin-orc.png",
+  skeleton: "/images/origins/origin-skeleton.png",
+  demon: "/images/origins/origin-demon.png",
+  dogfolk: "/images/origins/origin-dogfolk.png",
 };
 
 /* ────────────────── Character Card ────────────────── */
