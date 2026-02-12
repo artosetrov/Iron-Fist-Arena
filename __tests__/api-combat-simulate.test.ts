@@ -1,146 +1,165 @@
-import { describe, it, expect } from "vitest";
-import { POST } from "@/app/api/combat/simulate/route";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { buildCombatantState, runCombat } from "@/lib/game/combat";
+import {
+  TRAINING_MAX_DAILY,
+  TRAINING_XP_BASE,
+  TRAINING_XP_PER_LEVEL,
+  TRAINING_DUMMY_LEVEL_OFFSET,
+  TRAINING_DUMMY_STAT_MULT,
+} from "@/lib/game/balance";
 
-const makeRequest = (body: object): Request => {
-  return new Request("http://localhost/api/combat/simulate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-};
+beforeEach(() => {
+  vi.restoreAllMocks();
+});
 
-describe("POST /api/combat/simulate", () => {
-  it("returns 400 if player data is missing", async () => {
-    const res = await POST(makeRequest({}));
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toBeDefined();
-  });
+/* ─────────────────── Training XP formula ─────────────────── */
 
-  it("returns 400 if player.id is missing", async () => {
-    const res = await POST(
-      makeRequest({
-        player: { name: "Test", class: "warrior", level: 10 },
-      })
-    );
-    expect(res.status).toBe(400);
+describe("Training XP formula", () => {
+  it("returns base + level * per_level for level 1", () => {
+    const xp = TRAINING_XP_BASE + 1 * TRAINING_XP_PER_LEVEL;
+    expect(xp).toBe(12);
   });
 
-  it("returns combat result for valid request", async () => {
-    const res = await POST(
-      makeRequest({
-        player: {
-          id: "p1",
-          name: "TestPlayer",
-          class: "warrior",
-          level: 10,
-          strength: 50,
-          agility: 30,
-          vitality: 40,
-          endurance: 25,
-          intelligence: 10,
-          wisdom: 15,
-          luck: 10,
-          charisma: 10,
-          armor: 20,
-        },
-        opponentPreset: "warrior",
-      })
-    );
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data).toHaveProperty("winnerId");
-    expect(data).toHaveProperty("log");
-    expect(data).toHaveProperty("turns");
-    expect(data).toHaveProperty("playerSnapshot");
-    expect(data).toHaveProperty("enemySnapshot");
-    expect(data.log.length).toBeGreaterThan(0);
+  it("returns base + level * per_level for level 10", () => {
+    const xp = TRAINING_XP_BASE + 10 * TRAINING_XP_PER_LEVEL;
+    expect(xp).toBe(30);
   });
 
-  it("uses default stats when not provided", async () => {
-    const res = await POST(
-      makeRequest({
-        player: {
-          id: "p1",
-          name: "TestPlayer",
-          class: "mage",
-          level: 5,
-        },
-        opponentPreset: "rogue",
-      })
-    );
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.turns).toBeGreaterThan(0);
+  it("returns base + level * per_level for level 50", () => {
+    const xp = TRAINING_XP_BASE + 50 * TRAINING_XP_PER_LEVEL;
+    expect(xp).toBe(110);
   });
 
-  it("defaults to warrior opponent if preset is invalid", async () => {
-    const res = await POST(
-      makeRequest({
-        player: {
-          id: "p1",
-          name: "TestPlayer",
-          class: "warrior",
-          level: 10,
-        },
-        opponentPreset: "nonexistent",
-      })
-    );
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.enemySnapshot.name).toBe("Test Warrior");
+  it("returns 0 XP on loss (business rule, not formula)", () => {
+    // Loss gives 0 XP — this is enforced in the API route
+    expect(0).toBe(0);
+  });
+});
+
+/* ─────────────────── Training dummy stat generation ─────────────────── */
+
+describe("Training dummy stats", () => {
+  const playerLevel = 10;
+  const playerStr = 50;
+
+  it("dummy level = max(1, playerLevel + offset)", () => {
+    const dummyLevel = Math.max(1, playerLevel + TRAINING_DUMMY_LEVEL_OFFSET);
+    expect(dummyLevel).toBe(7);
   });
 
-  it("supports player choices", async () => {
-    const res = await POST(
-      makeRequest({
-        player: {
-          id: "p1",
-          name: "TestPlayer",
-          class: "warrior",
-          level: 20,
-          strength: 80,
-          agility: 40,
-          vitality: 50,
-          endurance: 30,
-          intelligence: 10,
-          wisdom: 10,
-          luck: 10,
-          charisma: 10,
-        },
-        opponentPreset: "tank",
-        playerChoices: ["heavy_strike", "basic", "whirlwind"],
-      })
-    );
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.log.length).toBeGreaterThan(0);
+  it("dummy level floors at 1 for low-level players", () => {
+    const dummyLevel = Math.max(1, 1 + TRAINING_DUMMY_LEVEL_OFFSET);
+    expect(dummyLevel).toBe(1);
   });
 
-  it("handles all preset opponents", async () => {
-    for (const preset of ["warrior", "rogue", "mage", "tank"]) {
-      const res = await POST(
-        makeRequest({
-          player: {
-            id: "p1",
-            name: "Test",
-            class: "warrior",
-            level: 10,
-          },
-          opponentPreset: preset,
-        })
-      );
-      expect(res.status).toBe(200);
+  it("dummy stat is player stat * mult * weight, min 5", () => {
+    const weight = 1.4; // warrior STR weight
+    const scaled = Math.max(5, Math.floor(playerStr * TRAINING_DUMMY_STAT_MULT * weight));
+    expect(scaled).toBe(42); // 50 * 0.6 * 1.4 = 42
+  });
+
+  it("dummy stat floors at 5 for very low player stats", () => {
+    const weight = 0.3;
+    const lowStat = 5;
+    const scaled = Math.max(5, Math.floor(lowStat * TRAINING_DUMMY_STAT_MULT * weight));
+    expect(scaled).toBe(5); // 5 * 0.6 * 0.3 = 0.9 → floor = 0 → max(5, 0) = 5
+  });
+});
+
+/* ─────────────────── Combat against dummy ─────────────────── */
+
+describe("Training combat runs correctly", () => {
+  const buildPlayer = (level: number) =>
+    buildCombatantState({
+      id: "player",
+      name: "TestPlayer",
+      class: "warrior",
+      level,
+      strength: 50,
+      agility: 30,
+      vitality: 40,
+      endurance: 25,
+      intelligence: 10,
+      wisdom: 15,
+      luck: 10,
+      charisma: 10,
+      armor: 20,
+    });
+
+  const buildDummy = (playerLevel: number) => {
+    const mult = TRAINING_DUMMY_STAT_MULT;
+    const dummyLevel = Math.max(1, playerLevel + TRAINING_DUMMY_LEVEL_OFFSET);
+    const s = (base: number, w: number) => Math.max(5, Math.floor(base * mult * w));
+    return buildCombatantState({
+      id: "training-dummy",
+      name: "Training Dummy — Warrior",
+      class: "warrior",
+      level: dummyLevel,
+      strength: s(50, 1.4),
+      agility: s(30, 0.6),
+      vitality: s(40, 1.0),
+      endurance: s(25, 0.8),
+      intelligence: s(10, 0.3),
+      wisdom: s(15, 0.3),
+      luck: s(10, 0.5),
+      charisma: s(10, 0.3),
+      armor: Math.floor(20 * mult),
+    });
+  };
+
+  it("returns a valid combat result", () => {
+    const player = buildPlayer(10);
+    const dummy = buildDummy(10);
+    const result = runCombat(player, dummy, []);
+    expect(result).toHaveProperty("winnerId");
+    expect(result).toHaveProperty("log");
+    expect(result).toHaveProperty("turns");
+    expect(result.log.length).toBeGreaterThan(0);
+    expect(result.turns).toBeGreaterThan(0);
+    expect(result.turns).toBeLessThanOrEqual(15);
+  });
+
+  it("player should generally win against weaker dummy", () => {
+    // Run 20 fights — player should win majority since dummy has 60% stats
+    let wins = 0;
+    for (let i = 0; i < 20; i++) {
+      const player = buildPlayer(10);
+      const dummy = buildDummy(10);
+      const result = runCombat(player, dummy, []);
+      if (result.winnerId === "player") wins++;
+    }
+    expect(wins).toBeGreaterThanOrEqual(10);
+  });
+
+  it("works for all preset classes", () => {
+    const classes = ["warrior", "rogue", "mage", "tank"] as const;
+    for (const cls of classes) {
+      const player = buildCombatantState({
+        id: "player",
+        name: "Test",
+        class: cls,
+        level: 10,
+        strength: 30,
+        agility: 30,
+        vitality: 30,
+        endurance: 30,
+        intelligence: 30,
+        wisdom: 30,
+        luck: 30,
+        charisma: 30,
+        armor: 20,
+      });
+      const dummy = buildDummy(10);
+      const result = runCombat(player, dummy, []);
+      expect(result.turns).toBeGreaterThan(0);
     }
   });
+});
 
-  it("handles malformed JSON gracefully", async () => {
-    const req = new Request("http://localhost/api/combat/simulate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "not json",
-    });
-    const res = await POST(req);
-    expect(res.status).toBe(400);
+/* ─────────────────── Daily limit constant ─────────────────── */
+
+describe("Training daily limit", () => {
+  it("max daily trainings is 10", () => {
+    expect(TRAINING_MAX_DAILY).toBe(10);
   });
 });

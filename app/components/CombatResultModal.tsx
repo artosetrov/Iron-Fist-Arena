@@ -12,12 +12,19 @@ type Rewards = {
   won: boolean;
 };
 
+type TrainingRewards = {
+  xp: number;
+  remaining: number;
+  leveledUp: boolean;
+};
+
 type CombatResultModalProps = {
   open: boolean;
   onClose: () => void;
   title: string;
   turns: number;
   rewards?: Rewards;
+  trainingRewards?: TrainingRewards;
   flavorText?: string;
 };
 
@@ -53,6 +60,7 @@ const CombatResultModal = ({
   title,
   turns,
   rewards,
+  trainingRewards,
   flavorText,
 }: CombatResultModalProps) => {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -153,7 +161,7 @@ const CombatResultModal = ({
           </p>
         </div>
 
-        {/* Rewards */}
+        {/* PvP Rewards */}
         {rewards && (
           <div className="grid grid-cols-3 gap-2 border-t border-slate-800 px-6 py-4">
             <div className="rounded-xl bg-amber-900/30 p-3 text-center">
@@ -180,6 +188,40 @@ const CombatResultModal = ({
                 {rewards.ratingChange >= 0 ? "+" : ""}
                 {rewards.ratingChange} → {rewards.newRating}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Training Rewards */}
+        {trainingRewards && (
+          <div className="border-t border-slate-800 px-6 py-4">
+            {trainingRewards.leveledUp && (
+              <div className="mb-3 flex items-center justify-center gap-2 rounded-xl bg-amber-900/40 px-4 py-2.5 border border-amber-600/40">
+                <span className="text-lg" aria-hidden="true">🎉</span>
+                <p className="text-sm font-bold text-amber-300">Level Up!</p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-blue-900/30 p-3 text-center">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                  XP Earned
+                </p>
+                <p className={`text-sm font-bold ${trainingRewards.xp > 0 ? "text-blue-400" : "text-slate-500"}`}>
+                  +{trainingRewards.xp}
+                </p>
+              </div>
+              <div className="rounded-xl bg-slate-800/60 p-3 text-center">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                  Remaining
+                </p>
+                <p
+                  className={`text-sm font-bold ${
+                    trainingRewards.remaining > 0 ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
+                  {trainingRewards.remaining} left
+                </p>
+              </div>
             </div>
           </div>
         )}

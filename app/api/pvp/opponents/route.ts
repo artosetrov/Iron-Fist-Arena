@@ -92,7 +92,37 @@ export async function GET(request: Request) {
     }
     const shuffled = candidates.slice(0, 3);
 
-    return NextResponse.json({ opponents: shuffled });
+    // Fetch equipped items for selected opponents
+    const opponentIds = shuffled.map((c) => c.id);
+    const equippedItems = await prisma.equipmentInventory.findMany({
+      where: { characterId: { in: opponentIds }, isEquipped: true },
+      select: {
+        characterId: true,
+        equippedSlot: true,
+        item: {
+          select: {
+            itemName: true,
+            itemType: true,
+            rarity: true,
+          },
+        },
+      },
+    });
+
+    const equippedByCharacter = new Map<string, { slot: string; itemName: string; itemType: string; rarity: string }[]>();
+    for (const eq of equippedItems) {
+      if (!eq.equippedSlot) continue;
+      const list = equippedByCharacter.get(eq.characterId) ?? [];
+      list.push({ slot: eq.equippedSlot, itemName: eq.item.itemName, itemType: eq.item.itemType, rarity: eq.item.rarity });
+      equippedByCharacter.set(eq.characterId, list);
+    }
+
+    const opponents = shuffled.map((c) => ({
+      ...c,
+      equipped: equippedByCharacter.get(c.id) ?? [],
+    }));
+
+    return NextResponse.json({ opponents });
   } catch (error) {
     console.error("[api/pvp/opponents GET]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

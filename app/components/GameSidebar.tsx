@@ -63,7 +63,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/arena", label: "Arena", icon: "⚔️", description: "PvP Battles" },
   { href: "/dungeon", label: "Dungeons", icon: "🏰", description: "PvE, Loot" },
   { href: "/shop", label: "Shop", icon: "🪙", description: "Buy Items" },
-  { href: "/combat", label: "Test Fight", icon: "💥", description: "Simulation" },
+  { href: "/minigames", label: "Tavern", icon: "🍺", description: "Mini Games & Gambling" },
+  { href: "/combat", label: "Training", icon: "🎯", description: "Practice & XP" },
   { href: "/leaderboard", label: "Leaderboard", icon: "🏆", description: "Rankings" },
 ];
 

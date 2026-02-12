@@ -19,6 +19,8 @@ const SLOTS: EquippedSlot[] = [
   "amulet",
   "belt",
   "relic",
+  "necklace",
+  "ring",
 ];
 
 export async function POST(request: Request) {
@@ -75,6 +77,8 @@ export async function POST(request: Request) {
           amulet: "amulet",
           belt: "belt",
           relic: "relic",
+          necklace: "necklace",
+          ring: "ring",
         };
         if (armorSlotMap[itemType] !== slot) {
           throw new Error("SLOT_MISMATCH");

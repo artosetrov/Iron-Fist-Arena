@@ -1,5 +1,5 @@
 /**
- * Item Catalog v1.1 — 116 fixed items + 48 amulet/belt/relic items
+ * Item Catalog v1.2 — 116 fixed items + 48 amulet/belt/relic items + 48 legs/necklace/ring items
  *
  * Stats calculated from Item System Design Document:
  * - Base stats at level 30 baseline
@@ -8,7 +8,7 @@
  * - Legendary items have unique stat distributions per class set
  */
 
-export type ItemSlot = "helmet" | "gloves" | "chest" | "boots" | "weapon" | "amulet" | "belt" | "relic";
+export type ItemSlot = "helmet" | "gloves" | "chest" | "boots" | "weapon" | "amulet" | "belt" | "relic" | "legs" | "necklace" | "ring";
 
 export type ItemStatKey = "ATK" | "DEF" | "HP" | "CRIT" | "SPEED" | "ARMOR";
 
@@ -868,6 +868,124 @@ const LEGENDARY_RELICS: CatalogItem[] = [
 ];
 
 /* ================================================================== */
+/*  LEGS / LEGGINGS (16)                                               */
+/* ================================================================== */
+
+/*
+ * Base stats (level 30):
+ *   Legs: DEF 50, HP 180, ARMOR 35
+ *
+ * Common x1.00, Rare x1.08, Epic x1.15, Legendary x1.22
+ * ±10-15% variation
+ */
+
+const COMMON_LEGS: CatalogItem[] = [
+  { catalogId: "c-leg-01", name: "Leather Trousers", slot: "legs", rarity: "common", baseStats: { DEF: 42, HP: 160, ARMOR: 28 }, description: "Worn but functional." },
+  { catalogId: "c-leg-02", name: "Iron Greaves Pants", slot: "legs", rarity: "common", baseStats: { DEF: 48, HP: 165, ARMOR: 32 }, description: "Sturdy iron-plated legwear." },
+  { catalogId: "c-leg-03", name: "Chain Leggings", slot: "legs", rarity: "common", baseStats: { DEF: 52, HP: 155, ARMOR: 35 }, description: "Chainmail from knee to waist." },
+  { catalogId: "c-leg-04", name: "Cloth Pants", slot: "legs", rarity: "common", baseStats: { DEF: 38, HP: 185, ARMOR: 25 }, description: "Light and comfortable." },
+];
+
+const RARE_LEGS: CatalogItem[] = [
+  { catalogId: "r-leg-01", name: "Knight Legguards", slot: "legs", rarity: "rare", baseStats: { DEF: 58, HP: 195, ARMOR: 55 }, description: "Part of a knight's full plate." },
+  { catalogId: "r-leg-02", name: "Shadow Leggings", slot: "legs", rarity: "rare", baseStats: { DEF: 50, HP: 190, SPEED: 3, ARMOR: 48 }, description: "Silent steps, deadly strikes." },
+  { catalogId: "r-leg-03", name: "Mystic Leg Wraps", slot: "legs", rarity: "rare", baseStats: { DEF: 48, HP: 200, ARMOR: 45 }, description: "Inscribed with protective runes." },
+  { catalogId: "r-leg-04", name: "Storm Legplates", slot: "legs", rarity: "rare", baseStats: { DEF: 55, HP: 188, ARMOR: 52 }, description: "Crackling with residual energy." },
+];
+
+const EPIC_LEGS: CatalogItem[] = [
+  { catalogId: "e-leg-01", name: "Doom Legplates", slot: "legs", rarity: "epic", baseStats: { DEF: 65, HP: 210, ARMOR: 85 }, description: "Heavy as fate itself." },
+  { catalogId: "e-leg-02", name: "Shadow Legguards", slot: "legs", rarity: "epic", baseStats: { DEF: 56, HP: 205, SPEED: 5, ARMOR: 72 }, description: "Phase between shadows." },
+  { catalogId: "e-leg-03", name: "Arcane Leggings", slot: "legs", rarity: "epic", baseStats: { DEF: 54, HP: 220, ARMOR: 68 }, description: "Woven from mana threads." },
+  { catalogId: "e-leg-04", name: "Titan Legplates", slot: "legs", rarity: "epic", baseStats: { DEF: 68, HP: 200, ARMOR: 90 }, description: "Built for giants." },
+];
+
+const LEGENDARY_LEGS: CatalogItem[] = [
+  { catalogId: "l-leg-01", name: "Crimson Conqueror Legplates", slot: "legs", rarity: "legendary", baseStats: { DEF: 72, HP: 240, ARMOR: 110, ATK: 15 }, classRestriction: "warrior", setName: "crimson_conqueror", description: "Stride into battle unbroken." },
+  { catalogId: "l-leg-02", name: "Shadow Reaper Leggings", slot: "legs", rarity: "legendary", baseStats: { DEF: 55, HP: 200, ARMOR: 80, SPEED: 10, CRIT: 8 }, classRestriction: "rogue", setName: "shadow_reaper", description: "Silent steps leave no trace." },
+  { catalogId: "l-leg-03", name: "Arcane Dominion Legwraps", slot: "legs", rarity: "legendary", baseStats: { DEF: 58, HP: 230, ARMOR: 75, SPEED: 6 }, classRestriction: "mage", setName: "arcane_dominion", description: "Enchanted fabric defies gravity." },
+  { catalogId: "l-leg-04", name: "Iron Bastion Legplates", slot: "legs", rarity: "legendary", baseStats: { DEF: 80, HP: 280, ARMOR: 130 }, classRestriction: "tank", setName: "iron_bastion", description: "Roots you to the earth like a mountain." },
+];
+
+/* ================================================================== */
+/*  NECKLACES (16)                                                     */
+/* ================================================================== */
+
+/*
+ * Base stats (level 30):
+ *   Necklace: HP 50, DEF 12, CRIT 4
+ *
+ * Unique passives on rare+ necklaces
+ */
+
+const COMMON_NECKLACES: CatalogItem[] = [
+  { catalogId: "c-nck-01", name: "Copper Chain", slot: "necklace", rarity: "common", baseStats: { HP: 42, DEF: 10, CRIT: 2 }, description: "A simple copper chain." },
+  { catalogId: "c-nck-02", name: "Leather Cord", slot: "necklace", rarity: "common", baseStats: { HP: 48, DEF: 8, CRIT: 3 }, description: "Braided from sturdy leather." },
+  { catalogId: "c-nck-03", name: "Bone Necklace", slot: "necklace", rarity: "common", baseStats: { HP: 38, DEF: 12, CRIT: 2 }, description: "Tribal ornament of unknown origin." },
+  { catalogId: "c-nck-04", name: "Iron Choker", slot: "necklace", rarity: "common", baseStats: { HP: 45, DEF: 11, CRIT: 3 }, description: "Cold iron protects the throat." },
+];
+
+const RARE_NECKLACES: CatalogItem[] = [
+  { catalogId: "r-nck-01", name: "Ruby Pendant", slot: "necklace", rarity: "rare", baseStats: { HP: 80, DEF: 20, CRIT: 6 }, uniquePassive: "+4% critical damage", description: "A flawless ruby set in silver." },
+  { catalogId: "r-nck-02", name: "Sapphire Chain", slot: "necklace", rarity: "rare", baseStats: { HP: 90, DEF: 18, CRIT: 5, SPEED: 3 }, uniquePassive: "+6% mana efficiency", description: "Cool blue light pulses within." },
+  { catalogId: "r-nck-03", name: "Emerald Necklace", slot: "necklace", rarity: "rare", baseStats: { HP: 85, DEF: 22, CRIT: 5 }, uniquePassive: "+5% healing received", description: "The jewel of the forest kings." },
+  { catalogId: "r-nck-04", name: "Onyx Gorget", slot: "necklace", rarity: "rare", baseStats: { HP: 75, DEF: 24, CRIT: 7 }, uniquePassive: "+3% damage reduction at night", description: "Black as midnight, hard as stone." },
+];
+
+const EPIC_NECKLACES: CatalogItem[] = [
+  { catalogId: "e-nck-01", name: "Necklace of Wrath", slot: "necklace", rarity: "epic", baseStats: { HP: 145, DEF: 35, CRIT: 10, ATK: 12 }, uniquePassive: "+8% damage when below 50% HP", description: "Fury crystallized in gemstone." },
+  { catalogId: "e-nck-02", name: "Dragonscale Collar", slot: "necklace", rarity: "epic", baseStats: { HP: 160, DEF: 40, CRIT: 8 }, uniquePassive: "Reduce fire damage taken by 15%", description: "Scales of an ancient drake." },
+  { catalogId: "e-nck-03", name: "Starfall Pendant", slot: "necklace", rarity: "epic", baseStats: { HP: 135, DEF: 32, CRIT: 12, SPEED: 5 }, uniquePassive: "10% chance to dodge next attack after a crit", description: "A fragment of a fallen star." },
+  { catalogId: "e-nck-04", name: "Lifeblood Choker", slot: "necklace", rarity: "epic", baseStats: { HP: 180, DEF: 38 }, uniquePassive: "Regenerate 2% HP per turn", description: "Pulses in rhythm with your heart." },
+];
+
+const LEGENDARY_NECKLACES: CatalogItem[] = [
+  { catalogId: "l-nck-01", name: "Crimson Conqueror Chain", slot: "necklace", rarity: "legendary", baseStats: { HP: 230, DEF: 50, ATK: 25, CRIT: 10 }, uniquePassive: "Every kill grants +5% ATK for 3 turns (stacks)", classRestriction: "warrior", setName: "crimson_conqueror", description: "Links forged from battlefield trophies." },
+  { catalogId: "l-nck-02", name: "Shadow Reaper Torque", slot: "necklace", rarity: "legendary", baseStats: { HP: 190, DEF: 38, CRIT: 20, SPEED: 8 }, uniquePassive: "Critical hits apply 3-turn bleed (2% max HP/turn)", classRestriction: "rogue", setName: "shadow_reaper", description: "Whispers the name of the next victim." },
+  { catalogId: "l-nck-03", name: "Arcane Dominion Collar", slot: "necklace", rarity: "legendary", baseStats: { HP: 210, DEF: 45, CRIT: 15, SPEED: 6 }, uniquePassive: "Spell crits restore 10% stamina", classRestriction: "mage", setName: "arcane_dominion", description: "Channels raw arcane through the wearer." },
+  { catalogId: "l-nck-04", name: "Iron Bastion Gorget", slot: "necklace", rarity: "legendary", baseStats: { HP: 290, DEF: 60 }, uniquePassive: "Block incoming critical hits (reduce crit damage by 40%)", classRestriction: "tank", setName: "iron_bastion", description: "An impenetrable collar of living iron." },
+];
+
+/* ================================================================== */
+/*  RINGS (16)                                                         */
+/* ================================================================== */
+
+/*
+ * Base stats (level 30):
+ *   Ring: ATK 15, CRIT 5, SPEED 2
+ *
+ * Unique passives on rare+ rings
+ */
+
+const COMMON_RINGS: CatalogItem[] = [
+  { catalogId: "c-rng-01", name: "Copper Ring", slot: "ring", rarity: "common", baseStats: { ATK: 12, CRIT: 3, SPEED: 2 }, description: "A simple band of copper." },
+  { catalogId: "c-rng-02", name: "Iron Band", slot: "ring", rarity: "common", baseStats: { ATK: 14, CRIT: 4, SPEED: 1 }, description: "Cold iron, warm hands." },
+  { catalogId: "c-rng-03", name: "Bronze Signet", slot: "ring", rarity: "common", baseStats: { ATK: 16, CRIT: 3, SPEED: 2 }, description: "Bears an unknown seal." },
+  { catalogId: "c-rng-04", name: "Bone Ring", slot: "ring", rarity: "common", baseStats: { ATK: 13, CRIT: 5, SPEED: 1 }, description: "Carved from a beast's fang." },
+];
+
+const RARE_RINGS: CatalogItem[] = [
+  { catalogId: "r-rng-01", name: "Ruby Ring", slot: "ring", rarity: "rare", baseStats: { ATK: 24, CRIT: 7, SPEED: 3 }, uniquePassive: "+3% fire damage", description: "Burns with inner fire." },
+  { catalogId: "r-rng-02", name: "Sapphire Ring", slot: "ring", rarity: "rare", baseStats: { ATK: 20, CRIT: 8, SPEED: 4 }, uniquePassive: "+5% mana regeneration", description: "Cool to the touch, always." },
+  { catalogId: "r-rng-03", name: "Emerald Band", slot: "ring", rarity: "rare", baseStats: { ATK: 22, CRIT: 6, SPEED: 3, HP: 30 }, uniquePassive: "+4% nature damage", description: "Vines grow from the stone." },
+  { catalogId: "r-rng-04", name: "Onyx Seal", slot: "ring", rarity: "rare", baseStats: { ATK: 26, CRIT: 9, SPEED: 2 }, uniquePassive: "+5% damage to weakened targets", description: "Absorbs the light around it." },
+];
+
+const EPIC_RINGS: CatalogItem[] = [
+  { catalogId: "e-rng-01", name: "Ring of Fury", slot: "ring", rarity: "epic", baseStats: { ATK: 38, CRIT: 14, SPEED: 4 }, uniquePassive: "+12% damage on next attack after taking a hit", description: "Rage forged into metal." },
+  { catalogId: "e-rng-02", name: "Voidstone Ring", slot: "ring", rarity: "epic", baseStats: { ATK: 35, CRIT: 16, SPEED: 5 }, uniquePassive: "Ignore 10% of target armor", description: "Contains a shard of the void." },
+  { catalogId: "e-rng-03", name: "Phoenix Signet", slot: "ring", rarity: "epic", baseStats: { ATK: 32, CRIT: 12, SPEED: 4, HP: 50 }, uniquePassive: "On death: 15% chance to revive with 20% HP (once per battle)", description: "The phoenix never dies forever." },
+  { catalogId: "e-rng-04", name: "Dragonheart Ring", slot: "ring", rarity: "epic", baseStats: { ATK: 40, CRIT: 15, SPEED: 3 }, uniquePassive: "Every 4th attack deals 30% bonus fire damage", description: "A dragon's heartbeat in a ring." },
+];
+
+const LEGENDARY_RINGS: CatalogItem[] = [
+  { catalogId: "l-rng-01", name: "Crimson Conqueror Seal", slot: "ring", rarity: "legendary", baseStats: { ATK: 55, CRIT: 15, SPEED: 4, HP: 60 }, uniquePassive: "ATK increases by 2% per consecutive hit (resets on miss)", classRestriction: "warrior", setName: "crimson_conqueror", description: "Seal of the undefeated champion." },
+  { catalogId: "l-rng-02", name: "Shadow Reaper Ring", slot: "ring", rarity: "legendary", baseStats: { ATK: 48, CRIT: 22, SPEED: 10 }, uniquePassive: "First attack each battle is guaranteed critical", classRestriction: "rogue", setName: "shadow_reaper", description: "One ring, one kill." },
+  { catalogId: "l-rng-03", name: "Arcane Dominion Band", slot: "ring", rarity: "legendary", baseStats: { ATK: 45, CRIT: 18, SPEED: 6, HP: 50 }, uniquePassive: "Spell damage +15% against targets with active debuffs", classRestriction: "mage", setName: "arcane_dominion", description: "A circle of infinite arcane loops." },
+  { catalogId: "l-rng-04", name: "Iron Bastion Band", slot: "ring", rarity: "legendary", baseStats: { ATK: 40, CRIT: 10, DEF: 25, HP: 80 }, uniquePassive: "Taunt all enemies for 2 turns at battle start", classRestriction: "tank", setName: "iron_bastion", description: "The ring that binds the frontline." },
+];
+
+/* ================================================================== */
 /*  FULL CATALOG                                                       */
 /* ================================================================== */
 
@@ -933,6 +1051,24 @@ export const ITEM_CATALOG: CatalogItem[] = [
   ...RARE_RELICS,
   ...EPIC_RELICS,
   ...LEGENDARY_RELICS,
+
+  // --- Legs (16) ---
+  ...COMMON_LEGS,
+  ...RARE_LEGS,
+  ...EPIC_LEGS,
+  ...LEGENDARY_LEGS,
+
+  // --- Necklaces (16) ---
+  ...COMMON_NECKLACES,
+  ...RARE_NECKLACES,
+  ...EPIC_NECKLACES,
+  ...LEGENDARY_NECKLACES,
+
+  // --- Rings (16) ---
+  ...COMMON_RINGS,
+  ...RARE_RINGS,
+  ...EPIC_RINGS,
+  ...LEGENDARY_RINGS,
 ];
 
 /* ================================================================== */

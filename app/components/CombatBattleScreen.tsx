@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import HeroCard, { BOSS_IMAGES } from "@/app/components/HeroCard";
 
 /* ────────────────── Types ────────────────── */
 
@@ -58,42 +58,6 @@ type CombatBattleScreenProps = {
 
 /* ────────────────── Constants ────────────────── */
 
-const CLASS_ICON: Record<string, string> = {
-  warrior: "⚔️",
-  rogue: "🗡️",
-  mage: "🔮",
-  tank: "🛡️",
-};
-
-const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/generated/origin-human.png",
-  orc: "/images/generated/origin-orc.png",
-  skeleton: "/images/generated/origin-skeleton.png",
-  demon: "/images/generated/origin-demon.png",
-  dogfolk: "/images/generated/origin-dogfolk.png",
-};
-
-/** Boss-specific image paths (override emoji avatars when present) */
-const BOSS_IMAGES: Record<string, string> = {
-  "Straw Dummy": "/images/generated/boss-straw-dummy.png",
-  "Rusty Automaton": "/images/generated/boss-rusty-automaton.png",
-  "Barrel Golem": "/images/generated/boss-barrel-golem.png",
-  "Plank Knight": "/images/generated/boss-plank-knight.png",
-  "Flying Francis": "/images/generated/boss-flying-francis.png",
-  "Scarecrow Mage": "/images/generated/boss-scarecrow-mage.png",
-  "Mud Troll": "/images/generated/boss-mud-troll.png",
-  "Possessed Mannequin": "/images/generated/boss-possessed-mannequin.png",
-  "Iron Dummy": "/images/generated/boss-iron-dummy.png",
-  "Drill Sergeant Grizzle": "/images/generated/boss-drill-sergeant-grizzle.png",
-};
-
-const CLASS_GRADIENT: Record<string, string> = {
-  warrior: "from-red-900 to-red-950",
-  rogue: "from-emerald-900 to-emerald-950",
-  mage: "from-blue-900 to-blue-950",
-  tank: "from-amber-900 to-amber-950",
-};
-
 const STEP_DURATION_MS = 1200;
 
 /* ────────────────── FloatingNumber ────────────────── */
@@ -137,50 +101,8 @@ const FloatingNumber = ({ data }: { data: FloatingNumberData }) => {
   );
 };
 
-/* ────────────────── HP Bar ────────────────── */
 
-type HpBarProps = {
-  current: number;
-  max: number;
-};
-
-const HpBar = ({ current, max }: HpBarProps) => {
-  const clamped = Math.max(0, Math.min(max, current));
-  const pct = max > 0 ? Math.max(0, Math.min(100, (clamped / max) * 100)) : 0;
-  const barColor =
-    pct > 60
-      ? "from-green-600 to-green-500"
-      : pct > 30
-        ? "from-orange-600 to-orange-500"
-        : "from-red-700 to-red-500";
-
-  return (
-    <div className="w-full">
-      <div className="relative h-6 w-full overflow-hidden rounded-sm border border-slate-600 bg-slate-900">
-        <div
-          className={`absolute inset-y-0 left-0 bg-gradient-to-r ${barColor} transition-all duration-500 ease-out`}
-          style={{ width: `${pct}%` }}
-        />
-        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-          {clamped.toLocaleString()} / {max.toLocaleString()}
-        </span>
-      </div>
-    </div>
-  );
-};
-
-/* ────────────────── Stat Row ────────────────── */
-
-type StatRowProps = { label: string; value: number };
-
-const StatRow = ({ label, value }: StatRowProps) => (
-  <div className="flex items-center justify-between text-xs">
-    <span className="text-slate-400">{label}</span>
-    <span className="font-bold text-white tabular-nums">{value}</span>
-  </div>
-);
-
-/* ────────────────── Fighter Card ────────────────── */
+/* ────────────────── Fighter Card (wraps HeroCard) ────────────────── */
 
 type FighterCardProps = {
   snapshot: CombatantSnapshot;
@@ -198,65 +120,26 @@ const FighterCard = memo(({
   side,
 }: FighterCardProps) => {
   const cls = snapshot.class.toLowerCase();
-  const icon = CLASS_ICON[cls] ?? "👤";
-  const gradient = CLASS_GRADIENT[cls] ?? "from-slate-800 to-slate-900";
-
-  const shakeClass = isShaking ? "animate-combat-shake" : "";
-  const dodgeClass = isDodging ? "animate-dodge-slide" : "";
 
   return (
-    <div
-      className={`flex w-full max-w-[220px] flex-col overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900/90 shadow-xl ${shakeClass} ${dodgeClass}`}
-    >
-      {/* Avatar */}
-      <div
-        className={`relative flex h-32 flex-col items-center justify-center overflow-hidden ${BOSS_IMAGES[snapshot.name] ? "bg-transparent" : `bg-gradient-to-b ${gradient}`}`}
-      >
-        {BOSS_IMAGES[snapshot.name] ? (
-          <Image
-            src={BOSS_IMAGES[snapshot.name]}
-            alt={snapshot.name}
-            width={1024}
-            height={1024}
-            className="h-full w-full object-contain"
-            sizes="220px"
-          />
-        ) : snapshot.origin && ORIGIN_IMAGE[snapshot.origin] ? (
-          <Image
-            src={ORIGIN_IMAGE[snapshot.origin]}
-            alt={snapshot.origin}
-            width={1024}
-            height={1024}
-            className="absolute left-1/2 -top-5 w-[300%] max-w-none -translate-x-1/2"
-            sizes="384px"
-          />
-        ) : (
-          <span className="text-5xl drop-shadow-lg" aria-hidden="true">
-            {icon}
-          </span>
-        )}
-        {/* Name plate */}
-        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 backdrop-blur-sm">
-          <p className="truncate text-center text-xs font-bold text-white">
-            {snapshot.name}{" "}
-            <span className="text-slate-400">Level {snapshot.level}</span>
-          </p>
-        </div>
-      </div>
-
-      {/* HP bar */}
-      <div className="px-2 pt-2">
-        <HpBar current={currentHp} max={snapshot.maxHp} />
-      </div>
-
-      {/* Stats */}
-      <div className="flex flex-col gap-1 p-2 pt-2">
-        <StatRow label="Strength" value={snapshot.baseStats.strength} />
-        <StatRow label="Dexterity" value={snapshot.baseStats.agility} />
-        <StatRow label="Intelligence" value={snapshot.baseStats.intelligence} />
-        <StatRow label="Constitution" value={snapshot.baseStats.endurance} />
-        <StatRow label="Luck" value={snapshot.baseStats.luck} />
-      </div>
+    <div className="w-full max-w-[220px]">
+      <HeroCard
+        name={snapshot.name}
+        className={cls}
+        origin={snapshot.origin}
+        level={snapshot.level}
+        imageSrc={BOSS_IMAGES[snapshot.name]}
+        hp={{ current: currentHp, max: snapshot.maxHp }}
+        stats={{
+          strength: snapshot.baseStats.strength,
+          agility: snapshot.baseStats.agility,
+          intelligence: snapshot.baseStats.intelligence,
+          endurance: snapshot.baseStats.endurance,
+          luck: snapshot.baseStats.luck,
+        }}
+        statSize="sm"
+        battle={{ isShaking, isDodging, side }}
+      />
     </div>
   );
 });

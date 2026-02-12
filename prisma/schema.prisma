@@ -77,6 +77,11 @@ model Character {
   dungeonProgress   DungeonProgress[]
   dungeonRuns       DungeonRun[]
   legendaryShards   LegendaryShards?
+  goldMineSlots    Int      @default(0) @map("gold_mine_slots")
+
+  minigameSessions  MinigameSession[]
+  trainingSessions  TrainingSession[]
+  goldMineSessions  GoldMineSession[]
 
   @@map("characters")
 }
@@ -141,6 +146,8 @@ enum ItemType {
   amulet
   belt
   relic
+  necklace
+  ring
 }
 
 enum Rarity {
@@ -183,6 +190,8 @@ enum EquippedSlot {
   amulet
   belt
   relic
+  necklace
+  ring
 }
 
 model PvpMatch {
@@ -312,4 +321,54 @@ model ConsumableInventory {
   @@unique([characterId, consumableType])
   @@index([characterId])
   @@map("consumable_inventory")
+}
+
+model MinigameSession {
+  id          String   @id @default(uuid())
+  characterId String   @map("character_id")
+  gameType    String   @map("game_type")
+  betAmount   Int      @map("bet_amount")
+  secretData  String   @map("secret_data")
+  status      String   @default("active")
+  result      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId])
+  @@index([characterId, status])
+  @@map("minigame_sessions")
+}
+
+model TrainingSession {
+  id           String   @id @default(uuid())
+  characterId  String   @map("character_id")
+  xpAwarded    Int      @map("xp_awarded")
+  won          Boolean
+  turns        Int
+  opponentType String   @map("opponent_type")
+  playedAt     DateTime @default(now()) @map("played_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId, playedAt])
+  @@map("training_sessions")
+}
+
+model GoldMineSession {
+  id          String   @id @default(uuid())
+  characterId String   @map("character_id")
+  slotIndex   Int      @map("slot_index")
+  startedAt   DateTime @default(now()) @map("started_at")
+  endsAt      DateTime @map("ends_at")
+  collected   Boolean  @default(false)
+  reward      Int
+  boosted     Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId])
+  @@index([characterId, collected])
+  @@map("gold_mine_sessions")
 }

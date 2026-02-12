@@ -1,10 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatResultModal from "@/app/components/CombatResultModal";
 import PageLoader from "@/app/components/PageLoader";
+import HeroCard from "@/app/components/HeroCard";
 
 /* ────────────────── Types ────────────────── */
 
@@ -58,6 +60,12 @@ type CombatantSnapshot = {
   };
 };
 
+type TrainingRewards = {
+  xp: number;
+  remaining: number;
+  leveledUp: boolean;
+};
+
 type CombatResult = {
   winnerId: string | null;
   loserId: string | null;
@@ -66,6 +74,13 @@ type CombatResult = {
   log: CombatLogEntry[];
   playerSnapshot: CombatantSnapshot;
   enemySnapshot: CombatantSnapshot;
+  rewards: TrainingRewards;
+};
+
+type TrainingStatus = {
+  used: number;
+  remaining: number;
+  max: number;
 };
 
 /* ────────────────── Preset cards data ────────────────── */
@@ -74,88 +89,54 @@ type PresetCard = {
   id: string;
   label: string;
   icon: string;
-  gradient: string;
-  border: string;
-  glow: string;
-  stats: { label: string; value: number }[];
-  rating: number;
+  description: string;
+  /** Weight applied to player VIT when computing dummy HP */
+  vitW: number;
 };
 
 const PRESETS: PresetCard[] = [
   {
     id: "warrior",
-    label: "Warrior",
+    label: "Warrior Dummy",
     icon: "⚔️",
-    gradient: "from-red-900 to-red-950",
-    border: "border-red-700/60",
-    glow: "border-red-500 shadow-red-500/30 ring-red-400/50",
-    rating: 1200,
-    stats: [
-      { label: "Strength", value: 25 },
-      { label: "Agility", value: 12 },
-      { label: "Intelligence", value: 8 },
-      { label: "Vitality", value: 20 },
-      { label: "Luck", value: 10 },
-    ],
+    description: "High STR, moderate VIT. Hits hard but predictable.",
+    vitW: 1.0,
   },
   {
     id: "rogue",
-    label: "Rogue",
+    label: "Rogue Dummy",
     icon: "🗡️",
-    gradient: "from-emerald-900 to-emerald-950",
-    border: "border-emerald-700/60",
-    glow: "border-emerald-500 shadow-emerald-500/30 ring-emerald-400/50",
-    rating: 1150,
-    stats: [
-      { label: "Strength", value: 15 },
-      { label: "Agility", value: 28 },
-      { label: "Intelligence", value: 10 },
-      { label: "Vitality", value: 12 },
-      { label: "Luck", value: 18 },
-    ],
+    description: "High AGI & LCK. Fast and evasive, but fragile.",
+    vitW: 0.6,
   },
   {
     id: "mage",
-    label: "Mage",
+    label: "Mage Dummy",
     icon: "🔮",
-    gradient: "from-blue-900 to-blue-950",
-    border: "border-blue-700/60",
-    glow: "border-blue-500 shadow-blue-500/30 ring-blue-400/50",
-    rating: 1100,
-    stats: [
-      { label: "Strength", value: 8 },
-      { label: "Agility", value: 14 },
-      { label: "Intelligence", value: 30 },
-      { label: "Vitality", value: 10 },
-      { label: "Luck", value: 12 },
-    ],
+    description: "High INT & WIS. Devastating spells, low HP.",
+    vitW: 0.7,
   },
   {
     id: "tank",
-    label: "Tank",
+    label: "Tank Dummy",
     icon: "🛡️",
-    gradient: "from-amber-900 to-amber-950",
-    border: "border-amber-700/60",
-    glow: "border-amber-500 shadow-amber-500/30 ring-amber-400/50",
-    rating: 1050,
-    stats: [
-      { label: "Strength", value: 18 },
-      { label: "Agility", value: 8 },
-      { label: "Intelligence", value: 10 },
-      { label: "Vitality", value: 30 },
-      { label: "Luck", value: 8 },
-    ],
+    description: "High VIT & END. Extremely tanky but slow.",
+    vitW: 1.3,
   },
 ];
 
-/* ────────────────── Stat row ────────────────── */
+/* ── Dummy stat helpers (mirrors server logic) ── */
+const DUMMY_STAT_MULT = 0.6;
+const DUMMY_LEVEL_OFFSET = -3;
+const HP_PER_VIT = 10;
 
-const StatRow = ({ label, value }: { label: string; value: number }) => (
-  <div className="flex items-center justify-between text-xs">
-    <span className="text-slate-400">{label}</span>
-    <span className="font-bold text-white">{value}</span>
-  </div>
-);
+const getDummyLevel = (playerLevel: number) =>
+  Math.max(1, playerLevel + DUMMY_LEVEL_OFFSET);
+
+const getDummyHp = (playerVitality: number, vitW: number) => {
+  const vit = Math.max(5, Math.floor(playerVitality * DUMMY_STAT_MULT * vitW));
+  return Math.max(100, vit * HP_PER_VIT);
+};
 
 /* ────────────────── Screen states ────────────────── */
 
@@ -175,15 +156,22 @@ function CombatContent() {
   const [fighting, setFighting] = useState(false);
   const [screen, setScreen] = useState<ScreenState>({ kind: "select" });
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<TrainingStatus | null>(null);
 
+  /* ── Load character + training status ── */
   useEffect(() => {
     if (!characterId) return;
     const controller = new AbortController();
+
     const load = async () => {
       try {
-        const res = await fetch(`/api/characters/${characterId}`, { signal: controller.signal });
-        if (!res.ok) throw new Error("Failed to load character");
-        setCharacter(await res.json());
+        const [charRes, statusRes] = await Promise.all([
+          fetch(`/api/characters/${characterId}`, { signal: controller.signal }),
+          fetch(`/api/combat/status?characterId=${characterId}`, { signal: controller.signal }),
+        ]);
+        if (!charRes.ok) throw new Error("Failed to load character");
+        setCharacter(await charRes.json());
+        if (statusRes.ok) setStatus(await statusRes.json());
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") return;
         setError(e instanceof Error ? e.message : "Character loading error");
@@ -195,7 +183,18 @@ function CombatContent() {
     return () => controller.abort();
   }, [characterId]);
 
-  const handleSimulate = async () => {
+  /* ── Refresh status helper ── */
+  const refreshStatus = useCallback(async () => {
+    if (!characterId) return;
+    try {
+      const res = await fetch(`/api/combat/status?characterId=${characterId}`);
+      if (res.ok) setStatus(await res.json());
+    } catch {
+      /* silent */
+    }
+  }, [characterId]);
+
+  const handleTrain = async () => {
     if (!character) return;
     setError(null);
     setFighting(true);
@@ -204,25 +203,14 @@ function CombatContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          player: {
-            id: character.id,
-            name: character.characterName,
-            class: character.class,
-            level: character.level,
-            strength: character.strength,
-            agility: character.agility,
-            vitality: character.vitality,
-            endurance: character.endurance,
-            intelligence: character.intelligence,
-            wisdom: character.wisdom,
-            luck: character.luck,
-            charisma: character.charisma,
-            armor: character.armor,
-          },
+          characterId: character.id,
           opponentPreset: preset,
         }),
       });
-      if (!res.ok) throw new Error("Battle error");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Battle error" }));
+        throw new Error(err.error ?? "Battle error");
+      }
       const data = (await res.json()) as CombatResult;
       setScreen({ kind: "battle", result: data });
     } catch (e) {
@@ -240,10 +228,18 @@ function CombatContent() {
 
   const handleCloseResult = () => {
     setScreen({ kind: "select" });
+    refreshStatus();
+    // Reload character to reflect XP/level changes
+    if (characterId) {
+      fetch(`/api/characters/${characterId}`)
+        .then((r) => r.json())
+        .then(setCharacter)
+        .catch(() => {});
+    }
   };
 
   if (loading || !character) {
-    return <PageLoader emoji="⚔️" text="Loading combat…" />;
+    return <PageLoader emoji="🎯" text="Loading Training Arena…" />;
   }
 
   /* ── Battle screen ── */
@@ -259,24 +255,64 @@ function CombatContent() {
 
   /* ── Result modal overlay on select screen ── */
   const showResult = screen.kind === "result";
-
   const selected = PRESETS.find((p) => p.id === preset)!;
+  const limitReached = status !== null && status.remaining <= 0;
 
   return (
     <div className="flex min-h-full flex-col p-4 lg:p-6">
       {/* Header */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold uppercase tracking-wider text-amber-400">
-          Test Battle
+          Training Arena
         </h1>
-        <span className="rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300">
-          <strong className="text-white">{character.characterName}</strong>{" "}
-          <span className="text-amber-400">(Lv. {character.level})</span>
-        </span>
+
+        <div className="flex items-center gap-2">
+          {status && (
+            <>
+              <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5">
+                <span className="text-xs text-slate-400">Today:</span>
+                <div className="flex gap-1">
+                  {Array.from({ length: status.max }, (_, i) => (
+                    <div
+                      key={i}
+                      className={`h-2 w-2 rounded-full transition-colors ${
+                        i < status.used
+                          ? "bg-amber-500"
+                          : "bg-slate-700"
+                      }`}
+                      aria-label={i < status.used ? "Used" : "Available"}
+                    />
+                  ))}
+                </div>
+                <span
+                  className={`text-xs font-bold tabular-nums ${
+                    limitReached ? "text-red-400" : "text-amber-400"
+                  }`}
+                >
+                  {status.remaining}/{status.max}
+                </span>
+              </div>
+
+              <div className="flex items-center rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-400">
+                Win: <span className="ml-1 font-semibold text-blue-400">{10 + character.level * 2} XP</span>
+                <span className="mx-1">·</span>Defeat: <span className="ml-1 text-slate-500">0 XP</span>
+              </div>
+            </>
+          )}
+
+          <Link
+            href="/hub"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+            aria-label="Back to Hub"
+            tabIndex={0}
+          >
+            ✕
+          </Link>
+        </div>
       </div>
 
-      <p className="mb-6 text-xs text-slate-500">
-        Choose an opponent for a practice fight. No stamina cost.
+      <p className="mb-4 text-xs text-slate-500">
+        Fight training dummies to gain XP. No stamina cost, no rating, no loot.
       </p>
 
       {/* Choose an opponent */}
@@ -287,60 +323,26 @@ function CombatContent() {
       {/* Opponent cards grid */}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {PRESETS.map((card) => {
-          const isSelected = preset === card.id;
+          const dummyLvl = getDummyLevel(character.level);
+          const dummyHp = getDummyHp(character.vitality, card.vitW);
 
           return (
-            <button
+            <HeroCard
               key={card.id}
-              type="button"
+              name={card.label}
+              className={card.id}
+              icon={card.icon}
+              level={dummyLvl}
+              hp={{ current: dummyHp, max: dummyHp }}
+              selected={preset === card.id}
               onClick={() => setPreset(card.id)}
-              aria-label={`Select ${card.label}`}
-              aria-pressed={isSelected}
-              tabIndex={0}
-              className={`
-                group relative flex flex-col overflow-hidden rounded-2xl border-2 transition-all duration-300
-                ${
-                  isSelected
-                    ? `${card.glow} shadow-lg ring-2 scale-[1.03]`
-                    : `${card.border} hover:border-slate-500`
-                }
-                bg-slate-900/80
-              `}
+              ariaLabel={`Select ${card.label}`}
+              description={card.description}
             >
-              {/* Avatar area */}
-              <div
-                className={`relative flex h-28 flex-col items-center justify-center bg-gradient-to-b ${card.gradient}`}
-              >
-                <span className="text-5xl drop-shadow-lg">{card.icon}</span>
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-3 py-1.5 backdrop-blur-sm">
-                  <p className="truncate text-center text-xs font-bold text-white">
-                    {card.label}{" "}
-                    <span className="text-slate-400">
-                      (Lv. {character.level})
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Rating bar */}
-              <div className="flex justify-center border-b border-slate-800 bg-red-900/40 py-2">
-                <span className="text-sm font-extrabold tabular-nums text-red-400">
-                  {card.rating.toLocaleString()}
-                </span>
-              </div>
-
-              {/* Stats */}
-              <div className="flex flex-1 flex-col gap-1.5 p-3">
-                {card.stats.map((s) => (
-                  <StatRow key={s.label} label={s.label} value={s.value} />
-                ))}
-              </div>
-
-              {/* Bottom class badge */}
-              <div className="border-t border-slate-800 px-3 py-2 text-center text-[10px] uppercase tracking-widest text-slate-500">
-                {card.label}
-              </div>
-            </button>
+              <p className="pb-1 text-center text-[10px] text-slate-600">
+                Stats scale to your level
+              </p>
+            </HeroCard>
           );
         })}
       </div>
@@ -365,14 +367,20 @@ function CombatContent() {
       {/* Action button */}
       <button
         type="button"
-        onClick={handleSimulate}
-        disabled={fighting}
-        aria-label="Start Battle"
-        className="w-full rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-amber-900/40 transition hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
+        onClick={handleTrain}
+        disabled={fighting || limitReached}
+        aria-label={limitReached ? "Daily limit reached" : "Start Training"}
+        className={`rounded-2xl px-6 py-4 text-sm font-bold text-white shadow-lg transition ${
+          limitReached
+            ? "cursor-not-allowed bg-slate-700 text-slate-400 shadow-none"
+            : "bg-gradient-to-r from-amber-600 to-orange-600 shadow-amber-900/40 hover:from-amber-500 hover:to-orange-500"
+        } disabled:opacity-50`}
       >
-        {fighting
-          ? "Fighting…"
-          : `${selected.icon} Fight ${selected.label}`}
+        {limitReached
+          ? "Daily Limit Reached — Come Back Tomorrow"
+          : fighting
+            ? "Fighting…"
+            : `${selected.icon} Train vs ${selected.label}`}
       </button>
 
       {/* Result modal */}
@@ -388,6 +396,7 @@ function CombatContent() {
                 : "Defeat"
           }
           turns={screen.result.turns}
+          trainingRewards={screen.result.rewards}
         />
       )}
     </div>
@@ -398,7 +407,7 @@ function CombatContent() {
 
 export default function CombatPage() {
   return (
-    <Suspense fallback={<PageLoader emoji="⚔️" text="Loading combat…" />}>
+    <Suspense fallback={<PageLoader emoji="🎯" text="Loading Training Arena…" />}>
       <CombatContent />
     </Suspense>
   );

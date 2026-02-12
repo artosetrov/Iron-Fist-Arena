@@ -90,7 +90,7 @@ const ORIGIN_IMAGE: Record<string, string> = {
   dogfolk: "/images/generated/origin-dogfolk.png",
 };
 
-const SLOT_ORDER = ["helmet", "weapon", "weapon_offhand", "chest", "gloves", "legs", "boots", "accessory", "amulet", "belt", "relic"] as const;
+const SLOT_ORDER = ["helmet", "weapon", "weapon_offhand", "chest", "gloves", "legs", "boots", "necklace", "ring", "accessory", "amulet", "belt", "relic"] as const;
 type SlotKey = (typeof SLOT_ORDER)[number];
 
 const SLOT_LABELS: Record<SlotKey, string> = {
@@ -101,6 +101,8 @@ const SLOT_LABELS: Record<SlotKey, string> = {
   gloves: "Gloves",
   legs: "Pants",
   boots: "Boots",
+  necklace: "Necklace",
+  ring: "Ring",
   accessory: "Accessory",
   amulet: "Amulet",
   belt: "Belt",
@@ -115,8 +117,10 @@ const SLOT_ICONS: Record<SlotKey, string> = {
   gloves: "🧤",
   legs: "👖",
   boots: "👢",
+  necklace: "📿",
+  ring: "💍",
   accessory: "💍",
-  amulet: "📿",
+  amulet: "🧿",
   belt: "🪢",
   relic: "🔮",
 };
@@ -200,16 +204,24 @@ const statLabel: Record<string, string> = {
 
 type TooltipProps = {
   inv: InventoryItem;
+  /** Currently equipped item in the same slot — for stat comparison */
+  equippedItem?: InventoryItem | null;
   style?: React.CSSProperties;
 };
 
-const ItemTooltip = ({ inv, style }: TooltipProps) => {
+const ItemTooltip = ({ inv, equippedItem, style }: TooltipProps) => {
   const stats = getItemStats(inv);
+  const equippedStats = equippedItem ? getItemStats(equippedItem) : null;
   const rarity = inv.item.rarity;
+
+  /* Collect all stat keys from both items for comparison */
+  const allStatKeys = equippedStats
+    ? Array.from(new Set([...Object.keys(stats), ...Object.keys(equippedStats)]))
+    : Object.keys(stats);
 
   return (
     <div
-      className={`pointer-events-none absolute z-50 w-64 rounded-lg border-2 p-3 shadow-2xl ${RARITY_BORDER[rarity] ?? "border-slate-600"} bg-slate-900/95 text-sm`}
+      className={`pointer-events-none absolute z-50 w-72 rounded-lg border-2 p-3 shadow-2xl ${RARITY_BORDER[rarity] ?? "border-slate-600"} bg-slate-900/95 text-sm`}
       style={style}
     >
       <p className={`font-bold ${RARITY_TEXT[rarity] ?? "text-white"}`}>
@@ -220,13 +232,24 @@ const ItemTooltip = ({ inv, style }: TooltipProps) => {
         {RARITY_LABEL[rarity] ?? rarity} · {SLOT_LABELS[inv.item.itemType as SlotKey] ?? inv.item.itemType} · Lv. {inv.item.itemLevel}
       </p>
 
-      {Object.keys(stats).length > 0 && (
+      {allStatKeys.length > 0 && (
         <div className="mt-2 space-y-0.5">
-          {Object.entries(stats).map(([k, v]) => (
-            <p key={k} className="text-green-400">
-              +{v} {statLabel[k] ?? k}
-            </p>
-          ))}
+          {allStatKeys.map((k) => {
+            const val = stats[k] ?? 0;
+            const eqVal = equippedStats?.[k] ?? 0;
+            const diff = equippedStats ? val - eqVal : 0;
+
+            return (
+              <p key={k} className="flex items-center gap-1 text-green-400">
+                <span>+{val} {statLabel[k] ?? k}</span>
+                {equippedStats && diff !== 0 && (
+                  <span className={`text-xs font-semibold ${diff > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                    ({diff > 0 ? "▲" : "▼"}{Math.abs(diff)})
+                  </span>
+                )}
+              </p>
+            );
+          })}
         </div>
       )}
 
@@ -245,6 +268,15 @@ const ItemTooltip = ({ inv, style }: TooltipProps) => {
       <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
         <span>Durability: {inv.durability}/{inv.maxDurability}</span>
       </div>
+
+      {/* Equipped item comparison header */}
+      {equippedItem && (
+        <div className="mt-2 border-t border-slate-700 pt-2">
+          <p className="text-[10px] text-slate-500">
+            Compared to: <span className={RARITY_TEXT[equippedItem.item.rarity] ?? "text-white"}>{equippedItem.item.itemName}{equippedItem.upgradeLevel > 0 ? ` +${equippedItem.upgradeLevel}` : ""}</span>
+          </p>
+        </div>
+      )}
     </div>
   );
 };
@@ -768,6 +800,7 @@ function InventoryContent() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [characterOrigin, setCharacterOrigin] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"attributes" | "description" | "info">("attributes");
   const [hoveredItem, setHoveredItem] = useState<{ inv: InventoryItem; x: number; y: number } | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -793,12 +826,36 @@ function InventoryContent() {
     }
   }, [characterId]);
 
+  /* Fetch character origin for the preloader avatar */
+  useEffect(() => {
+    if (!characterId) return;
+    const controller = new AbortController();
+    fetch(`/api/characters/${characterId}`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((char) => {
+        if (char?.origin) setCharacterOrigin(char.origin);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [characterId]);
+
   useEffect(() => {
     if (!characterId) return;
     const controller = new AbortController();
     load(controller.signal).finally(() => setLoading(false));
     return () => controller.abort();
   }, [characterId, load]);
+
+  /* Auto-retry on error after 3 seconds */
+  useEffect(() => {
+    if (loading || data || !error || !characterId) return;
+    const timer = setTimeout(() => {
+      setLoading(true);
+      const controller = new AbortController();
+      load(controller.signal).finally(() => setLoading(false));
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [loading, data, error, characterId, load]);
 
   const handleEquip = useCallback(async (inventoryId: string, itemType: string) => {
     try {
@@ -928,14 +985,39 @@ function InventoryContent() {
   /* Unequipped items for bag grid */
   const bagItems = useMemo(() => data?.unequipped ?? [], [data]);
 
-  if (loading || !characterId) {
-    return <PageLoader emoji="🎒" text="Loading inventory…" />;
-  }
+  if (loading || !characterId || !data) {
+    const originImg = characterOrigin ? ORIGIN_IMAGE[characterOrigin] : null;
+    const loaderText = !characterId ? "Loading…" : error ? "Retrying…" : "Loading inventory…";
 
-  if (!data) {
     return (
       <div className="flex min-h-full items-center justify-center p-8">
-        <p className="text-red-400">{error ?? "Failed to load data"}</p>
+        <div className="text-center">
+          <div className="relative mx-auto mb-4 h-24 w-24">
+            {/* Outer spinner ring */}
+            <div className="absolute inset-0 animate-spin rounded-full border-2 border-slate-700 border-t-indigo-400" />
+            {/* Inner spinner ring */}
+            <div
+              className="absolute inset-1.5 animate-spin rounded-full border-2 border-slate-700 border-t-purple-400"
+              style={{ animationDirection: "reverse", animationDuration: "1.5s" }}
+            />
+            {/* Avatar or fallback emoji */}
+            <div className="absolute inset-3 overflow-hidden rounded-full border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900">
+              {originImg ? (
+                <Image
+                  src={originImg}
+                  alt="Character"
+                  width={256}
+                  height={256}
+                  className="absolute left-1/2 -top-1 w-[280%] max-w-none -translate-x-1/2"
+                  sizes="72px"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-2xl">🎒</span>
+              )}
+            </div>
+          </div>
+          <p className="text-sm text-slate-400">{loaderText}</p>
+        </div>
       </div>
     );
   }
@@ -1018,9 +1100,11 @@ function InventoryContent() {
                 </div>
               </div>
 
-              {/* Right column: boots, accessory, amulet, belt, relic */}
+              {/* Right column: amulet, necklace, ring, accessory, belt, boots */}
               <div className="flex flex-col items-center gap-2">
                 <EquipmentSlot slotKey="amulet" item={equippedMap.amulet} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                <EquipmentSlot slotKey="necklace" item={equippedMap.necklace} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                <EquipmentSlot slotKey="ring" item={equippedMap.ring} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="accessory" item={equippedMap.accessory} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="belt" item={equippedMap.belt} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="boots" item={equippedMap.boots} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
@@ -1113,6 +1197,12 @@ function InventoryContent() {
       {hoveredItem && !selectedItem && (
         <ItemTooltip
           inv={hoveredItem.inv}
+          equippedItem={
+            /* Compare with the currently equipped item in the same slot (only for unequipped items) */
+            !hoveredItem.inv.isEquipped
+              ? equippedMap[hoveredItem.inv.item.itemType as SlotKey] ?? null
+              : null
+          }
           style={{
             position: "fixed",
             left: Math.min(hoveredItem.x, window.innerWidth - 280),

@@ -11,7 +11,7 @@ import {
 
 /* ────────────────── Constants ────────────────── */
 
-type ItemType = "weapon" | "helmet" | "chest" | "gloves" | "legs" | "boots" | "accessory";
+type ItemType = "weapon" | "helmet" | "chest" | "gloves" | "legs" | "boots" | "accessory" | "amulet" | "belt" | "relic" | "necklace" | "ring";
 type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 
 type Item = {
@@ -98,6 +98,11 @@ const ITEM_TYPE_CONFIG: Record<ItemType, { label: string; icon: string }> = {
   legs: { label: "Leggings", icon: "👖" },
   boots: { label: "Boots", icon: "🥾" },
   accessory: { label: "Accessory", icon: "💍" },
+  amulet: { label: "Amulet", icon: "🧿" },
+  belt: { label: "Belt", icon: "🪢" },
+  relic: { label: "Relic", icon: "🔮" },
+  necklace: { label: "Necklace", icon: "📿" },
+  ring: { label: "Ring", icon: "💍" },
 };
 
 const STAT_LABELS: Record<string, { label: string; icon: string }> = {
@@ -123,6 +128,7 @@ const STAT_LABELS: Record<string, { label: string; icon: string }> = {
   HP: { label: "Health", icon: "❤️" },
   CRIT: { label: "Crit", icon: "💥" },
   SPEED: { label: "Speed", icon: "⚡" },
+  ARMOR: { label: "Armor", icon: "🛡️" },
 };
 
 const SET_DISPLAY_NAMES: Record<string, string> = {
@@ -141,6 +147,7 @@ const CLASS_LABELS: Record<string, string> = {
 
 type Tab = "all" | ItemType | "potions";
 
+
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "all", label: "All", icon: "🏪" },
   { key: "weapon", label: "Weapons", icon: "⚔️" },
@@ -149,6 +156,11 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "gloves", label: "Gloves", icon: "🧤" },
   { key: "legs", label: "Leggings", icon: "👖" },
   { key: "boots", label: "Boots", icon: "🥾" },
+  { key: "necklace", label: "Necklaces", icon: "📿" },
+  { key: "ring", label: "Rings", icon: "💍" },
+  { key: "amulet", label: "Amulets", icon: "🧿" },
+  { key: "belt", label: "Belts", icon: "🪢" },
+  { key: "relic", label: "Relics", icon: "🔮" },
   { key: "accessory", label: "Accessories", icon: "💍" },
   { key: "potions", label: "Potions", icon: "🧪" },
 ];

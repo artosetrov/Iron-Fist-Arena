@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
+import { CLASS_ICON, ORIGIN_IMAGE, BOSS_IMAGES } from "@/app/components/HeroCard";
 
 /* ────────────────── Types ────────────────── */
 
@@ -22,37 +23,6 @@ type CombatLootScreenProps = {
   enemy: EnemyInfo;
   rewards: LootReward;
   onContinue: () => void;
-};
-
-/* ────────────────── Constants ────────────────── */
-
-const CLASS_ICON: Record<string, string> = {
-  warrior: "⚔️",
-  rogue: "🗡️",
-  mage: "🔮",
-  tank: "🛡️",
-};
-
-const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/generated/origin-human.png",
-  orc: "/images/generated/origin-orc.png",
-  skeleton: "/images/generated/origin-skeleton.png",
-  demon: "/images/generated/origin-demon.png",
-  dogfolk: "/images/generated/origin-dogfolk.png",
-};
-
-/** Boss-specific image paths (override emoji avatars when present) */
-const BOSS_IMAGES: Record<string, string> = {
-  "Straw Dummy": "/images/generated/boss-straw-dummy.png",
-  "Rusty Automaton": "/images/generated/boss-rusty-automaton.png",
-  "Barrel Golem": "/images/generated/boss-barrel-golem.png",
-  "Plank Knight": "/images/generated/boss-plank-knight.png",
-  "Flying Francis": "/images/generated/boss-flying-francis.png",
-  "Scarecrow Mage": "/images/generated/boss-scarecrow-mage.png",
-  "Mud Troll": "/images/generated/boss-mud-troll.png",
-  "Possessed Mannequin": "/images/generated/boss-possessed-mannequin.png",
-  "Iron Dummy": "/images/generated/boss-iron-dummy.png",
-  "Drill Sergeant Grizzle": "/images/generated/boss-drill-sergeant-grizzle.png",
 };
 
 const RARITY_COLOR: Record<string, string> = {

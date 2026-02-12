@@ -12,6 +12,15 @@ body {
   background: rgb(var(--background));
 }
 
+/* ── Scrollbar hide utility ── */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Combat animations ── */
 @keyframes float-damage {
   0% {

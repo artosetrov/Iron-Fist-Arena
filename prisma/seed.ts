@@ -43,7 +43,7 @@ async function seedGenericItems() {
 type CatalogEntry = {
   catalogId: string;
   name: string;
-  slot: "helmet" | "gloves" | "chest" | "boots" | "weapon";
+  slot: "helmet" | "gloves" | "chest" | "boots" | "weapon" | "amulet" | "belt" | "relic" | "legs" | "necklace" | "ring";
   rarity: "common" | "rare" | "epic" | "legendary";
   baseStats: Record<string, number>;
   classRestriction?: "warrior" | "rogue" | "mage" | "tank";

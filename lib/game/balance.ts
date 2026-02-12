@@ -129,6 +129,7 @@ export const STAMINA_COST = {
   DUNGEON_HARD: 25,
   BOSS_RAID: 40,
   SPECIAL_EVENT: 30,
+  DUNGEON_RUSH: 3,
 } as const;
 
 export type StaminaActivity = keyof typeof STAMINA_COST;
@@ -419,3 +420,52 @@ export const QUEST_POOL = [
 ] as const;
 
 export const DAILY_QUEST_COUNT = 3;
+
+/* ──────────────────────────────────────────────────────────────────────
+   TRAINING ARENA
+   ────────────────────────────────────────────────────────────────────── */
+
+/** Max training sessions per day */
+export const TRAINING_MAX_DAILY = 10;
+/** XP formula: TRAINING_XP_BASE + playerLevel * TRAINING_XP_PER_LEVEL */
+export const TRAINING_XP_BASE = 10;
+export const TRAINING_XP_PER_LEVEL = 2;
+/** Dummy level = max(1, playerLevel + TRAINING_DUMMY_LEVEL_OFFSET) */
+export const TRAINING_DUMMY_LEVEL_OFFSET = -3;
+/** Dummy stats = playerStats * TRAINING_DUMMY_STAT_MULT */
+export const TRAINING_DUMMY_STAT_MULT = 0.6;
+
+/* ──────────────────────────────────────────────────────────────────────
+   DUNGEON RUSH (PvE mini-run)
+   ────────────────────────────────────────────────────────────────────── */
+
+/** Total waves in a single Dungeon Rush run */
+export const RUSH_WAVES = 5;
+/** XP per wave = RUSH_XP_PER_WAVE × wave (wave 1..5) */
+export const RUSH_XP_PER_WAVE = 20;
+/** Gold per wave = RUSH_GOLD_PER_WAVE × wave (wave 1..5) */
+export const RUSH_GOLD_PER_WAVE = 40;
+/** Bonus gold for clearing all 5 waves */
+export const RUSH_FULL_CLEAR_BONUS = 200;
+/** Mob stat multiplier (fraction of dungeon boss base) — mobs are weaker */
+export const RUSH_MOB_STAT_MULT = 0.55;
+
+/* ──────────────────────────────────────────────────────────────────────
+   GOLD MINE (Idle mini-game)
+   ────────────────────────────────────────────────────────────────────── */
+
+/** Mining duration: 30 min base, 15 min for VIP */
+export const GOLD_MINE_DURATION_MS = 30 * 60 * 1000;
+export const GOLD_MINE_VIP_DURATION_MS = 15 * 60 * 1000;
+
+/** Reward formula: BASE + Level × MULT */
+export const GOLD_MINE_BASE_REWARD = 100;
+export const GOLD_MINE_LEVEL_MULT = 3;
+
+/** Slots: 1 free, up to 3 total (purchasable with gems) */
+export const GOLD_MINE_FREE_SLOTS = 1;
+export const GOLD_MINE_MAX_SLOTS = 3;
+export const GOLD_MINE_SLOT_COST_GEMS = 100;
+
+/** Instant-complete boost cost in gems */
+export const GOLD_MINE_BOOST_COST_GEMS = 50;

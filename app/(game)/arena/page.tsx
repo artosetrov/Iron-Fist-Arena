@@ -6,6 +6,7 @@ import Image from "next/image";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatResultModal from "@/app/components/CombatResultModal";
 import PageLoader from "@/app/components/PageLoader";
+import HeroCard from "@/app/components/HeroCard";
 
 /* ────────────────── Types ────────────────── */
 
@@ -95,6 +96,8 @@ type MatchResult = {
 /* ────────────────── Constants ────────────────── */
 
 const STAMINA_COST = 10;
+const HP_PER_VIT = 10;
+const getMaxHp = (vit: number) => Math.max(100, vit * HP_PER_VIT);
 
 const CLASS_LABEL: Record<string, string> = {
   warrior: "Warrior",
@@ -102,45 +105,6 @@ const CLASS_LABEL: Record<string, string> = {
   mage: "Mage",
   tank: "Tank",
 };
-
-const CLASS_GRADIENT: Record<string, string> = {
-  warrior: "from-red-900 to-red-950",
-  rogue: "from-emerald-900 to-emerald-950",
-  mage: "from-blue-900 to-blue-950",
-  tank: "from-amber-900 to-amber-950",
-};
-
-const CLASS_BORDER: Record<string, string> = {
-  warrior: "border-red-700/60",
-  rogue: "border-emerald-700/60",
-  mage: "border-blue-700/60",
-  tank: "border-amber-700/60",
-};
-
-const CLASS_ICON: Record<string, string> = {
-  warrior: "⚔️",
-  rogue: "🗡️",
-  mage: "🔮",
-  tank: "🛡️",
-};
-
-const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/generated/origin-human.png",
-  orc: "/images/generated/origin-orc.png",
-  skeleton: "/images/generated/origin-skeleton.png",
-  demon: "/images/generated/origin-demon.png",
-  dogfolk: "/images/generated/origin-dogfolk.png",
-};
-
-/* ────────────────── Stat row ────────────────── */
-
-type StatRowProps = { label: string; value: number };
-const StatRow = ({ label, value }: StatRowProps) => (
-  <div className="flex items-center justify-between text-xs">
-    <span className="text-slate-400">{label}</span>
-    <span className="font-bold text-white">{value}</span>
-  </div>
-);
 
 /* ────────────────── Screen states ────────────────── */
 
@@ -290,7 +254,20 @@ function ArenaContent() {
   const canAfford = character.currentStamina >= STAMINA_COST;
 
   return (
-    <div className="flex min-h-full flex-col p-4 lg:p-6">
+    <div className="relative flex min-h-full flex-col p-4 lg:p-6">
+      {/* Arena background */}
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <Image
+          src="/images/generated/arena-background.png"
+          alt=""
+          fill
+          className="object-cover opacity-20"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
+      </div>
+      {/* Content wrapper above background */}
+      <div className="relative z-10 flex min-h-full flex-1 flex-col">
       {/* Header */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold uppercase tracking-wider text-amber-400">
@@ -353,75 +330,29 @@ function ArenaContent() {
       ) : (
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {opponents.map((opp) => {
-            const isSelected = selectedOpponent === opp.id;
             const cls = opp.class.toLowerCase();
+            const maxHp = getMaxHp(opp.vitality);
 
             return (
-              <button
+              <HeroCard
                 key={opp.id}
-                type="button"
+                name={opp.characterName}
+                className={cls}
+                origin={opp.origin}
+                level={opp.level}
+                rating={opp.pvpRating}
+                hp={{ current: maxHp, max: maxHp }}
+                selected={selectedOpponent === opp.id}
                 onClick={() => setSelectedOpponent(opp.id)}
-                aria-label={`Select ${opp.characterName}`}
-                tabIndex={0}
-                className={`
-                  group relative flex flex-col overflow-hidden rounded-2xl border-2 transition-all duration-300
-                  ${
-                    isSelected
-                      ? "border-amber-500 shadow-lg shadow-amber-500/30 ring-2 ring-amber-400/50 scale-[1.02]"
-                      : `${CLASS_BORDER[cls] ?? "border-slate-700/60"} hover:border-slate-500`
-                  }
-                  bg-slate-900/80
-                `}
-              >
-                {/* Avatar area */}
-                <div
-                  className={`relative flex h-32 flex-col items-center justify-center overflow-hidden bg-gradient-to-b ${CLASS_GRADIENT[cls] ?? "from-slate-800 to-slate-900"}`}
-                >
-                  {opp.origin && ORIGIN_IMAGE[opp.origin] ? (
-                    <Image
-                      src={ORIGIN_IMAGE[opp.origin]}
-                      alt={opp.origin}
-                      width={1024}
-                      height={1024}
-                      className="absolute left-1/2 -top-5 w-[300%] max-w-none -translate-x-1/2"
-                      sizes="384px"
-                    />
-                  ) : (
-                    <span className="text-5xl drop-shadow-lg">
-                      {CLASS_ICON[cls] ?? "👤"}
-                    </span>
-                  )}
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-3 py-1.5 backdrop-blur-sm">
-                    <p className="truncate text-center text-xs font-bold text-white">
-                      {opp.characterName}{" "}
-                      <span className="text-amber-400">
-                        (Lv. {opp.level})
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Rating bar */}
-                <div className="flex justify-center border-b border-slate-800 bg-red-900/40 py-2">
-                  <span className="text-sm font-extrabold tabular-nums text-red-400">
-                    {opp.pvpRating.toLocaleString()}
-                  </span>
-                </div>
-
-                {/* Stats */}
-                <div className="flex flex-1 flex-col gap-1.5 p-3">
-                  <StatRow label="Strength" value={opp.strength} />
-                  <StatRow label="Agility" value={opp.agility} />
-                  <StatRow label="Intelligence" value={opp.intelligence} />
-                  <StatRow label="Vitality" value={opp.vitality} />
-                  <StatRow label="Luck" value={opp.luck} />
-                </div>
-
-                {/* Class label */}
-                <div className="border-t border-slate-800 px-3 py-2 text-center text-[10px] uppercase tracking-widest text-slate-500">
-                  {CLASS_LABEL[cls] ?? cls}
-                </div>
-              </button>
+                ariaLabel={`Select ${opp.characterName}`}
+                stats={{
+                  strength: opp.strength,
+                  agility: opp.agility,
+                  intelligence: opp.intelligence,
+                  vitality: opp.vitality,
+                  luck: opp.luck,
+                }}
+              />
             );
           })}
         </div>
@@ -484,6 +415,7 @@ function ArenaContent() {
           rewards={screen.matchResult.rewards}
         />
       )}
+      </div>{/* end content wrapper */}
     </div>
   );
 }
