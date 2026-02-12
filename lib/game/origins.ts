@@ -49,7 +49,7 @@ export const ALL_ORIGINS: CharacterOrigin[] = [
   "dogfolk",
 ];
 
-export const ORIGIN_CHANGE_COST = 500;
+export { ORIGIN_CHANGE_COST } from "./balance";
 
 /* ────────────────── Origin Definitions ────────────────── */
 

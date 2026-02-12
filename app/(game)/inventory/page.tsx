@@ -1,11 +1,13 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import PageLoader from "@/app/components/PageLoader";
 import { xpForLevel } from "@/lib/game/progression";
 import { goldCostForStatTraining } from "@/lib/game/stat-training";
+import { isWeaponTwoHanded } from "@/lib/game/item-catalog";
+import { MAX_STAT_VALUE } from "@/lib/game/balance";
 
 /* ────────────────── Types ────────────────── */
 
@@ -13,12 +15,14 @@ type BaseStats = Record<string, number>;
 
 type ItemDef = {
   id: string;
+  catalogId: string | null;
   itemName: string;
   itemType: string;
   rarity: string;
   itemLevel: number;
   baseStats: BaseStats;
   specialEffect: string | null;
+  uniquePassive: string | null;
   description: string | null;
   imageUrl: string | null;
 };
@@ -86,27 +90,35 @@ const ORIGIN_IMAGE: Record<string, string> = {
   dogfolk: "/images/generated/origin-dogfolk.png",
 };
 
-const SLOT_ORDER = ["helmet", "weapon", "chest", "gloves", "legs", "boots", "accessory"] as const;
+const SLOT_ORDER = ["helmet", "weapon", "weapon_offhand", "chest", "gloves", "legs", "boots", "accessory", "amulet", "belt", "relic"] as const;
 type SlotKey = (typeof SLOT_ORDER)[number];
 
 const SLOT_LABELS: Record<SlotKey, string> = {
   helmet: "Helmet",
-  weapon: "Weapon",
+  weapon: "Main Hand",
+  weapon_offhand: "Off Hand",
   chest: "Chestplate",
   gloves: "Gloves",
   legs: "Pants",
   boots: "Boots",
   accessory: "Accessory",
+  amulet: "Amulet",
+  belt: "Belt",
+  relic: "Relic",
 };
 
 const SLOT_ICONS: Record<SlotKey, string> = {
   helmet: "👑",
   weapon: "⚔️",
+  weapon_offhand: "🗡️",
   chest: "🛡️",
   gloves: "🧤",
   legs: "👖",
   boots: "👢",
   accessory: "💍",
+  amulet: "📿",
+  belt: "🪢",
+  relic: "🔮",
 };
 
 const RARITY_BORDER: Record<string, string> = {
@@ -222,6 +234,10 @@ const ItemTooltip = ({ inv, style }: TooltipProps) => {
         <p className="mt-2 text-xs text-yellow-300">✨ {inv.item.specialEffect}</p>
       )}
 
+      {inv.item.uniquePassive && (
+        <p className="mt-2 text-xs text-cyan-300">🔮 {inv.item.uniquePassive}</p>
+      )}
+
       {inv.item.description && (
         <p className="mt-2 text-xs italic text-slate-400">{inv.item.description}</p>
       )}
@@ -241,38 +257,49 @@ type EquipSlotProps = {
   onUnequip: (id: string) => void;
   onHoverItem: (inv: InventoryItem | null, e?: React.MouseEvent) => void;
   onSelectItem: (inv: InventoryItem | null) => void;
+  /** Visually lock the slot (e.g. offhand blocked by two-handed weapon) */
+  locked?: boolean;
+  lockReason?: string;
 };
 
-const EquipmentSlot = ({ slotKey, item, onUnequip, onHoverItem, onSelectItem }: EquipSlotProps) => {
+const EquipmentSlot = ({ slotKey, item, onUnequip, onHoverItem, onSelectItem, locked, lockReason }: EquipSlotProps) => {
   const rarity = item?.item.rarity ?? "";
 
   return (
     <button
       type="button"
       className={`group relative flex h-16 w-16 items-center justify-center rounded-lg border-2 transition-all
-        ${item ? `${RARITY_BORDER[rarity]} ${RARITY_BG[rarity]} hover:brightness-125` : "border-slate-600/50 bg-slate-800/40 hover:border-slate-500"}
+        ${locked
+          ? "border-slate-700/30 bg-slate-900/60 opacity-40 cursor-not-allowed"
+          : item
+            ? `${RARITY_BORDER[rarity]} ${RARITY_BG[rarity]} hover:brightness-125`
+            : "border-slate-600/50 bg-slate-800/40 hover:border-slate-500"
+        }
       `}
-      aria-label={`${SLOT_LABELS[slotKey]}${item ? `: ${item.item.itemName}` : " (empty)"}`}
-      tabIndex={0}
+      aria-label={locked ? `${SLOT_LABELS[slotKey]} (${lockReason ?? "locked"})` : `${SLOT_LABELS[slotKey]}${item ? `: ${item.item.itemName}` : " (empty)"}`}
+      tabIndex={locked ? -1 : 0}
+      disabled={locked}
       onClick={() => {
-        if (item) onSelectItem(item);
+        if (!locked && item) onSelectItem(item);
       }}
-      onMouseEnter={(e) => item && onHoverItem(item, e)}
+      onMouseEnter={(e) => !locked && item && onHoverItem(item, e)}
       onMouseLeave={() => onHoverItem(null)}
       onContextMenu={(e) => {
         e.preventDefault();
-        if (item) onUnequip(item.id);
+        if (!locked && item) onUnequip(item.id);
       }}
     >
-      {item ? (
+      {locked ? (
+        <span className="text-xl opacity-20">🔒</span>
+      ) : item ? (
         <span className="text-2xl" title={item.item.itemName}>
-          {SLOT_ICONS[item.item.itemType as SlotKey] ?? "📦"}
+          {SLOT_ICONS[slotKey === "weapon_offhand" ? "weapon_offhand" : (item.item.itemType as SlotKey)] ?? "📦"}
         </span>
       ) : (
         <span className="text-xl opacity-20">{SLOT_ICONS[slotKey]}</span>
       )}
 
-      {item && item.upgradeLevel > 0 && (
+      {!locked && item && item.upgradeLevel > 0 && (
         <span className="absolute -right-1 -top-1 rounded bg-yellow-600 px-1 text-[10px] font-bold text-white">
           +{item.upgradeLevel}
         </span>
@@ -291,7 +318,7 @@ type InvCellProps = {
   onSelectItem: (inv: InventoryItem | null) => void;
 };
 
-const InventoryCell = ({ inv, onEquip, onHoverItem, onSelectItem }: InvCellProps) => {
+const InventoryCell = memo(({ inv, onEquip, onHoverItem, onSelectItem }: InvCellProps) => {
   if (!inv) {
     return (
       <div className="flex h-14 w-14 items-center justify-center rounded-md border border-slate-700/40 bg-slate-800/30" />
@@ -324,7 +351,8 @@ const InventoryCell = ({ inv, onEquip, onHoverItem, onSelectItem }: InvCellProps
       )}
     </button>
   );
-};
+});
+InventoryCell.displayName = "InventoryCell";
 
 /* ────────────────── Tab: Attributes ────────────────── */
 
@@ -407,7 +435,7 @@ const AttributesTab = ({
           const isUpgradeable = r.statKey !== null;
           const cost = isUpgradeable ? goldCostForStatTraining(r.value) : 0;
           const canAfford = upgradeMode === "gold" ? gold >= cost : canUpgradeWithPoints;
-          const canUpgrade = isUpgradeable && hasMode && canAfford && r.value < 999;
+          const canUpgrade = isUpgradeable && hasMode && canAfford && r.value < MAX_STAT_VALUE;
 
           return (
             <div
@@ -602,11 +630,15 @@ type ItemDetailProps = {
   onSell: (id: string) => void;
   isSelling: boolean;
   onClose: () => void;
+  /** Whether main-hand weapon is two-handed (blocks off-hand) */
+  mainHandTwoHanded?: boolean;
 };
 
-const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose }: ItemDetailProps) => {
+const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose, mainHandTwoHanded }: ItemDetailProps) => {
   const rarity = inv.item.rarity;
   const stats = getItemStats(inv);
+  const isWeapon = inv.item.itemType.toLowerCase() === "weapon";
+  const isTwoHanded = isWeapon && !!inv.item.catalogId && isWeaponTwoHanded(inv.item.catalogId);
 
   return (
     <div className={`rounded-xl border-2 p-4 ${RARITY_BORDER[rarity]} bg-slate-900/90`}>
@@ -618,6 +650,7 @@ const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose }
           </p>
           <p className="text-xs text-slate-400">
             {RARITY_LABEL[rarity]} · {SLOT_LABELS[inv.item.itemType as SlotKey]} · Lv. {inv.item.itemLevel}
+            {isTwoHanded && <span className="ml-1 text-amber-400">(Two-Handed)</span>}
           </p>
         </div>
         <button
@@ -644,6 +677,10 @@ const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose }
         <p className="mb-2 text-xs text-yellow-300">✨ {inv.item.specialEffect}</p>
       )}
 
+      {inv.item.uniquePassive && (
+        <p className="mb-2 text-xs text-cyan-300">🔮 {inv.item.uniquePassive}</p>
+      )}
+
       {inv.item.description && (
         <p className="mb-3 text-xs italic text-slate-400">{inv.item.description}</p>
       )}
@@ -667,6 +704,36 @@ const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose }
           >
             Unequip
           </button>
+        ) : isWeapon ? (
+          <>
+            <button
+              type="button"
+              onClick={() => onEquip(inv.id, "weapon")}
+              className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
+            >
+              {isTwoHanded ? "Equip (2H)" : "Main Hand"}
+            </button>
+            {!isTwoHanded && (
+              <button
+                type="button"
+                onClick={() => onEquip(inv.id, "weapon_offhand")}
+                disabled={mainHandTwoHanded}
+                className="flex-1 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
+                title={mainHandTwoHanded ? "Main hand is two-handed" : undefined}
+              >
+                Off Hand
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={isSelling}
+              onClick={() => onSell(inv.id)}
+              className="rounded-lg bg-yellow-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-yellow-600 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={`Sell for ${getSellPrice(inv)} gold`}
+            >
+              🪙
+            </button>
+          </>
         ) : (
           <>
             <button
@@ -851,6 +918,13 @@ function InventoryContent() {
     return map;
   }, [data]);
 
+  /* Check if main hand weapon is two-handed (blocks off-hand slot) */
+  const mainHandIsTwoHanded = useMemo(() => {
+    const mainHand = equippedMap.weapon;
+    if (!mainHand?.item.catalogId) return false;
+    return isWeaponTwoHanded(mainHand.item.catalogId);
+  }, [equippedMap.weapon]);
+
   /* Unequipped items for bag grid */
   const bagItems = useMemo(() => data?.unequipped ?? [], [data]);
 
@@ -889,23 +963,24 @@ function InventoryContent() {
           <div className="p-4">
             {/* Equipment paper-doll layout */}
             <div className="flex gap-4">
-              {/* Left column: weapon, gloves, boots */}
-              <div className="flex flex-col items-center gap-2 pt-4">
-                <EquipmentSlot slotKey="weapon" item={equippedMap.weapon} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+              {/* Left column: helmet, chest, gloves, legs */}
+              <div className="flex flex-col items-center gap-2">
+                <EquipmentSlot slotKey="helmet" item={equippedMap.helmet} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                <EquipmentSlot slotKey="chest" item={equippedMap.chest} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="gloves" item={equippedMap.gloves} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="boots" item={equippedMap.boots} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                <EquipmentSlot slotKey="legs" item={equippedMap.legs} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
               </div>
 
               {/* Center: avatar + name + level */}
               <div className="flex flex-1 flex-col items-center">
-                <div className="relative mb-2 flex h-32 w-32 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900">
+                <div className="relative mb-2 flex h-[208px] w-[208px] items-center justify-center overflow-hidden rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900">
                   {character.origin && ORIGIN_IMAGE[character.origin] ? (
                     <Image
                       src={ORIGIN_IMAGE[character.origin]}
                       alt={character.origin}
                       width={1024}
                       height={1024}
-                      className="absolute left-1/2 -top-5 w-[300%] max-w-none -translate-x-1/2"
+                      className="absolute left-1/2 -top-1 w-[200%] max-w-none -translate-x-1/2"
                       sizes="384px"
                     />
                   ) : (
@@ -913,26 +988,42 @@ function InventoryContent() {
                       {character.class === "warrior" ? "⚔️" : character.class === "rogue" ? "🗡️" : character.class === "mage" ? "🧙" : "🛡️"}
                     </span>
                   )}
-                </div>
-                <p className="text-base font-bold">{character.characterName}</p>
-                {/* Level bar */}
-                <div className="mt-1 flex w-full items-center gap-2">
-                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-800">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-green-600 to-green-400 transition-all"
-                      style={{ width: `${xpPercent}%` }}
-                    />
+                  <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-6">
+                    <p className="text-center text-sm font-bold text-white">{character.characterName}</p>
                   </div>
-                  <span className="text-xs font-bold text-slate-300">Lv. {character.level}</span>
+                </div>
+                {/* Level bar */}
+                <div className="relative mt-1 h-4 w-[208px] overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-green-600 to-green-400 transition-all"
+                    style={{ width: `${xpPercent}%` }}
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                    Lv. {character.level}
+                  </span>
+                </div>
+                {/* Weapon slots under avatar: Main Hand + Off Hand + Relic */}
+                <div className="mt-2 flex items-center gap-2">
+                  <EquipmentSlot slotKey="weapon" item={equippedMap.weapon} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                  <EquipmentSlot
+                    slotKey="weapon_offhand"
+                    item={equippedMap.weapon_offhand}
+                    onUnequip={handleUnequip}
+                    onHoverItem={handleHoverItem}
+                    onSelectItem={handleSelectItem}
+                    locked={mainHandIsTwoHanded}
+                    lockReason="Two-handed weapon equipped"
+                  />
+                  <EquipmentSlot slotKey="relic" item={equippedMap.relic} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 </div>
               </div>
 
-              {/* Right column: helmet, chest, legs, accessory */}
+              {/* Right column: boots, accessory, amulet, belt, relic */}
               <div className="flex flex-col items-center gap-2">
-                <EquipmentSlot slotKey="helmet" item={equippedMap.helmet} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="chest" item={equippedMap.chest} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="legs" item={equippedMap.legs} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                <EquipmentSlot slotKey="amulet" item={equippedMap.amulet} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="accessory" item={equippedMap.accessory} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                <EquipmentSlot slotKey="belt" item={equippedMap.belt} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                <EquipmentSlot slotKey="boots" item={equippedMap.boots} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
               </div>
             </div>
           </div>
@@ -987,6 +1078,7 @@ function InventoryContent() {
               onSell={handleSell}
               isSelling={isSelling}
               onClose={() => setSelectedItem(null)}
+              mainHandTwoHanded={mainHandIsTwoHanded}
             />
           )}
 

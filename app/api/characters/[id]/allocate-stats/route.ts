@@ -3,43 +3,16 @@ import { prisma } from "@/lib/db";
 import { goldCostForStatTraining } from "@/lib/game/stat-training";
 import { getMaxHp } from "@/lib/game/stats";
 import { NextResponse } from "next/server";
+import { STAT_SOFT_CAP, STAT_HARD_CAP, type StatKey } from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GDD §3.2 — Stat allocation (free stat points from level-ups)
  * + Gold training: buy +1 stat for gold (exponential cost curve)
- *
- * Soft caps per GDD §2.1:
- *   STR 300, AGI 250, VIT 400, END 300, INT 300, WIS 250, LCK 200, CHA 150
- * Hard cap: 999 for all stats
  */
 
-const VALID_STATS = [
-  "strength",
-  "agility",
-  "vitality",
-  "endurance",
-  "intelligence",
-  "wisdom",
-  "luck",
-  "charisma",
-] as const;
-
-type StatKey = (typeof VALID_STATS)[number];
-
-const SOFT_CAP: Record<StatKey, number> = {
-  strength: 300,
-  agility: 250,
-  vitality: 400,
-  endurance: 300,
-  intelligence: 300,
-  wisdom: 250,
-  luck: 200,
-  charisma: 150,
-};
-
-const HARD_CAP = 999;
+const VALID_STATS = Object.keys(STAT_SOFT_CAP) as StatKey[];
 
 export async function POST(
   request: Request,
@@ -59,7 +32,7 @@ export async function POST(
     const body = await request.json();
     const { stat, mode } = body as { stat: string; mode: "points" | "gold" };
 
-    if (!stat || !VALID_STATS.includes(stat as StatKey)) {
+    if (!stat || !(VALID_STATS as readonly string[]).includes(stat)) {
       return NextResponse.json(
         { error: `Invalid stat. Must be one of: ${VALID_STATS.join(", ")}` },
         { status: 400 }
@@ -85,15 +58,15 @@ export async function POST(
     const currentValue = character[statKey];
 
     // Hard cap check
-    if (currentValue >= HARD_CAP) {
+    if (currentValue >= STAT_HARD_CAP) {
       return NextResponse.json(
-        { error: `${statKey} is already at hard cap (${HARD_CAP})` },
+        { error: `${statKey} is already at hard cap (${STAT_HARD_CAP})` },
         { status: 400 }
       );
     }
 
     // Soft cap warning (allow exceeding via gold, but warn)
-    const softCap = SOFT_CAP[statKey];
+    const softCap = STAT_SOFT_CAP[statKey];
 
     // If vitality changes, recalculate maxHp
     const derivedUpdates =

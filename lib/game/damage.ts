@@ -4,7 +4,7 @@ import {
   DAMAGE_VARIANCE_MAX,
   WIS_DEFENSE_FACTOR,
   END_DEFENSE_FACTOR,
-} from "./constants";
+} from "./balance";
 
 /** Random variance 0.95 - 1.05 */
 const randomVariance = (): number =>

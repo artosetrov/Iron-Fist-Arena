@@ -1,6 +1,19 @@
 /** GDD §5.3 - Drop by rarity, Luck, difficulty bonus */
 
-export type Rarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
+import {
+  RARITY_THRESHOLDS,
+  DIFFICULTY_BONUS,
+  MAX_ENHANCED_ROLL,
+  DROP_CHANCE,
+  STAT_RANGE,
+  SECONDARY_STAT_RANGE,
+  SECONDARY_STAT_COUNT,
+  ARMOR_RANGE,
+} from "./balance";
+import type { Rarity } from "./balance";
+
+// Re-export Rarity type for consumers that imported from here
+export type { Rarity };
 
 export type ItemType =
   | "weapon"
@@ -9,89 +22,13 @@ export type ItemType =
   | "gloves"
   | "legs"
   | "boots"
-  | "accessory";
+  | "accessory"
+  | "amulet"
+  | "belt"
+  | "relic";
 
-const RARITY_THRESHOLDS: { rarity: Rarity; minRoll: number }[] = [
-  { rarity: "legendary", minRoll: 990 },
-  { rarity: "epic", minRoll: 960 },
-  { rarity: "rare", minRoll: 900 },
-  { rarity: "uncommon", minRoll: 750 },
-  { rarity: "common", minRoll: 0 },
-];
-
-const DIFFICULTY_BONUS: Record<string, number> = {
-  easy: 0,
-  normal: 50,
-  hard: 120,
-};
-
-/** GDD §5.3 — Primary stat ranges per rarity */
-const STAT_RANGE: Record<Rarity, [number, number]> = {
-  common: [5, 15],
-  uncommon: [12, 25],
-  rare: [20, 45],
-  epic: [40, 80],
-  legendary: [75, 150],
-};
-
-/** GDD §5.3 — Secondary stat ranges per rarity */
-const SECONDARY_STAT_RANGE: Record<Rarity, [number, number]> = {
-  common: [0, 0],
-  uncommon: [3, 10],
-  rare: [5, 15],
-  epic: [10, 25],
-  legendary: [20, 50],
-};
-
-/** GDD §5.3 — How many secondary stats each rarity gets */
-const SECONDARY_STAT_COUNT: Record<Rarity, number> = {
-  common: 0,
-  uncommon: 1,
-  rare: 2,
-  epic: 3,
-  legendary: 4,
-};
-
-/** Armor ranges per slot per rarity (GDD balance) */
-const ARMOR_SLOTS = new Set<ItemType>(["helmet", "chest", "gloves", "legs", "boots"]);
-
-const ARMOR_RANGE: Record<string, Record<Rarity, [number, number]>> = {
-  helmet: {
-    common: [21, 29],
-    uncommon: [30, 40],
-    rare: [42, 55],
-    epic: [60, 78],
-    legendary: [55, 95],
-  },
-  chest: {
-    common: [38, 52],
-    uncommon: [55, 72],
-    rare: [78, 96],
-    epic: [110, 135],
-    legendary: [100, 165],
-  },
-  gloves: {
-    common: [13, 17],
-    uncommon: [18, 24],
-    rare: [25, 32],
-    epic: [36, 44],
-    legendary: [30, 60],
-  },
-  legs: {
-    common: [15, 20],
-    uncommon: [21, 28],
-    rare: [27, 35],
-    epic: [38, 48],
-    legendary: [35, 65],
-  },
-  boots: {
-    common: [13, 17],
-    uncommon: [18, 24],
-    rare: [25, 32],
-    epic: [36, 44],
-    legendary: [35, 60],
-  },
-};
+/** Armor-type slots */
+const ARMOR_SLOTS = new Set<ItemType>(["helmet", "chest", "gloves", "legs", "boots", "belt"]);
 
 /** Item type → primary stat, pool of secondary stats, name prefixes */
 const ITEM_TYPE_CONFIG: Record<
@@ -133,6 +70,21 @@ const ITEM_TYPE_CONFIG: Record<
     secondaryStats: ["charisma", "intelligence", "wisdom", "agility"],
     namePrefixes: ["Amulet", "Ring", "Talisman", "Charm"],
   },
+  amulet: {
+    primaryStat: "wisdom",
+    secondaryStats: ["vitality", "intelligence", "endurance"],
+    namePrefixes: ["Pendant", "Amulet", "Necklace", "Torc"],
+  },
+  belt: {
+    primaryStat: "endurance",
+    secondaryStats: ["vitality", "strength", "agility"],
+    namePrefixes: ["Belt", "Sash", "Girdle", "Cinch"],
+  },
+  relic: {
+    primaryStat: "luck",
+    secondaryStats: ["intelligence", "agility", "strength"],
+    namePrefixes: ["Relic", "Orb", "Effigy", "Sigil"],
+  },
 };
 
 const ALL_ITEM_TYPES: ItemType[] = [
@@ -143,6 +95,9 @@ const ALL_ITEM_TYPES: ItemType[] = [
   "legs",
   "boots",
   "accessory",
+  "amulet",
+  "belt",
+  "relic",
 ];
 
 /* ------------------------------------------------------------------ */
@@ -153,7 +108,7 @@ const ALL_ITEM_TYPES: ItemType[] = [
 export const rollRarity = (luck: number, difficulty: string): Rarity => {
   const roll = Math.floor(Math.random() * 1000) + 1;
   const bonus = luck * 2 + (DIFFICULTY_BONUS[difficulty] ?? 0);
-  const enhanced = Math.min(1200, roll + bonus);
+  const enhanced = Math.min(MAX_ENHANCED_ROLL, roll + bonus);
   for (const { rarity, minRoll } of RARITY_THRESHOLDS) {
     if (enhanced >= minRoll) return rarity;
   }
@@ -166,12 +121,11 @@ export const rollDropChance = (
   isBoss: boolean
 ): boolean => {
   if (isBoss) return true;
-  const chance =
-    difficulty === "easy" ? 0.6 : difficulty === "hard" ? 0.7 : 0.5;
+  const chance = DROP_CHANCE[difficulty] ?? 0.5;
   return Math.random() < chance;
 };
 
-/** Roll a random item type from all 7 equipment slots */
+/** Roll a random item type from all equipment slots */
 export const rollItemType = (): ItemType =>
   ALL_ITEM_TYPES[Math.floor(Math.random() * ALL_ITEM_TYPES.length)];
 

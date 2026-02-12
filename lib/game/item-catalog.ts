@@ -1,5 +1,5 @@
 /**
- * Item Catalog v1.0 — 116 fixed items
+ * Item Catalog v1.1 — 116 fixed items + 48 amulet/belt/relic items
  *
  * Stats calculated from Item System Design Document:
  * - Base stats at level 30 baseline
@@ -8,9 +8,11 @@
  * - Legendary items have unique stat distributions per class set
  */
 
-export type ItemSlot = "helmet" | "gloves" | "chest" | "boots" | "weapon";
+export type ItemSlot = "helmet" | "gloves" | "chest" | "boots" | "weapon" | "amulet" | "belt" | "relic";
 
 export type ItemStatKey = "ATK" | "DEF" | "HP" | "CRIT" | "SPEED" | "ARMOR";
+
+export type WeaponCategory = "sword" | "dagger" | "mace" | "staff";
 
 export type CatalogItem = {
   catalogId: string;
@@ -21,6 +23,12 @@ export type CatalogItem = {
   classRestriction?: "warrior" | "rogue" | "mage" | "tank";
   setName?: string;
   description?: string;
+  /** Unique passive ability text (primarily for amulets and relics) */
+  uniquePassive?: string;
+  /** Weapon sub-type (only for slot === "weapon") */
+  weaponCategory?: WeaponCategory;
+  /** Two-handed weapons occupy both weapon + weapon_offhand slots */
+  twoHanded?: boolean;
 };
 
 /* ================================================================== */
@@ -399,65 +407,65 @@ const LEGENDARY_TANK: CatalogItem[] = [
  */
 
 const COMMON_SWORDS: CatalogItem[] = [
-  { catalogId: "cw-swd-01", name: "Rusted Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 48, CRIT: 2 }, description: "Sword" },
-  { catalogId: "cw-swd-02", name: "Iron Blade", slot: "weapon", rarity: "common", baseStats: { ATK: 52, CRIT: 3 }, description: "Sword" },
-  { catalogId: "cw-swd-03", name: "Short Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 50, CRIT: 3 }, description: "Sword" },
-  { catalogId: "cw-swd-04", name: "Guard Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 55, CRIT: 3 }, description: "Sword" },
-  { catalogId: "cw-swd-05", name: "Bronze Saber", slot: "weapon", rarity: "common", baseStats: { ATK: 53, CRIT: 2 }, description: "Sword" },
-  { catalogId: "cw-swd-06", name: "Militia Blade", slot: "weapon", rarity: "common", baseStats: { ATK: 56, CRIT: 3 }, description: "Sword" },
-  { catalogId: "cw-swd-07", name: "Steel Cutter", slot: "weapon", rarity: "common", baseStats: { ATK: 58, CRIT: 2 }, description: "Sword" },
-  { catalogId: "cw-swd-08", name: "Old War Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 54, CRIT: 4 }, description: "Sword" },
-  { catalogId: "cw-swd-09", name: "Training Blade", slot: "weapon", rarity: "common", baseStats: { ATK: 47, CRIT: 3 }, description: "Sword" },
-  { catalogId: "cw-swd-10", name: "Broad Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 60, CRIT: 2 }, description: "Sword" },
-  { catalogId: "cw-swd-11", name: "Soldier Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 55, CRIT: 3 }, description: "Sword" },
-  { catalogId: "cw-swd-12", name: "Chainblade", slot: "weapon", rarity: "common", baseStats: { ATK: 57, CRIT: 3 }, description: "Sword" },
-  { catalogId: "cw-swd-13", name: "Traveler Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 51, CRIT: 4 }, description: "Sword" },
+  { catalogId: "cw-swd-01", name: "Rusted Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 48, CRIT: 2 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-02", name: "Iron Blade", slot: "weapon", rarity: "common", baseStats: { ATK: 52, CRIT: 3 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-03", name: "Short Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 50, CRIT: 3 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-04", name: "Guard Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 55, CRIT: 3 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-05", name: "Bronze Saber", slot: "weapon", rarity: "common", baseStats: { ATK: 53, CRIT: 2 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-06", name: "Militia Blade", slot: "weapon", rarity: "common", baseStats: { ATK: 56, CRIT: 3 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-07", name: "Steel Cutter", slot: "weapon", rarity: "common", baseStats: { ATK: 58, CRIT: 2 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-08", name: "Old War Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 54, CRIT: 4 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-09", name: "Training Blade", slot: "weapon", rarity: "common", baseStats: { ATK: 47, CRIT: 3 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-10", name: "Broad Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 60, CRIT: 2 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-11", name: "Soldier Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 55, CRIT: 3 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-12", name: "Chainblade", slot: "weapon", rarity: "common", baseStats: { ATK: 57, CRIT: 3 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "cw-swd-13", name: "Traveler Sword", slot: "weapon", rarity: "common", baseStats: { ATK: 51, CRIT: 4 }, weaponCategory: "sword", description: "Sword" },
 ];
 
 const COMMON_DAGGERS: CatalogItem[] = [
-  { catalogId: "cw-dgr-01", name: "Rusted Dagger", slot: "weapon", rarity: "common", baseStats: { ATK: 36, CRIT: 7, SPEED: 2 }, description: "Dagger" },
-  { catalogId: "cw-dgr-02", name: "Iron Dagger", slot: "weapon", rarity: "common", baseStats: { ATK: 40, CRIT: 8, SPEED: 3 }, description: "Dagger" },
-  { catalogId: "cw-dgr-03", name: "Scout Knife", slot: "weapon", rarity: "common", baseStats: { ATK: 38, CRIT: 7, SPEED: 4 }, description: "Dagger" },
-  { catalogId: "cw-dgr-04", name: "Bronze Dagger", slot: "weapon", rarity: "common", baseStats: { ATK: 41, CRIT: 8, SPEED: 3 }, description: "Dagger" },
-  { catalogId: "cw-dgr-05", name: "Steel Shiv", slot: "weapon", rarity: "common", baseStats: { ATK: 44, CRIT: 9, SPEED: 2 }, description: "Dagger" },
-  { catalogId: "cw-dgr-06", name: "Silent Knife", slot: "weapon", rarity: "common", baseStats: { ATK: 39, CRIT: 8, SPEED: 4 }, description: "Dagger" },
-  { catalogId: "cw-dgr-07", name: "Guard Dagger", slot: "weapon", rarity: "common", baseStats: { ATK: 42, CRIT: 7, SPEED: 3 }, description: "Dagger" },
-  { catalogId: "cw-dgr-08", name: "War Knife", slot: "weapon", rarity: "common", baseStats: { ATK: 45, CRIT: 8, SPEED: 2 }, description: "Dagger" },
-  { catalogId: "cw-dgr-09", name: "Training Dagger", slot: "weapon", rarity: "common", baseStats: { ATK: 37, CRIT: 7, SPEED: 3 }, description: "Dagger" },
-  { catalogId: "cw-dgr-10", name: "Twin Blade", slot: "weapon", rarity: "common", baseStats: { ATK: 43, CRIT: 9, SPEED: 3 }, description: "Dagger" },
-  { catalogId: "cw-dgr-11", name: "Short Fang", slot: "weapon", rarity: "common", baseStats: { ATK: 40, CRIT: 8, SPEED: 3 }, description: "Dagger" },
-  { catalogId: "cw-dgr-12", name: "Militia Knife", slot: "weapon", rarity: "common", baseStats: { ATK: 42, CRIT: 8, SPEED: 3 }, description: "Dagger" },
+  { catalogId: "cw-dgr-01", name: "Rusted Dagger", slot: "weapon", rarity: "common", baseStats: { ATK: 36, CRIT: 7, SPEED: 2 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-02", name: "Iron Dagger", slot: "weapon", rarity: "common", baseStats: { ATK: 40, CRIT: 8, SPEED: 3 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-03", name: "Scout Knife", slot: "weapon", rarity: "common", baseStats: { ATK: 38, CRIT: 7, SPEED: 4 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-04", name: "Bronze Dagger", slot: "weapon", rarity: "common", baseStats: { ATK: 41, CRIT: 8, SPEED: 3 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-05", name: "Steel Shiv", slot: "weapon", rarity: "common", baseStats: { ATK: 44, CRIT: 9, SPEED: 2 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-06", name: "Silent Knife", slot: "weapon", rarity: "common", baseStats: { ATK: 39, CRIT: 8, SPEED: 4 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-07", name: "Guard Dagger", slot: "weapon", rarity: "common", baseStats: { ATK: 42, CRIT: 7, SPEED: 3 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-08", name: "War Knife", slot: "weapon", rarity: "common", baseStats: { ATK: 45, CRIT: 8, SPEED: 2 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-09", name: "Training Dagger", slot: "weapon", rarity: "common", baseStats: { ATK: 37, CRIT: 7, SPEED: 3 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-10", name: "Twin Blade", slot: "weapon", rarity: "common", baseStats: { ATK: 43, CRIT: 9, SPEED: 3 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-11", name: "Short Fang", slot: "weapon", rarity: "common", baseStats: { ATK: 40, CRIT: 8, SPEED: 3 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "cw-dgr-12", name: "Militia Knife", slot: "weapon", rarity: "common", baseStats: { ATK: 42, CRIT: 8, SPEED: 3 }, weaponCategory: "dagger", description: "Dagger" },
 ];
 
 const COMMON_MACES: CatalogItem[] = [
-  { catalogId: "cw-mac-01", name: "Iron Mace", slot: "weapon", rarity: "common", baseStats: { ATK: 58, DEF: 7 }, description: "Mace" },
-  { catalogId: "cw-mac-02", name: "Bronze Hammer", slot: "weapon", rarity: "common", baseStats: { ATK: 60, DEF: 8 }, description: "Mace" },
-  { catalogId: "cw-mac-03", name: "Guard Hammer", slot: "weapon", rarity: "common", baseStats: { ATK: 62, DEF: 9 }, description: "Mace" },
-  { catalogId: "cw-mac-04", name: "Rusted Mace", slot: "weapon", rarity: "common", baseStats: { ATK: 54, DEF: 7 }, description: "Mace" },
-  { catalogId: "cw-mac-05", name: "Soldier Hammer", slot: "weapon", rarity: "common", baseStats: { ATK: 63, DEF: 8 }, description: "Mace" },
-  { catalogId: "cw-mac-06", name: "War Mace", slot: "weapon", rarity: "common", baseStats: { ATK: 65, DEF: 7 }, description: "Mace" },
-  { catalogId: "cw-mac-07", name: "Steel Crusher", slot: "weapon", rarity: "common", baseStats: { ATK: 66, DEF: 8 }, description: "Mace" },
-  { catalogId: "cw-mac-08", name: "Training Hammer", slot: "weapon", rarity: "common", baseStats: { ATK: 55, DEF: 6 }, description: "Mace" },
-  { catalogId: "cw-mac-09", name: "Old Maul", slot: "weapon", rarity: "common", baseStats: { ATK: 57, DEF: 9 }, description: "Mace" },
-  { catalogId: "cw-mac-10", name: "Heavy Club", slot: "weapon", rarity: "common", baseStats: { ATK: 68, DEF: 6 }, description: "Mace" },
-  { catalogId: "cw-mac-11", name: "Chain Mace", slot: "weapon", rarity: "common", baseStats: { ATK: 61, DEF: 8 }, description: "Mace" },
-  { catalogId: "cw-mac-12", name: "Militia Hammer", slot: "weapon", rarity: "common", baseStats: { ATK: 62, DEF: 8 }, description: "Mace" },
-  { catalogId: "cw-mac-13", name: "Iron Maul", slot: "weapon", rarity: "common", baseStats: { ATK: 64, DEF: 7 }, description: "Mace" },
+  { catalogId: "cw-mac-01", name: "Iron Mace", slot: "weapon", rarity: "common", baseStats: { ATK: 58, DEF: 7 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-02", name: "Bronze Hammer", slot: "weapon", rarity: "common", baseStats: { ATK: 60, DEF: 8 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-03", name: "Guard Hammer", slot: "weapon", rarity: "common", baseStats: { ATK: 62, DEF: 9 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-04", name: "Rusted Mace", slot: "weapon", rarity: "common", baseStats: { ATK: 54, DEF: 7 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-05", name: "Soldier Hammer", slot: "weapon", rarity: "common", baseStats: { ATK: 63, DEF: 8 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-06", name: "War Mace", slot: "weapon", rarity: "common", baseStats: { ATK: 65, DEF: 7 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-07", name: "Steel Crusher", slot: "weapon", rarity: "common", baseStats: { ATK: 66, DEF: 8 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-08", name: "Training Hammer", slot: "weapon", rarity: "common", baseStats: { ATK: 55, DEF: 6 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-09", name: "Old Maul", slot: "weapon", rarity: "common", baseStats: { ATK: 57, DEF: 9 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-10", name: "Heavy Club", slot: "weapon", rarity: "common", baseStats: { ATK: 68, DEF: 6 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-11", name: "Chain Mace", slot: "weapon", rarity: "common", baseStats: { ATK: 61, DEF: 8 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-12", name: "Militia Hammer", slot: "weapon", rarity: "common", baseStats: { ATK: 62, DEF: 8 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "cw-mac-13", name: "Iron Maul", slot: "weapon", rarity: "common", baseStats: { ATK: 64, DEF: 7 }, weaponCategory: "mace", description: "Mace" },
 ];
 
 const COMMON_STAFFS: CatalogItem[] = [
-  { catalogId: "cw-stf-01", name: "Wooden Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 42, CRIT: 4 }, description: "Staff" },
-  { catalogId: "cw-stf-02", name: "Iron Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 46, CRIT: 5 }, description: "Staff" },
-  { catalogId: "cw-stf-03", name: "Training Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 41, CRIT: 4 }, description: "Staff" },
-  { catalogId: "cw-stf-04", name: "Bronze Rod", slot: "weapon", rarity: "common", baseStats: { ATK: 45, CRIT: 5 }, description: "Staff" },
-  { catalogId: "cw-stf-05", name: "Guard Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 48, CRIT: 5 }, description: "Staff" },
-  { catalogId: "cw-stf-06", name: "War Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 50, CRIT: 4 }, description: "Staff" },
-  { catalogId: "cw-stf-07", name: "Mystic Rod", slot: "weapon", rarity: "common", baseStats: { ATK: 44, CRIT: 6 }, description: "Staff" },
-  { catalogId: "cw-stf-08", name: "Old Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 43, CRIT: 5 }, description: "Staff" },
-  { catalogId: "cw-stf-09", name: "Traveler Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 47, CRIT: 5 }, description: "Staff" },
-  { catalogId: "cw-stf-10", name: "Chain Rod", slot: "weapon", rarity: "common", baseStats: { ATK: 49, CRIT: 4 }, description: "Staff" },
-  { catalogId: "cw-stf-11", name: "Soldier Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 48, CRIT: 5 }, description: "Staff" },
-  { catalogId: "cw-stf-12", name: "Steel Rod", slot: "weapon", rarity: "common", baseStats: { ATK: 52, CRIT: 5 }, description: "Staff" },
+  { catalogId: "cw-stf-01", name: "Wooden Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 42, CRIT: 4 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-02", name: "Iron Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 46, CRIT: 5 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-03", name: "Training Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 41, CRIT: 4 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-04", name: "Bronze Rod", slot: "weapon", rarity: "common", baseStats: { ATK: 45, CRIT: 5 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-05", name: "Guard Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 48, CRIT: 5 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-06", name: "War Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 50, CRIT: 4 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-07", name: "Mystic Rod", slot: "weapon", rarity: "common", baseStats: { ATK: 44, CRIT: 6 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-08", name: "Old Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 43, CRIT: 5 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-09", name: "Traveler Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 47, CRIT: 5 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-10", name: "Chain Rod", slot: "weapon", rarity: "common", baseStats: { ATK: 49, CRIT: 4 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-11", name: "Soldier Staff", slot: "weapon", rarity: "common", baseStats: { ATK: 48, CRIT: 5 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "cw-stf-12", name: "Steel Rod", slot: "weapon", rarity: "common", baseStats: { ATK: 52, CRIT: 5 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
 ];
 
 /* ================================================================== */
@@ -473,45 +481,45 @@ const COMMON_STAFFS: CatalogItem[] = [
  */
 
 const RARE_SWORDS: CatalogItem[] = [
-  { catalogId: "rw-swd-01", name: "Knight Blade", slot: "weapon", rarity: "rare", baseStats: { ATK: 60, CRIT: 4 }, description: "Sword" },
-  { catalogId: "rw-swd-02", name: "Storm Saber", slot: "weapon", rarity: "rare", baseStats: { ATK: 58, CRIT: 5 }, description: "Sword" },
-  { catalogId: "rw-swd-03", name: "Vanguard Sword", slot: "weapon", rarity: "rare", baseStats: { ATK: 62, CRIT: 3 }, description: "Sword" },
-  { catalogId: "rw-swd-04", name: "Blood Saber", slot: "weapon", rarity: "rare", baseStats: { ATK: 59, CRIT: 4 }, description: "Sword" },
-  { catalogId: "rw-swd-05", name: "Silver Edge", slot: "weapon", rarity: "rare", baseStats: { ATK: 57, CRIT: 5 }, description: "Sword" },
-  { catalogId: "rw-swd-06", name: "War Captain Blade", slot: "weapon", rarity: "rare", baseStats: { ATK: 63, CRIT: 3 }, description: "Sword" },
-  { catalogId: "rw-swd-07", name: "Assassin Sword", slot: "weapon", rarity: "rare", baseStats: { ATK: 56, CRIT: 6 }, description: "Sword" },
-  { catalogId: "rw-swd-08", name: "Mystic Saber", slot: "weapon", rarity: "rare", baseStats: { ATK: 58, CRIT: 4 }, description: "Sword" },
+  { catalogId: "rw-swd-01", name: "Knight Blade", slot: "weapon", rarity: "rare", baseStats: { ATK: 60, CRIT: 4 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "rw-swd-02", name: "Storm Saber", slot: "weapon", rarity: "rare", baseStats: { ATK: 58, CRIT: 5 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "rw-swd-03", name: "Vanguard Sword", slot: "weapon", rarity: "rare", baseStats: { ATK: 62, CRIT: 3 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "rw-swd-04", name: "Blood Saber", slot: "weapon", rarity: "rare", baseStats: { ATK: 59, CRIT: 4 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "rw-swd-05", name: "Silver Edge", slot: "weapon", rarity: "rare", baseStats: { ATK: 57, CRIT: 5 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "rw-swd-06", name: "War Captain Blade", slot: "weapon", rarity: "rare", baseStats: { ATK: 63, CRIT: 3 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "rw-swd-07", name: "Assassin Sword", slot: "weapon", rarity: "rare", baseStats: { ATK: 56, CRIT: 6 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "rw-swd-08", name: "Mystic Saber", slot: "weapon", rarity: "rare", baseStats: { ATK: 58, CRIT: 4 }, weaponCategory: "sword", description: "Sword" },
 ];
 
 const RARE_DAGGERS: CatalogItem[] = [
-  { catalogId: "rw-dgr-01", name: "Shadow Fang", slot: "weapon", rarity: "rare", baseStats: { ATK: 44, CRIT: 10, SPEED: 4 }, description: "Dagger" },
-  { catalogId: "rw-dgr-02", name: "Swift Blade", slot: "weapon", rarity: "rare", baseStats: { ATK: 43, CRIT: 9, SPEED: 5 }, description: "Dagger" },
-  { catalogId: "rw-dgr-03", name: "Silver Dagger", slot: "weapon", rarity: "rare", baseStats: { ATK: 46, CRIT: 9, SPEED: 3 }, description: "Dagger" },
-  { catalogId: "rw-dgr-04", name: "Blood Knife", slot: "weapon", rarity: "rare", baseStats: { ATK: 47, CRIT: 10, SPEED: 3 }, description: "Dagger" },
-  { catalogId: "rw-dgr-05", name: "Silent Edge", slot: "weapon", rarity: "rare", baseStats: { ATK: 42, CRIT: 9, SPEED: 5 }, description: "Dagger" },
-  { catalogId: "rw-dgr-06", name: "Assassin Fang", slot: "weapon", rarity: "rare", baseStats: { ATK: 45, CRIT: 10, SPEED: 4 }, description: "Dagger" },
-  { catalogId: "rw-dgr-07", name: "Storm Knife", slot: "weapon", rarity: "rare", baseStats: { ATK: 48, CRIT: 8, SPEED: 3 }, description: "Dagger" },
+  { catalogId: "rw-dgr-01", name: "Shadow Fang", slot: "weapon", rarity: "rare", baseStats: { ATK: 44, CRIT: 10, SPEED: 4 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "rw-dgr-02", name: "Swift Blade", slot: "weapon", rarity: "rare", baseStats: { ATK: 43, CRIT: 9, SPEED: 5 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "rw-dgr-03", name: "Silver Dagger", slot: "weapon", rarity: "rare", baseStats: { ATK: 46, CRIT: 9, SPEED: 3 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "rw-dgr-04", name: "Blood Knife", slot: "weapon", rarity: "rare", baseStats: { ATK: 47, CRIT: 10, SPEED: 3 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "rw-dgr-05", name: "Silent Edge", slot: "weapon", rarity: "rare", baseStats: { ATK: 42, CRIT: 9, SPEED: 5 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "rw-dgr-06", name: "Assassin Fang", slot: "weapon", rarity: "rare", baseStats: { ATK: 45, CRIT: 10, SPEED: 4 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "rw-dgr-07", name: "Storm Knife", slot: "weapon", rarity: "rare", baseStats: { ATK: 48, CRIT: 8, SPEED: 3 }, weaponCategory: "dagger", description: "Dagger" },
 ];
 
 const RARE_MACES: CatalogItem[] = [
-  { catalogId: "rw-mac-01", name: "Ironclad Mace", slot: "weapon", rarity: "rare", baseStats: { ATK: 67, DEF: 10 }, description: "Mace" },
-  { catalogId: "rw-mac-02", name: "Vanguard Hammer", slot: "weapon", rarity: "rare", baseStats: { ATK: 68, DEF: 9 }, description: "Mace" },
-  { catalogId: "rw-mac-03", name: "Storm Maul", slot: "weapon", rarity: "rare", baseStats: { ATK: 65, DEF: 10 }, description: "Mace" },
-  { catalogId: "rw-mac-04", name: "Blood Crusher", slot: "weapon", rarity: "rare", baseStats: { ATK: 70, DEF: 8 }, description: "Mace" },
-  { catalogId: "rw-mac-05", name: "Knight Hammer", slot: "weapon", rarity: "rare", baseStats: { ATK: 66, DEF: 11 }, description: "Mace" },
-  { catalogId: "rw-mac-06", name: "War Mace II", slot: "weapon", rarity: "rare", baseStats: { ATK: 69, DEF: 9 }, description: "Mace" },
-  { catalogId: "rw-mac-07", name: "Silver Maul", slot: "weapon", rarity: "rare", baseStats: { ATK: 64, DEF: 10 }, description: "Mace" },
-  { catalogId: "rw-mac-08", name: "Titan Hammer", slot: "weapon", rarity: "rare", baseStats: { ATK: 72, DEF: 8 }, description: "Mace" },
+  { catalogId: "rw-mac-01", name: "Ironclad Mace", slot: "weapon", rarity: "rare", baseStats: { ATK: 67, DEF: 10 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "rw-mac-02", name: "Vanguard Hammer", slot: "weapon", rarity: "rare", baseStats: { ATK: 68, DEF: 9 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "rw-mac-03", name: "Storm Maul", slot: "weapon", rarity: "rare", baseStats: { ATK: 65, DEF: 10 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "rw-mac-04", name: "Blood Crusher", slot: "weapon", rarity: "rare", baseStats: { ATK: 70, DEF: 8 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "rw-mac-05", name: "Knight Hammer", slot: "weapon", rarity: "rare", baseStats: { ATK: 66, DEF: 11 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "rw-mac-06", name: "War Mace II", slot: "weapon", rarity: "rare", baseStats: { ATK: 69, DEF: 9 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "rw-mac-07", name: "Silver Maul", slot: "weapon", rarity: "rare", baseStats: { ATK: 64, DEF: 10 }, weaponCategory: "mace", description: "Mace" },
+  { catalogId: "rw-mac-08", name: "Titan Hammer", slot: "weapon", rarity: "rare", baseStats: { ATK: 72, DEF: 8 }, weaponCategory: "mace", description: "Mace" },
 ];
 
 const RARE_STAFFS: CatalogItem[] = [
-  { catalogId: "rw-stf-01", name: "Mystic Staff", slot: "weapon", rarity: "rare", baseStats: { ATK: 52, CRIT: 6 }, description: "Staff" },
-  { catalogId: "rw-stf-02", name: "Arcane Rod", slot: "weapon", rarity: "rare", baseStats: { ATK: 50, CRIT: 7 }, description: "Staff" },
-  { catalogId: "rw-stf-03", name: "Storm Staff", slot: "weapon", rarity: "rare", baseStats: { ATK: 54, CRIT: 5 }, description: "Staff" },
-  { catalogId: "rw-stf-04", name: "Blood Staff", slot: "weapon", rarity: "rare", baseStats: { ATK: 53, CRIT: 6 }, description: "Staff" },
-  { catalogId: "rw-stf-05", name: "Silver Staff", slot: "weapon", rarity: "rare", baseStats: { ATK: 51, CRIT: 7 }, description: "Staff" },
-  { catalogId: "rw-stf-06", name: "Warlock Rod", slot: "weapon", rarity: "rare", baseStats: { ATK: 55, CRIT: 5 }, description: "Staff" },
-  { catalogId: "rw-stf-07", name: "Vanguard Staff", slot: "weapon", rarity: "rare", baseStats: { ATK: 53, CRIT: 6 }, description: "Staff" },
+  { catalogId: "rw-stf-01", name: "Mystic Staff", slot: "weapon", rarity: "rare", baseStats: { ATK: 52, CRIT: 6 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "rw-stf-02", name: "Arcane Rod", slot: "weapon", rarity: "rare", baseStats: { ATK: 50, CRIT: 7 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "rw-stf-03", name: "Storm Staff", slot: "weapon", rarity: "rare", baseStats: { ATK: 54, CRIT: 5 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "rw-stf-04", name: "Blood Staff", slot: "weapon", rarity: "rare", baseStats: { ATK: 53, CRIT: 6 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "rw-stf-05", name: "Silver Staff", slot: "weapon", rarity: "rare", baseStats: { ATK: 51, CRIT: 7 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "rw-stf-06", name: "Warlock Rod", slot: "weapon", rarity: "rare", baseStats: { ATK: 55, CRIT: 5 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "rw-stf-07", name: "Vanguard Staff", slot: "weapon", rarity: "rare", baseStats: { ATK: 53, CRIT: 6 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
 ];
 
 /* ================================================================== */
@@ -527,35 +535,35 @@ const RARE_STAFFS: CatalogItem[] = [
  */
 
 const EPIC_SWORDS: CatalogItem[] = [
-  { catalogId: "ew-swd-01", name: "Doom Blade", slot: "weapon", rarity: "epic", baseStats: { ATK: 66, CRIT: 5 }, description: "Sword" },
-  { catalogId: "ew-swd-02", name: "Blood Reaver", slot: "weapon", rarity: "epic", baseStats: { ATK: 64, CRIT: 6 }, description: "Sword" },
-  { catalogId: "ew-swd-03", name: "Titan Edge", slot: "weapon", rarity: "epic", baseStats: { ATK: 68, CRIT: 4 }, description: "Sword" },
-  { catalogId: "ew-swd-04", name: "Stormbringer", slot: "weapon", rarity: "epic", baseStats: { ATK: 63, CRIT: 6 }, description: "Sword" },
-  { catalogId: "ew-swd-05", name: "Shadowfang", slot: "weapon", rarity: "epic", baseStats: { ATK: 62, CRIT: 7 }, description: "Sword" },
+  { catalogId: "ew-swd-01", name: "Doom Blade", slot: "weapon", rarity: "epic", baseStats: { ATK: 66, CRIT: 5 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "ew-swd-02", name: "Blood Reaver", slot: "weapon", rarity: "epic", baseStats: { ATK: 64, CRIT: 6 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "ew-swd-03", name: "Titan Edge", slot: "weapon", rarity: "epic", baseStats: { ATK: 68, CRIT: 4 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "ew-swd-04", name: "Stormbringer", slot: "weapon", rarity: "epic", baseStats: { ATK: 63, CRIT: 6 }, weaponCategory: "sword", description: "Sword" },
+  { catalogId: "ew-swd-05", name: "Shadowfang", slot: "weapon", rarity: "epic", baseStats: { ATK: 62, CRIT: 7 }, weaponCategory: "sword", description: "Sword" },
 ];
 
 const EPIC_DAGGERS: CatalogItem[] = [
-  { catalogId: "ew-dgr-01", name: "Nightpiercer", slot: "weapon", rarity: "epic", baseStats: { ATK: 50, CRIT: 12, SPEED: 4 }, description: "Dagger" },
-  { catalogId: "ew-dgr-02", name: "Soul Fang", slot: "weapon", rarity: "epic", baseStats: { ATK: 48, CRIT: 11, SPEED: 5 }, description: "Dagger" },
-  { catalogId: "ew-dgr-03", name: "Blood Talon", slot: "weapon", rarity: "epic", baseStats: { ATK: 51, CRIT: 11, SPEED: 4 }, description: "Dagger" },
-  { catalogId: "ew-dgr-04", name: "Silent Doom", slot: "weapon", rarity: "epic", baseStats: { ATK: 47, CRIT: 12, SPEED: 5 }, description: "Dagger" },
-  { catalogId: "ew-dgr-05", name: "Shadow Claw", slot: "weapon", rarity: "epic", baseStats: { ATK: 49, CRIT: 10, SPEED: 5 }, description: "Dagger" },
+  { catalogId: "ew-dgr-01", name: "Nightpiercer", slot: "weapon", rarity: "epic", baseStats: { ATK: 50, CRIT: 12, SPEED: 4 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "ew-dgr-02", name: "Soul Fang", slot: "weapon", rarity: "epic", baseStats: { ATK: 48, CRIT: 11, SPEED: 5 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "ew-dgr-03", name: "Blood Talon", slot: "weapon", rarity: "epic", baseStats: { ATK: 51, CRIT: 11, SPEED: 4 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "ew-dgr-04", name: "Silent Doom", slot: "weapon", rarity: "epic", baseStats: { ATK: 47, CRIT: 12, SPEED: 5 }, weaponCategory: "dagger", description: "Dagger" },
+  { catalogId: "ew-dgr-05", name: "Shadow Claw", slot: "weapon", rarity: "epic", baseStats: { ATK: 49, CRIT: 10, SPEED: 5 }, weaponCategory: "dagger", description: "Dagger" },
 ];
 
 const EPIC_MACES: CatalogItem[] = [
-  { catalogId: "ew-mac-01", name: "Doom Maul", slot: "weapon", rarity: "epic", baseStats: { ATK: 74, DEF: 11 }, description: "Mace" },
-  { catalogId: "ew-mac-02", name: "Titan Crusher", slot: "weapon", rarity: "epic", baseStats: { ATK: 76, DEF: 10 }, description: "Mace" },
-  { catalogId: "ew-mac-03", name: "Bloodbreaker", slot: "weapon", rarity: "epic", baseStats: { ATK: 72, DEF: 12 }, description: "Mace" },
-  { catalogId: "ew-mac-04", name: "Storm Hammer", slot: "weapon", rarity: "epic", baseStats: { ATK: 70, DEF: 13 }, description: "Mace" },
-  { catalogId: "ew-mac-05", name: "Skull Mace", slot: "weapon", rarity: "epic", baseStats: { ATK: 75, DEF: 11 }, description: "Mace" },
+  { catalogId: "ew-mac-01", name: "Doom Maul", slot: "weapon", rarity: "epic", baseStats: { ATK: 74, DEF: 11 }, weaponCategory: "mace", twoHanded: true, description: "Mace" },
+  { catalogId: "ew-mac-02", name: "Titan Crusher", slot: "weapon", rarity: "epic", baseStats: { ATK: 76, DEF: 10 }, weaponCategory: "mace", twoHanded: true, description: "Mace" },
+  { catalogId: "ew-mac-03", name: "Bloodbreaker", slot: "weapon", rarity: "epic", baseStats: { ATK: 72, DEF: 12 }, weaponCategory: "mace", twoHanded: true, description: "Mace" },
+  { catalogId: "ew-mac-04", name: "Storm Hammer", slot: "weapon", rarity: "epic", baseStats: { ATK: 70, DEF: 13 }, weaponCategory: "mace", twoHanded: true, description: "Mace" },
+  { catalogId: "ew-mac-05", name: "Skull Mace", slot: "weapon", rarity: "epic", baseStats: { ATK: 75, DEF: 11 }, weaponCategory: "mace", twoHanded: true, description: "Mace" },
 ];
 
 const EPIC_STAFFS: CatalogItem[] = [
-  { catalogId: "ew-stf-01", name: "Arcane Oblivion", slot: "weapon", rarity: "epic", baseStats: { ATK: 57, CRIT: 7 }, description: "Staff" },
-  { catalogId: "ew-stf-02", name: "Doom Staff", slot: "weapon", rarity: "epic", baseStats: { ATK: 58, CRIT: 6 }, description: "Staff" },
-  { catalogId: "ew-stf-03", name: "Stormcaller", slot: "weapon", rarity: "epic", baseStats: { ATK: 55, CRIT: 8 }, description: "Staff" },
-  { catalogId: "ew-stf-04", name: "Blood Channeler", slot: "weapon", rarity: "epic", baseStats: { ATK: 56, CRIT: 7 }, description: "Staff" },
-  { catalogId: "ew-stf-05", name: "Titan Staff", slot: "weapon", rarity: "epic", baseStats: { ATK: 59, CRIT: 6 }, description: "Staff" },
+  { catalogId: "ew-stf-01", name: "Arcane Oblivion", slot: "weapon", rarity: "epic", baseStats: { ATK: 57, CRIT: 7 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "ew-stf-02", name: "Doom Staff", slot: "weapon", rarity: "epic", baseStats: { ATK: 58, CRIT: 6 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "ew-stf-03", name: "Stormcaller", slot: "weapon", rarity: "epic", baseStats: { ATK: 55, CRIT: 8 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "ew-stf-04", name: "Blood Channeler", slot: "weapon", rarity: "epic", baseStats: { ATK: 56, CRIT: 7 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
+  { catalogId: "ew-stf-05", name: "Titan Staff", slot: "weapon", rarity: "epic", baseStats: { ATK: 59, CRIT: 6 }, weaponCategory: "staff", twoHanded: true, description: "Staff" },
 ];
 
 /* ================================================================== */
@@ -570,6 +578,7 @@ const LEGENDARY_WARRIOR_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 72, CRIT: 5 },
+    weaponCategory: "sword",
     classRestriction: "warrior",
     setName: "crimson_conqueror",
     description: "The blade that carved an empire.",
@@ -580,6 +589,7 @@ const LEGENDARY_WARRIOR_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 70, CRIT: 6 },
+    weaponCategory: "sword",
     classRestriction: "warrior",
     setName: "crimson_conqueror",
     description: "Nothing stands before its edge.",
@@ -590,6 +600,8 @@ const LEGENDARY_WARRIOR_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 68, CRIT: 4 },
+    weaponCategory: "sword",
+    twoHanded: true,
     classRestriction: "warrior",
     setName: "crimson_conqueror",
     description: "Forged from the heart of a dying star.",
@@ -600,6 +612,7 @@ const LEGENDARY_WARRIOR_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 67, CRIT: 7 },
+    weaponCategory: "sword",
     classRestriction: "warrior",
     setName: "crimson_conqueror",
     description: "Judgment delivered in crimson steel.",
@@ -614,6 +627,7 @@ const LEGENDARY_ROGUE_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 55, CRIT: 12, SPEED: 5 },
+    weaponCategory: "dagger",
     classRestriction: "rogue",
     setName: "shadow_reaper",
     description: "One bite is all it takes.",
@@ -624,6 +638,7 @@ const LEGENDARY_ROGUE_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 53, CRIT: 11, SPEED: 5 },
+    weaponCategory: "dagger",
     classRestriction: "rogue",
     setName: "shadow_reaper",
     description: "Two strikes, one death.",
@@ -634,6 +649,7 @@ const LEGENDARY_ROGUE_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 51, CRIT: 12, SPEED: 4 },
+    weaponCategory: "dagger",
     classRestriction: "rogue",
     setName: "shadow_reaper",
     description: "The last thing they never saw.",
@@ -644,6 +660,7 @@ const LEGENDARY_ROGUE_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 54, CRIT: 10, SPEED: 5 },
+    weaponCategory: "dagger",
     classRestriction: "rogue",
     setName: "shadow_reaper",
     description: "Tears through armor like paper.",
@@ -658,6 +675,8 @@ const LEGENDARY_MAGE_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 62, CRIT: 8 },
+    weaponCategory: "staff",
+    twoHanded: true,
     classRestriction: "mage",
     setName: "arcane_dominion",
     description: "Channels the raw fabric of reality.",
@@ -668,6 +687,8 @@ const LEGENDARY_MAGE_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 60, CRIT: 7 },
+    weaponCategory: "staff",
+    twoHanded: true,
     classRestriction: "mage",
     setName: "arcane_dominion",
     description: "Bends the arcane to its wielder's will.",
@@ -678,6 +699,8 @@ const LEGENDARY_MAGE_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 58, CRIT: 8 },
+    weaponCategory: "staff",
+    twoHanded: true,
     classRestriction: "mage",
     setName: "arcane_dominion",
     description: "A conduit of infinite power.",
@@ -688,6 +711,8 @@ const LEGENDARY_MAGE_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 61, CRIT: 6 },
+    weaponCategory: "staff",
+    twoHanded: true,
     classRestriction: "mage",
     setName: "arcane_dominion",
     description: "Whispers spells that shatter worlds.",
@@ -702,6 +727,8 @@ const LEGENDARY_TANK_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 60, DEF: 15, HP: 50 },
+    weaponCategory: "mace",
+    twoHanded: true,
     classRestriction: "tank",
     setName: "iron_bastion",
     description: "The mountain strikes back.",
@@ -712,6 +739,8 @@ const LEGENDARY_TANK_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 58, DEF: 14, HP: 40 },
+    weaponCategory: "mace",
+    twoHanded: true,
     classRestriction: "tank",
     setName: "iron_bastion",
     description: "Crush all who dare approach.",
@@ -722,6 +751,8 @@ const LEGENDARY_TANK_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 55, DEF: 13, HP: 45 },
+    weaponCategory: "mace",
+    twoHanded: true,
     classRestriction: "tank",
     setName: "iron_bastion",
     description: "Weight of a fortress in one swing.",
@@ -732,10 +763,108 @@ const LEGENDARY_TANK_WEAPONS: CatalogItem[] = [
     slot: "weapon",
     rarity: "legendary",
     baseStats: { ATK: 57, DEF: 12, HP: 30 },
+    weaponCategory: "mace",
+    twoHanded: true,
     classRestriction: "tank",
     setName: "iron_bastion",
     description: "Unyielding iron, unbreakable will.",
   },
+];
+
+/* ================================================================== */
+/*  AMULETS (16)                                                       */
+/* ================================================================== */
+
+const COMMON_AMULETS: CatalogItem[] = [
+  { catalogId: "c-amu-01", name: "Wooden Pendant", slot: "amulet", rarity: "common", baseStats: { HP: 40, DEF: 8 }, description: "A simple talisman carved from oak." },
+  { catalogId: "c-amu-02", name: "Bone Charm", slot: "amulet", rarity: "common", baseStats: { HP: 35, DEF: 10 }, description: "Rattles softly in the wind." },
+  { catalogId: "c-amu-03", name: "Copper Locket", slot: "amulet", rarity: "common", baseStats: { HP: 45, DEF: 7 }, description: "Holds a faded portrait inside." },
+  { catalogId: "c-amu-04", name: "Stone Talisman", slot: "amulet", rarity: "common", baseStats: { HP: 38, DEF: 9 }, description: "Heavy but reassuring." },
+];
+
+const RARE_AMULETS: CatalogItem[] = [
+  { catalogId: "r-amu-01", name: "Silver Moon Pendant", slot: "amulet", rarity: "rare", baseStats: { HP: 75, DEF: 18, SPEED: 3 }, uniquePassive: "+5% healing received", description: "Glows faintly under moonlight." },
+  { catalogId: "r-amu-02", name: "Wolfang Necklace", slot: "amulet", rarity: "rare", baseStats: { HP: 65, DEF: 22 }, uniquePassive: "+3% lifesteal on hit", description: "Carved from a dire wolf fang." },
+  { catalogId: "r-amu-03", name: "Jade Amulet", slot: "amulet", rarity: "rare", baseStats: { HP: 80, DEF: 16, CRIT: 4 }, uniquePassive: "+8% poison resistance", description: "Cool to the touch, always." },
+  { catalogId: "r-amu-04", name: "Ember Medallion", slot: "amulet", rarity: "rare", baseStats: { HP: 70, DEF: 20 }, uniquePassive: "+5% fire damage", description: "Warm metal, never burns." },
+];
+
+const EPIC_AMULETS: CatalogItem[] = [
+  { catalogId: "e-amu-01", name: "Amulet of Vitality", slot: "amulet", rarity: "epic", baseStats: { HP: 140, DEF: 32, SPEED: 5 }, uniquePassive: "Regenerate 3% HP per turn", description: "Pulses with life energy." },
+  { catalogId: "e-amu-02", name: "Shadowheart Pendant", slot: "amulet", rarity: "epic", baseStats: { HP: 120, DEF: 38, CRIT: 8 }, uniquePassive: "+12% damage in the dark", description: "Absorbs light around it." },
+  { catalogId: "e-amu-03", name: "Stormcaller Torc", slot: "amulet", rarity: "epic", baseStats: { HP: 130, DEF: 35, ATK: 15 }, uniquePassive: "10% chance to stun on hit for 1 turn", description: "Crackles with static." },
+  { catalogId: "e-amu-04", name: "Blessed Ankh", slot: "amulet", rarity: "epic", baseStats: { HP: 160, DEF: 28 }, uniquePassive: "Survive lethal blow with 1 HP once per battle", description: "Ancient symbol of eternal life." },
+];
+
+const LEGENDARY_AMULETS: CatalogItem[] = [
+  { catalogId: "l-amu-01", name: "Crimson Heart Amulet", slot: "amulet", rarity: "legendary", baseStats: { HP: 220, DEF: 45, ATK: 20 }, uniquePassive: "On kill: restore 15% HP", classRestriction: "warrior", setName: "crimson_conqueror", description: "Beats with the fury of a thousand battles." },
+  { catalogId: "l-amu-02", name: "Shadow Reaper Locket", slot: "amulet", rarity: "legendary", baseStats: { HP: 180, DEF: 35, CRIT: 18 }, uniquePassive: "Critical hits heal for 8% of damage dealt", classRestriction: "rogue", setName: "shadow_reaper", description: "Contains a fragment of living shadow." },
+  { catalogId: "l-amu-03", name: "Arcane Dominion Amulet", slot: "amulet", rarity: "legendary", baseStats: { HP: 200, DEF: 40, SPEED: 8 }, uniquePassive: "Spells cost 20% less stamina", classRestriction: "mage", setName: "arcane_dominion", description: "Hums with concentrated arcane energy." },
+  { catalogId: "l-amu-04", name: "Iron Bastion Medal", slot: "amulet", rarity: "legendary", baseStats: { HP: 280, DEF: 55 }, uniquePassive: "Reduce all incoming damage by 8%", classRestriction: "tank", setName: "iron_bastion", description: "Awarded to the unbreakable." },
+];
+
+/* ================================================================== */
+/*  BELTS (16)                                                         */
+/* ================================================================== */
+
+const COMMON_BELTS: CatalogItem[] = [
+  { catalogId: "c-blt-01", name: "Leather Belt", slot: "belt", rarity: "common", baseStats: { DEF: 12, ARMOR: 8 }, description: "Sturdy and reliable." },
+  { catalogId: "c-blt-02", name: "Rope Sash", slot: "belt", rarity: "common", baseStats: { DEF: 10, ARMOR: 6, SPEED: 2 }, description: "Light and flexible." },
+  { catalogId: "c-blt-03", name: "Chain Link Belt", slot: "belt", rarity: "common", baseStats: { DEF: 14, ARMOR: 10 }, description: "Clinks with every step." },
+  { catalogId: "c-blt-04", name: "Cloth Sash", slot: "belt", rarity: "common", baseStats: { DEF: 8, ARMOR: 5, SPEED: 3 }, description: "Simple but comfortable." },
+];
+
+const RARE_BELTS: CatalogItem[] = [
+  { catalogId: "r-blt-01", name: "Reinforced War Belt", slot: "belt", rarity: "rare", baseStats: { DEF: 24, ARMOR: 18, HP: 30 }, description: "Plated with iron studs." },
+  { catalogId: "r-blt-02", name: "Ranger's Utility Belt", slot: "belt", rarity: "rare", baseStats: { DEF: 18, ARMOR: 14, SPEED: 5 }, description: "Full of useful pockets." },
+  { catalogId: "r-blt-03", name: "Scaled Girdle", slot: "belt", rarity: "rare", baseStats: { DEF: 22, ARMOR: 20 }, description: "Dragon-scale pattern, impressive craftsmanship." },
+  { catalogId: "r-blt-04", name: "Spiked Belt", slot: "belt", rarity: "rare", baseStats: { DEF: 20, ARMOR: 16, ATK: 8 }, description: "Intimidating and functional." },
+];
+
+const EPIC_BELTS: CatalogItem[] = [
+  { catalogId: "e-blt-01", name: "Titan's Cinch", slot: "belt", rarity: "epic", baseStats: { DEF: 42, ARMOR: 32, HP: 60 }, description: "Forged for giants, sized for heroes." },
+  { catalogId: "e-blt-02", name: "Windrunner Sash", slot: "belt", rarity: "epic", baseStats: { DEF: 30, ARMOR: 22, SPEED: 10 }, description: "Light as air, tough as steel." },
+  { catalogId: "e-blt-03", name: "Bloodforged Girdle", slot: "belt", rarity: "epic", baseStats: { DEF: 38, ARMOR: 28, ATK: 15 }, description: "Tempered in battle blood." },
+  { catalogId: "e-blt-04", name: "Guardian's Waistguard", slot: "belt", rarity: "epic", baseStats: { DEF: 45, ARMOR: 35 }, description: "Protects the vital core." },
+];
+
+const LEGENDARY_BELTS: CatalogItem[] = [
+  { catalogId: "l-blt-01", name: "Crimson Conqueror Belt", slot: "belt", rarity: "legendary", baseStats: { DEF: 55, ARMOR: 42, ATK: 20, HP: 80 }, classRestriction: "warrior", setName: "crimson_conqueror", description: "A warrior's second spine." },
+  { catalogId: "l-blt-02", name: "Shadow Reaper Cord", slot: "belt", rarity: "legendary", baseStats: { DEF: 40, ARMOR: 30, SPEED: 12, CRIT: 10 }, classRestriction: "rogue", setName: "shadow_reaper", description: "Holds a dozen hidden blades." },
+  { catalogId: "l-blt-03", name: "Arcane Dominion Cincture", slot: "belt", rarity: "legendary", baseStats: { DEF: 45, ARMOR: 35, HP: 100, SPEED: 6 }, classRestriction: "mage", setName: "arcane_dominion", description: "Woven from solidified mana threads." },
+  { catalogId: "l-blt-04", name: "Iron Bastion Waistplate", slot: "belt", rarity: "legendary", baseStats: { DEF: 65, ARMOR: 55, HP: 120 }, classRestriction: "tank", setName: "iron_bastion", description: "An immovable foundation." },
+];
+
+/* ================================================================== */
+/*  RELICS (16)                                                        */
+/* ================================================================== */
+
+const COMMON_RELICS: CatalogItem[] = [
+  { catalogId: "c-rel-01", name: "Cracked Orb", slot: "relic", rarity: "common", baseStats: { ATK: 10, CRIT: 2 }, description: "Still glimmers faintly." },
+  { catalogId: "c-rel-02", name: "Old Figurine", slot: "relic", rarity: "common", baseStats: { ATK: 8, CRIT: 3 }, description: "Crudely carved but oddly powerful." },
+  { catalogId: "c-rel-03", name: "Dusty Prism", slot: "relic", rarity: "common", baseStats: { ATK: 12, CRIT: 1 }, description: "Refracts light in strange ways." },
+  { catalogId: "c-rel-04", name: "Worn Fetish", slot: "relic", rarity: "common", baseStats: { ATK: 9, CRIT: 2 }, description: "Smells faintly of incense." },
+];
+
+const RARE_RELICS: CatalogItem[] = [
+  { catalogId: "r-rel-01", name: "Crimson Eye", slot: "relic", rarity: "rare", baseStats: { ATK: 22, CRIT: 6 }, uniquePassive: "+5% damage to bleeding targets", description: "Weeps red tears." },
+  { catalogId: "r-rel-02", name: "Frost Shard", slot: "relic", rarity: "rare", baseStats: { ATK: 18, CRIT: 8, SPEED: 3 }, uniquePassive: "+8% slow chance on hit", description: "Never melts, always cold." },
+  { catalogId: "r-rel-03", name: "Thunder Tooth", slot: "relic", rarity: "rare", baseStats: { ATK: 25, CRIT: 5 }, uniquePassive: "+6% chance to chain lightning on hit", description: "Sparks on contact." },
+  { catalogId: "r-rel-04", name: "Venom Gland", slot: "relic", rarity: "rare", baseStats: { ATK: 20, CRIT: 7 }, uniquePassive: "+10% poison damage", description: "Extracted from a giant spider." },
+];
+
+const EPIC_RELICS: CatalogItem[] = [
+  { catalogId: "e-rel-01", name: "Relic of Fury", slot: "relic", rarity: "epic", baseStats: { ATK: 42, CRIT: 12 }, uniquePassive: "+10% damage to stunned targets", description: "Channels pure rage." },
+  { catalogId: "e-rel-02", name: "Void Fragment", slot: "relic", rarity: "epic", baseStats: { ATK: 38, CRIT: 15, SPEED: 5 }, uniquePassive: "Ignore 15% of target armor", description: "A piece of nothing, impossibly solid." },
+  { catalogId: "e-rel-03", name: "Phoenix Feather", slot: "relic", rarity: "epic", baseStats: { ATK: 35, CRIT: 10, HP: 50 }, uniquePassive: "+20% damage when below 30% HP", description: "Burns brighter as hope fades." },
+  { catalogId: "e-rel-04", name: "Demon Horn", slot: "relic", rarity: "epic", baseStats: { ATK: 45, CRIT: 14 }, uniquePassive: "Every 5th hit deals 50% bonus damage", description: "Torn from a pit fiend." },
+];
+
+const LEGENDARY_RELICS: CatalogItem[] = [
+  { catalogId: "l-rel-01", name: "Crimson Conqueror Sigil", slot: "relic", rarity: "legendary", baseStats: { ATK: 60, CRIT: 18, HP: 80 }, uniquePassive: "Every 3rd hit deals 2x damage", classRestriction: "warrior", setName: "crimson_conqueror", description: "Emblem of unstoppable conquest." },
+  { catalogId: "l-rel-02", name: "Shadow Reaper Effigy", slot: "relic", rarity: "legendary", baseStats: { ATK: 55, CRIT: 25, SPEED: 8 }, uniquePassive: "Critical hits have 30% chance to reset cooldowns", classRestriction: "rogue", setName: "shadow_reaper", description: "A perfect replica of death itself." },
+  { catalogId: "l-rel-03", name: "Arcane Dominion Core", slot: "relic", rarity: "legendary", baseStats: { ATK: 50, CRIT: 20, HP: 60 }, uniquePassive: "Spells deal 25% bonus damage to targets below 50% HP", classRestriction: "mage", setName: "arcane_dominion", description: "The heart of a collapsed arcane tower." },
+  { catalogId: "l-rel-04", name: "Iron Bastion Anvil", slot: "relic", rarity: "legendary", baseStats: { ATK: 45, CRIT: 12, DEF: 30, HP: 100 }, uniquePassive: "Reflect 15% of damage taken back to attacker", classRestriction: "tank", setName: "iron_bastion", description: "Unbreakable as the forge that made it." },
 ];
 
 /* ================================================================== */
@@ -786,6 +915,24 @@ export const ITEM_CATALOG: CatalogItem[] = [
   ...LEGENDARY_ROGUE_WEAPONS,
   ...LEGENDARY_MAGE_WEAPONS,
   ...LEGENDARY_TANK_WEAPONS,
+
+  // --- Amulets (16) ---
+  ...COMMON_AMULETS,
+  ...RARE_AMULETS,
+  ...EPIC_AMULETS,
+  ...LEGENDARY_AMULETS,
+
+  // --- Belts (16) ---
+  ...COMMON_BELTS,
+  ...RARE_BELTS,
+  ...EPIC_BELTS,
+  ...LEGENDARY_BELTS,
+
+  // --- Relics (16) ---
+  ...COMMON_RELICS,
+  ...RARE_RELICS,
+  ...EPIC_RELICS,
+  ...LEGENDARY_RELICS,
 ];
 
 /* ================================================================== */
@@ -803,6 +950,12 @@ export const getCatalogItemsBySlot = (slot: ItemSlot): CatalogItem[] =>
 
 export const getSetItems = (setName: string): CatalogItem[] =>
   ITEM_CATALOG.filter((i) => i.setName === setName);
+
+/** Check if a weapon catalog item is two-handed by catalogId */
+export const isWeaponTwoHanded = (catalogId: string): boolean => {
+  const item = getCatalogItemById(catalogId);
+  return item?.twoHanded === true;
+};
 
 export const SET_NAMES = [
   "crimson_conqueror",

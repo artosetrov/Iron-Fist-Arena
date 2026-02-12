@@ -2,15 +2,9 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { QUEST_POOL, DAILY_QUEST_COUNT } from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
-
-const QUEST_POOL: { questType: string; target: number; rewardGold: number; rewardXp: number; rewardGems: number }[] = [
-  { questType: "pvp_wins", target: 3, rewardGold: 200, rewardXp: 200, rewardGems: 20 },
-  { questType: "dungeons_complete", target: 2, rewardGold: 300, rewardXp: 300, rewardGems: 25 },
-  { questType: "pvp_wins", target: 5, rewardGold: 500, rewardXp: 400, rewardGems: 50 },
-  { questType: "dungeons_complete", target: 1, rewardGold: 150, rewardXp: 150, rewardGems: 15 },
-];
 
 const getDayStart = (d: Date): Date => {
   const x = new Date(d);
@@ -59,7 +53,7 @@ export async function GET(request: Request) {
 
     if (quests.length === 0) {
       // FIX: Pick unique quests to avoid duplicates
-      const chosen = pickUnique(QUEST_POOL, 3);
+      const chosen = pickUnique([...QUEST_POOL], DAILY_QUEST_COUNT);
 
       try {
         await prisma.dailyQuest.createMany({

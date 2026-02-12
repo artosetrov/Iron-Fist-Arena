@@ -32,3 +32,6 @@ yarn-error.log*
 
 # prisma
 prisma/migrations/**/migration_lock.toml
+
+# cursor IDE (may contain debug logs with env data)
+.cursor/

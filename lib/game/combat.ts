@@ -11,7 +11,13 @@ import { getAbilitiesForClass, getAbilityById } from "./abilities";
 import { getBossAbilityById } from "./boss-abilities";
 import { computeDerivedStats, getEffectiveStats } from "./stats";
 import { calcPhysicalDamage, calcMagicDamage, rollCrit, rollDodge } from "./damage";
-import { MAX_TURNS } from "./constants";
+import {
+  MAX_TURNS,
+  STATUS_EFFECT_PCT,
+  ARMOR_BREAK_MULT,
+  RESIST_CHANCE_CAP,
+  ENEMY_SKILL_USE_CHANCE,
+} from "./balance";
 import { hasCheatDeath, getCheatDeathChance } from "./origins";
 
 /** Apply damage to combatant. Returns actual damage dealt. Zero is valid for buffs.
@@ -47,7 +53,7 @@ const toSnapshot = (s: CombatantState): CombatantSnapshot => ({
 /** Get effective armor considering armor_break status */
 const getEffectiveArmor = (state: CombatantState): number => {
   const hasArmorBreak = state.statusEffects.some((s) => s.type === "armor_break");
-  if (hasArmorBreak) return Math.floor(state.armor * 0.6); // -40% armor per GDD
+  if (hasArmorBreak) return Math.floor(state.armor * ARMOR_BREAK_MULT);
   return state.armor;
 };
 
@@ -66,22 +72,22 @@ const tickStatusEffects = (
   state.statusEffects = state.statusEffects.filter((s) => {
     s.duration--;
     if (s.type === "bleed" && s.duration >= 0) {
-      const dmg = Math.max(1, Math.floor(state.maxHp * 0.05));
+      const dmg = Math.max(1, Math.floor(state.maxHp * STATUS_EFFECT_PCT.bleed));
       state.currentHp = Math.max(0, state.currentHp - dmg);
       ticks.push({ type: "bleed", damage: dmg });
     }
     if (s.type === "poison" && s.duration >= 0) {
-      const dmg = Math.max(1, Math.floor(state.maxHp * 0.03));
+      const dmg = Math.max(1, Math.floor(state.maxHp * STATUS_EFFECT_PCT.poison));
       state.currentHp = Math.max(0, state.currentHp - dmg);
       ticks.push({ type: "poison", damage: dmg });
     }
     if (s.type === "burn" && s.duration >= 0) {
-      const dmg = Math.max(1, Math.floor(state.maxHp * 0.04));
+      const dmg = Math.max(1, Math.floor(state.maxHp * STATUS_EFFECT_PCT.burn));
       state.currentHp = Math.max(0, state.currentHp - dmg);
       ticks.push({ type: "burn", damage: dmg });
     }
     if (s.type === "regen" && s.duration >= 0) {
-      const heal = Math.max(1, Math.floor(state.maxHp * 0.05));
+      const heal = Math.max(1, Math.floor(state.maxHp * STATUS_EFFECT_PCT.regen));
       state.currentHp = Math.min(state.maxHp, state.currentHp + heal);
       ticks.push({ type: "regen", healed: heal });
     }
@@ -118,7 +124,7 @@ const tryApplyStatus = (
 
 /** GDD: Resist_Chance_% = (END/10) + (WIS/15), Max 60% */
 const getResistChance = (end: number, wis: number): number =>
-  Math.min(60, end / 10 + wis / 15);
+  Math.min(RESIST_CHANCE_CAP, end / 10 + wis / 15);
 
 const isStunned = (state: CombatantState): boolean =>
   state.statusEffects.some((s) => s.type === "stun");
@@ -205,7 +211,7 @@ const getEnemyAction = (enemy: CombatantState): "basic" | string => {
   if (!ids || ids.length === 0) return "basic";
 
   const available = ids.filter((id) => (enemy.abilityCooldowns[id] ?? 0) <= 0);
-  if (available.length > 0 && Math.random() < 0.6) {
+  if (available.length > 0 && Math.random() < ENEMY_SKILL_USE_CHANCE) {
     return available[Math.floor(Math.random() * available.length)];
   }
   return "basic";
@@ -489,7 +495,17 @@ export const runCombat = (
   };
 };
 
-/** Build CombatantState from character-like object and optional display name */
+/** Equipment bonuses aggregated from all equipped items */
+export type EquipmentBonuses = {
+  ATK?: number;
+  DEF?: number;
+  HP?: number;
+  CRIT?: number;
+  SPEED?: number;
+  ARMOR?: number;
+};
+
+/** Build CombatantState from character-like object and optional equipment bonuses */
 export const buildCombatantState = (params: {
   id: string;
   name: string;
@@ -505,6 +521,8 @@ export const buildCombatantState = (params: {
   luck: number;
   charisma: number;
   armor?: number;
+  /** Aggregated equipment stats (ATK, DEF, HP, CRIT, SPEED, ARMOR) */
+  equipmentBonuses?: EquipmentBonuses;
 }): CombatantState => {
   const {
     id,
@@ -521,15 +539,33 @@ export const buildCombatantState = (params: {
     luck,
     charisma,
     armor = 0,
+    equipmentBonuses,
   } = params;
 
+  const eqATK = equipmentBonuses?.ATK ?? 0;
+  const eqDEF = equipmentBonuses?.DEF ?? 0;
+  const eqHP = equipmentBonuses?.HP ?? 0;
+  const eqCRIT = equipmentBonuses?.CRIT ?? 0;
+  const eqARMOR = equipmentBonuses?.ARMOR ?? 0;
+
+  // ATK adds to effective strength, DEF adds to effective endurance
   const baseStats = getEffectiveStats(
-    { strength, agility, vitality, endurance, intelligence, wisdom, luck, charisma },
+    {
+      strength: strength + eqATK,
+      agility,
+      vitality,
+      endurance: endurance + eqDEF,
+      intelligence,
+      wisdom,
+      luck,
+      charisma,
+    },
     origin
   );
 
-  const derived = computeDerivedStats(baseStats, armor, 0);
-  const maxHp = derived.maxHp;
+  const totalArmor = armor + eqARMOR;
+  const derived = computeDerivedStats(baseStats, totalArmor, 0, eqCRIT);
+  const maxHp = derived.maxHp + eqHP;
   return {
     id,
     name,
@@ -540,7 +576,7 @@ export const buildCombatantState = (params: {
     derived,
     currentHp: maxHp,
     maxHp,
-    armor,
+    armor: totalArmor,
     magicResist: derived.magicResist,
     statusEffects: [],
     abilityCooldowns: {},

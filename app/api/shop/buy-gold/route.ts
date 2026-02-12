@@ -1,16 +1,9 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { GOLD_PACKAGES, type GoldPackageId } from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
-
-const GOLD_PACKAGES = {
-  gold_1000: { gold: 1000, priceUsd: 0.99, label: "1,000 Gold" },
-  gold_5000: { gold: 5000, priceUsd: 3.99, label: "5,000 Gold" },
-  gold_10000: { gold: 10000, priceUsd: 6.99, label: "10,000 Gold" },
-} as const;
-
-type PackageId = keyof typeof GOLD_PACKAGES;
 
 export async function POST(request: Request) {
   try {
@@ -33,7 +26,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const pkg = GOLD_PACKAGES[packageId as PackageId];
+    const pkg = GOLD_PACKAGES[packageId as GoldPackageId];
     if (!pkg) {
       return NextResponse.json(
         { error: "Invalid package" },

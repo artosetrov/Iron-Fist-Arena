@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { CharacterClass, CharacterOrigin } from "@prisma/client";
 import { Prisma } from "@prisma/client";
+import { STARTING_GOLD, STARTING_STAMINA, STARTING_MAX_STAMINA } from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
 
@@ -139,9 +140,9 @@ export async function POST(request: Request) {
         characterName,
         class: characterClass,
         origin: characterOrigin,
-        gold: 500,
-        currentStamina: 100,
-        maxStamina: 100,
+        gold: STARTING_GOLD,
+        currentStamina: STARTING_STAMINA,
+        maxStamina: STARTING_MAX_STAMINA,
       },
     });
     return NextResponse.json({ character });

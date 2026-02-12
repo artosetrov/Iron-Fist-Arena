@@ -18,6 +18,7 @@ model User {
   premiumUntil  DateTime? @map("premium_until")
   createdAt     DateTime  @default(now()) @map("created_at")
   lastLogin     DateTime  @default(now()) @map("last_login")
+  role          String    @default("player")
   isBanned      Boolean   @default(false) @map("is_banned")
   banReason     String?   @map("ban_reason")
 
@@ -70,6 +71,7 @@ model Character {
 
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   equipment         EquipmentInventory[]
+  consumables       ConsumableInventory[]
   pvpMatchesAsP1   PvpMatch[]           @relation("Player1")
   pvpMatchesAsP2   PvpMatch[]           @relation("Player2")
   dungeonProgress   DungeonProgress[]
@@ -136,6 +138,9 @@ enum ItemType {
   legs
   boots
   accessory
+  amulet
+  belt
+  relic
 }
 
 enum Rarity {
@@ -168,12 +173,16 @@ model EquipmentInventory {
 
 enum EquippedSlot {
   weapon
+  weapon_offhand
   helmet
   chest
   gloves
   legs
   boots
   accessory
+  amulet
+  belt
+  relic
 }
 
 model PvpMatch {
@@ -283,4 +292,24 @@ model Cosmetic {
 
   @@index([userId])
   @@map("cosmetics")
+}
+
+enum ConsumableType {
+  stamina_potion_small
+  stamina_potion_medium
+  stamina_potion_large
+}
+
+model ConsumableInventory {
+  id             String         @id @default(uuid())
+  characterId    String         @map("character_id")
+  consumableType ConsumableType @map("consumable_type")
+  quantity       Int            @default(1)
+  acquiredAt     DateTime       @default(now()) @map("acquired_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, consumableType])
+  @@index([characterId])
+  @@map("consumable_inventory")
 }

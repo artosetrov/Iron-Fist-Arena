@@ -5,10 +5,28 @@
 import {
   DUNGEONS,
   getDungeonById,
-  BOSSES_PER_DUNGEON,
   type DungeonDefinition,
   type DungeonBoss,
 } from "./dungeon-data";
+import {
+  BOSSES_PER_DUNGEON,
+  BOSS_STAT_BASE_CONST,
+  BOSS_STAT_LEVEL_MULT,
+  BOSS_STAT_MIN,
+  BOSS_STAT_FACTORS,
+  BOSS_ARMOR_FACTOR,
+  HP_PER_VIT,
+  DUNGEON_GOLD_BASE,
+  DUNGEON_GOLD_PER_DUNGEON,
+  DUNGEON_GOLD_BOSS_SCALE,
+  DUNGEON_XP_BASE,
+  DUNGEON_XP_PER_DUNGEON,
+  DUNGEON_XP_BOSS_SCALE,
+  DUNGEON_COMPLETION_GOLD_BASE,
+  DUNGEON_COMPLETION_GOLD_PER_DUNGEON,
+  DUNGEON_COMPLETION_XP_BASE,
+  DUNGEON_COMPLETION_XP_PER_DUNGEON,
+} from "./balance";
 
 /* ─── Boss stats ─── */
 
@@ -31,17 +49,17 @@ export const getBossStats = (
   playerLevel: number,
   boss: DungeonBoss,
 ): BossStats => {
-  const base = Math.max(10, Math.floor(30 + playerLevel * 4));
+  const base = Math.max(BOSS_STAT_MIN, Math.floor(BOSS_STAT_BASE_CONST + playerLevel * BOSS_STAT_LEVEL_MULT));
   const mult = boss.statMultiplier;
 
-  const str = Math.max(10, Math.floor(base * mult * 0.9));
-  const vit = Math.max(10, Math.floor(base * mult * 1.1));
-  const end = Math.max(10, Math.floor(base * mult * 0.85));
-  const agi = Math.max(10, Math.floor(base * mult * 0.7));
-  const int = Math.max(10, Math.floor(base * mult * 0.6));
-  const wis = Math.max(10, Math.floor(base * mult * 0.5));
-  const hp = Math.max(100, vit * 10);
-  const armor = Math.max(0, Math.floor(end * 0.8));
+  const str = Math.max(BOSS_STAT_MIN, Math.floor(base * mult * BOSS_STAT_FACTORS.strength));
+  const vit = Math.max(BOSS_STAT_MIN, Math.floor(base * mult * BOSS_STAT_FACTORS.vitality));
+  const end = Math.max(BOSS_STAT_MIN, Math.floor(base * mult * BOSS_STAT_FACTORS.endurance));
+  const agi = Math.max(BOSS_STAT_MIN, Math.floor(base * mult * BOSS_STAT_FACTORS.agility));
+  const int = Math.max(BOSS_STAT_MIN, Math.floor(base * mult * BOSS_STAT_FACTORS.intelligence));
+  const wis = Math.max(BOSS_STAT_MIN, Math.floor(base * mult * BOSS_STAT_FACTORS.wisdom));
+  const hp = Math.max(100, vit * HP_PER_VIT);
+  const armor = Math.max(0, Math.floor(end * BOSS_ARMOR_FACTOR));
 
   return {
     strength: str,
@@ -114,8 +132,8 @@ export const getBossGoldReward = (
   dungeonIndex: number,
   bossIndex: number,
 ): number => {
-  const base = 20 + dungeonIndex * 30;
-  const bossScale = 1 + bossIndex * 0.2;
+  const base = DUNGEON_GOLD_BASE + dungeonIndex * DUNGEON_GOLD_PER_DUNGEON;
+  const bossScale = 1 + bossIndex * DUNGEON_GOLD_BOSS_SCALE;
   return Math.floor(base * bossScale);
 };
 
@@ -124,8 +142,8 @@ export const getBossXpReward = (
   dungeonIndex: number,
   bossIndex: number,
 ): number => {
-  const base = 30 + dungeonIndex * 25;
-  const bossScale = 1 + bossIndex * 0.15;
+  const base = DUNGEON_XP_BASE + dungeonIndex * DUNGEON_XP_PER_DUNGEON;
+  const bossScale = 1 + bossIndex * DUNGEON_XP_BOSS_SCALE;
   return Math.floor(base * bossScale);
 };
 
@@ -133,8 +151,8 @@ export const getBossXpReward = (
 export const getDungeonCompletionBonus = (
   dungeonIndex: number,
 ): { gold: number; xp: number } => ({
-  gold: 200 + dungeonIndex * 150,
-  xp: 300 + dungeonIndex * 200,
+  gold: DUNGEON_COMPLETION_GOLD_BASE + dungeonIndex * DUNGEON_COMPLETION_GOLD_PER_DUNGEON,
+  xp: DUNGEON_COMPLETION_XP_BASE + dungeonIndex * DUNGEON_COMPLETION_XP_PER_DUNGEON,
 });
 
 /* ─── Re-exports for convenience ─── */

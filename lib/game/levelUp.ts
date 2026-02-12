@@ -1,4 +1,9 @@
 import { xpForLevel } from "./progression";
+import {
+  STAT_POINTS_PER_LEVEL,
+  SKILL_POINT_INTERVAL,
+  GOLD_PER_LEVEL_MULT,
+} from "./balance";
 
 /** GDD §3 - Level up: +5 stat points, +1 skill every 5 levels, 100*level gold, full HP restore */
 export const checkLevelUp = (params: {
@@ -14,9 +19,9 @@ export const checkLevelUp = (params: {
   while (currentXp >= xpNeeded) {
     currentXp -= xpNeeded;
     level++;
-    statPointsGained += 5;
-    if (level % 5 === 0) skillPointsGained += 1;
-    goldGained += 100 * level;
+    statPointsGained += STAT_POINTS_PER_LEVEL;
+    if (level % SKILL_POINT_INTERVAL === 0) skillPointsGained += 1;
+    goldGained += GOLD_PER_LEVEL_MULT * level;
     xpNeeded = xpForLevel(level);
   }
 

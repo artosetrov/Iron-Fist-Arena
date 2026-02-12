@@ -2,6 +2,19 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { getMaxHp } from "@/lib/game/stats";
 import { NextResponse } from "next/server";
+import {
+  BASE_CRIT_CHANCE,
+  MAX_CRIT_CHANCE,
+  BASE_CRIT_DAMAGE,
+  MAX_CRIT_DAMAGE_MULT,
+  BASE_DODGE,
+  MAX_DODGE,
+  ARMOR_REDUCTION_CAP,
+  ARMOR_DENOMINATOR,
+  MAGIC_RESIST_CAP,
+  MAGIC_RESIST_DENOM,
+  BASE_SPELL_MULT,
+} from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
 
@@ -45,16 +58,16 @@ export async function GET(request: Request) {
     const cha = character.charisma;
 
     const maxHp = getMaxHp(vit);
-    const critChance = Math.min(50, 5 + agi / 10 + lck / 15);
-    const critDamage = Math.min(2.8, 1.5 + str / 500);
-    const dodgeChance = Math.min(40, 3 + agi / 8);
-    const armorReduction = Math.min(0.75, character.armor / (character.armor + 100));
-    const magicResist = Math.min(0.7, wis / (wis + 150));
+    const critChance = Math.min(MAX_CRIT_CHANCE, BASE_CRIT_CHANCE + agi / 10 + lck / 15);
+    const critDamage = Math.min(MAX_CRIT_DAMAGE_MULT, BASE_CRIT_DAMAGE + str / 500);
+    const dodgeChance = Math.min(MAX_DODGE, BASE_DODGE + agi / 8);
+    const armorReduction = Math.min(ARMOR_REDUCTION_CAP, character.armor / (character.armor + ARMOR_DENOMINATOR));
+    const magicResist = Math.min(MAGIC_RESIST_CAP, wis / (wis + MAGIC_RESIST_DENOM));
 
     // GDD §2.1: avg damage = base × (1 + critChance% × (critMult - 1))
     const critFactor = 1 + (critChance / 100) * (critDamage - 1);
     const physicalDamage = Math.floor(str * critFactor);
-    const magicDamage = Math.floor(int * 1.2 * critFactor); // base spell mult 1.2
+    const magicDamage = Math.floor(int * BASE_SPELL_MULT * critFactor);
 
     return NextResponse.json({
       characterId,

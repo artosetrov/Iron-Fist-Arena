@@ -1,9 +1,19 @@
-/** GDD §6.2 - ELO: K=32, Expected = 1 / (1 + 10^((Opp - You)/400)) */
+/** GDD §6.2 - ELO rating system (logic only — constants in balance.ts) */
 
-const K = 32;
+import {
+  ELO_K,
+  RATING_FLOOR,
+  LOSS_STREAK_THRESHOLD,
+  LOSS_STREAK_REDUCTION,
+  RANK_TIERS,
+  BOSS_KILL_RATING_BASE,
+  BOSS_KILL_RATING_PER_LEVEL,
+  DUNGEON_COMPLETE_RATING_BASE,
+  DUNGEON_COMPLETE_RATING_PER_LEVEL,
+} from "./balance";
 
-/** Rating cannot drop below zero */
-export const RATING_FLOOR = 0;
+// Re-export for consumers
+export { RATING_FLOOR };
 
 export const expectedScore = (yourRating: number, oppRating: number): number => {
   return 1 / (1 + Math.pow(10, (oppRating - yourRating) / 400));
@@ -15,7 +25,7 @@ export const ratingChange = (
   actual: number
 ): number => {
   const expected = expectedScore(yourRating, oppRating);
-  return Math.round(K * (actual - expected));
+  return Math.round(ELO_K * (actual - expected));
 };
 
 /* ------------------------------------------------------------------ */
@@ -36,8 +46,8 @@ export const applyLossProtection = (
   let adjusted = delta;
 
   // Loss streak 3+: halve the loss
-  if (lossStreak >= 3) {
-    adjusted = Math.round(adjusted * 0.5);
+  if (lossStreak >= LOSS_STREAK_THRESHOLD) {
+    adjusted = Math.round(adjusted * LOSS_STREAK_REDUCTION);
   }
 
   // Never drop below the floor
@@ -51,30 +61,7 @@ export const applyLossProtection = (
 
 /* ------------------------------------------------------------------ */
 /*  GDD §6.3 — Rank tiers with divisions V → I                       */
-/*                                                                    */
-/*  Bronze V: 0-999, IV: 1000-1019, III: 1020-1039,                  */
-/*            II: 1040-1059, I: 1060-1099                             */
-/*  Silver/Gold/Platinum/Diamond: range 200, 5 divs of 40 each       */
-/*  Master: 1900-2099 (no divisions)                                  */
-/*  Grandmaster: 2100+ (no divisions)                                 */
 /* ------------------------------------------------------------------ */
-
-type TierDef = {
-  name: string;
-  floor: number;
-  ceiling: number; // exclusive
-  divisions: boolean;
-};
-
-const TIERS: TierDef[] = [
-  { name: "Grandmaster", floor: 2100, ceiling: Infinity, divisions: false },
-  { name: "Master", floor: 1900, ceiling: 2100, divisions: false },
-  { name: "Diamond", floor: 1700, ceiling: 1900, divisions: true },
-  { name: "Platinum", floor: 1500, ceiling: 1700, divisions: true },
-  { name: "Gold", floor: 1300, ceiling: 1500, divisions: true },
-  { name: "Silver", floor: 1100, ceiling: 1300, divisions: true },
-  { name: "Bronze", floor: 0, ceiling: 1100, divisions: true },
-];
 
 const DIVISION_LABELS = ["V", "IV", "III", "II", "I"] as const;
 
@@ -99,7 +86,7 @@ const getStandardDivision = (rating: number, tierFloor: number, tierRange: numbe
 
 /** Get full rank string with division, e.g. "Gold III" or "Master" */
 export const getRankFromRating = (rating: number): string => {
-  for (const tier of TIERS) {
+  for (const tier of RANK_TIERS) {
     if (rating >= tier.floor) {
       if (!tier.divisions) return tier.name;
 
@@ -151,16 +138,14 @@ export const rankOrder = (rank: string): number => {
 
 /* ------------------------------------------------------------------ */
 /*  Dungeon rating reward — scales with boss level                    */
-/*  Formula: base 5 + bossLevel * 2                                   */
-/*  Dungeon complete bonus: +10                                       */
 /* ------------------------------------------------------------------ */
 
 /** Rating points earned for defeating a dungeon boss. */
 export const ratingForBossKill = (bossLevel: number): number => {
-  return 5 + Math.floor(bossLevel * 2);
+  return BOSS_KILL_RATING_BASE + Math.floor(bossLevel * BOSS_KILL_RATING_PER_LEVEL);
 };
 
 /** Bonus rating for completing an entire dungeon (all bosses). */
 export const ratingForDungeonComplete = (dungeonMinLevel: number): number => {
-  return 10 + Math.floor(dungeonMinLevel * 0.5);
+  return DUNGEON_COMPLETE_RATING_BASE + Math.floor(dungeonMinLevel * DUNGEON_COMPLETE_RATING_PER_LEVEL);
 };

@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { runCombat, buildCombatantState } from "@/lib/game/combat";
+import { aggregateEquipmentStats } from "@/lib/game/equipment-stats";
 import type { DungeonRunState } from "@/app/api/dungeons/start/route";
 import {
   getDungeonById,
@@ -25,6 +26,12 @@ import { Rarity } from "@prisma/client";
 import { applyLevelUp } from "@/lib/game/levelUp";
 import { updateDailyQuestProgress } from "@/lib/game/quests";
 import { ratingForBossKill, ratingForDungeonComplete, getRankFromRating, rankOrder } from "@/lib/game/elo";
+import {
+  BUY_RARITY_PRICE_MULT,
+  BUY_BASE_MULT,
+  ITEM_LEVEL_VARIANCE_MIN,
+  ITEM_LEVEL_VARIANCE_RANGE,
+} from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +51,13 @@ export async function POST(
     const { id: runId } = await params;
     const run = await prisma.dungeonRun.findFirst({
       where: { id: runId },
-      include: { character: true },
+      include: {
+        character: {
+          include: {
+            equipment: { where: { isEquipped: true }, include: { item: true } },
+          },
+        },
+      },
     });
     if (!run || run.character.userId !== authUser.id) {
       return NextResponse.json({ error: "Run not found" }, { status: 404 });
@@ -60,7 +73,8 @@ export async function POST(
       );
     }
 
-    // Build player combatant
+    // Build player combatant with equipment bonuses
+    const playerEqStats = aggregateEquipmentStats(character.equipment ?? []);
     const playerState = buildCombatantState({
       id: character.id,
       name: character.characterName,
@@ -76,6 +90,7 @@ export async function POST(
       luck: character.luck,
       charisma: character.charisma,
       armor: character.armor,
+      equipmentBonuses: playerEqStats,
     });
 
     // Build boss combatant
@@ -169,7 +184,7 @@ export async function POST(
       if (droppedItem) {
         const itemLevel = Math.max(
           1,
-          character.level + Math.floor(Math.random() * 6) - 2
+          character.level + Math.floor(Math.random() * ITEM_LEVEL_VARIANCE_RANGE) + ITEM_LEVEL_VARIANCE_MIN
         );
         const rarity = droppedItem.rarity as Rarity;
         const itemType = rollItemType();
@@ -184,16 +199,7 @@ export async function POST(
         });
         if (!item) {
           const baseStats = generateItemStats(itemType, rarity);
-          const rarityPriceMultiplier =
-            rarity === "legendary"
-              ? 25
-              : rarity === "epic"
-                ? 10
-                : rarity === "rare"
-                  ? 4
-                  : rarity === "uncommon"
-                    ? 2
-                    : 1;
+          const rarityPriceMultiplier = BUY_RARITY_PRICE_MULT[rarity] ?? 1;
 
           item = await tx.item.create({
             data: {
@@ -202,7 +208,7 @@ export async function POST(
               rarity,
               itemLevel,
               baseStats,
-              buyPrice: itemLevel * 10 * rarityPriceMultiplier,
+              buyPrice: itemLevel * BUY_BASE_MULT * rarityPriceMultiplier,
             },
           });
         }

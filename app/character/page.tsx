@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -24,6 +24,41 @@ type Character = {
   level: number;
   gold: number;
   pvpRating: number;
+};
+
+type CharStats = { str: number; agi: number; vit: number; end: number; int: number; wis: number; lck: number; cha: number };
+type DerivedStats = {
+  physicalDamage: number;
+  magicDamage: number;
+  defense: number;
+  magicDefense: number;
+  critChance: number;
+  critDamage: number;
+  dodgeChance: number;
+  armorReduction: number;
+  magicResistPercent: number;
+  maxHp: number;
+};
+
+type CharacterDetail = {
+  id: string;
+  characterName: string;
+  class: string;
+  origin?: string;
+  level: number;
+  currentXp: number;
+  prestigeLevel: number;
+  gold: number;
+  maxHp: number;
+  currentHp: number;
+  armor: number;
+  magicResist: number;
+  pvpRating: number;
+  pvpWins: number;
+  pvpLosses: number;
+  statPointsAvailable: number;
+  stats: CharStats;
+  derived: DerivedStats;
 };
 
 /* ────────────────── Constants ────────────────── */
@@ -92,9 +127,11 @@ const ORIGIN_IMAGE: Record<string, string> = {
 const CharacterCard = ({
   character,
   onSelect,
+  isSelected = false,
 }: {
   character: Character;
   onSelect: (id: string) => void;
+  isSelected?: boolean;
 }) => {
   const cls = character.class;
 
@@ -102,7 +139,11 @@ const CharacterCard = ({
     <button
       type="button"
       onClick={() => onSelect(character.id)}
-      className={`group relative w-full overflow-hidden rounded-2xl border bg-gradient-to-br ${CLASS_GRADIENT[cls] ?? "from-slate-700/20 to-slate-600/20"} ${CLASS_BORDER[cls] ?? "border-slate-600/40 hover:border-slate-400/60"} p-4 text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/30`}
+      className={`group relative w-full overflow-hidden rounded-2xl border bg-gradient-to-br ${CLASS_GRADIENT[cls] ?? "from-slate-700/20 to-slate-600/20"} ${
+        isSelected
+          ? "border-amber-500/60 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/10"
+          : `${CLASS_BORDER[cls] ?? "border-slate-600/40 hover:border-slate-400/60"}`
+      } p-4 text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/30`}
       aria-label={`Select ${character.characterName}`}
       tabIndex={0}
     >
@@ -111,9 +152,20 @@ const CharacterCard = ({
 
       <div className="relative flex items-center gap-4">
         {/* Avatar */}
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 shadow-inner">
-          <span className="text-3xl">{CLASS_ICON[cls] ?? "⚔️"}</span>
-          <span className="absolute -bottom-1 -left-1 rounded-md bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
+        <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 shadow-inner">
+          {character.origin && ORIGIN_IMAGE[character.origin] ? (
+            <Image
+              src={ORIGIN_IMAGE[character.origin]}
+              alt={character.origin}
+              width={1024}
+              height={1024}
+              className="absolute left-1/2 -top-2 w-[300%] max-w-none -translate-x-1/2"
+              sizes="168px"
+            />
+          ) : (
+            <span className="text-3xl">{CLASS_ICON[cls] ?? "⚔️"}</span>
+          )}
+          <span className="absolute -bottom-1 -left-1 z-10 rounded-md bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
             Lv.{character.level}
           </span>
         </div>
@@ -247,6 +299,143 @@ const OriginSelectorCard = ({
   );
 };
 
+/* ────────────────── Character Preview Panel ────────────────── */
+
+type CharacterPreviewProps = {
+  detail: CharacterDetail;
+  onContinue: () => void;
+  onClose: () => void;
+};
+
+const CharacterPreview = ({ detail, onContinue, onClose }: CharacterPreviewProps) => {
+  const cls = detail.class;
+  const origin = detail.origin ?? "";
+
+  const statRows: { label: string; short: string; value: number; derived: string; derivedValue: string; color: string }[] = [
+    { label: "Strength", short: "STR", value: detail.stats.str, derived: "DMG", derivedValue: `${detail.derived.physicalDamage}`, color: "text-red-400" },
+    { label: "Vitality", short: "VIT", value: detail.stats.vit, derived: "HP", derivedValue: `${detail.derived.maxHp}`, color: "text-green-400" },
+    { label: "Agility", short: "AGI", value: detail.stats.agi, derived: "DODGE", derivedValue: `${detail.derived.dodgeChance}%`, color: "text-cyan-400" },
+    { label: "Luck", short: "LCK", value: detail.stats.lck, derived: "CRIT", derivedValue: `${detail.derived.critChance}%`, color: "text-yellow-400" },
+    { label: "Intelligence", short: "INT", value: detail.stats.int, derived: "MDMG", derivedValue: `${detail.derived.magicDamage}`, color: "text-blue-400" },
+    { label: "Armor", short: "ARM", value: detail.armor, derived: "RED.", derivedValue: `${detail.derived.armorReduction}%`, color: "text-orange-400" },
+  ];
+
+  return (
+    <div className="animate-in fade-in slide-in-from-right-4 duration-300 rounded-2xl border border-slate-700/60 bg-slate-900/90 shadow-2xl shadow-black/40 overflow-hidden">
+      {/* Header with close */}
+      <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-3">
+        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">Character Info</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-white"
+          aria-label="Close preview"
+          tabIndex={0}
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Avatar + name + class */}
+      <div className="flex flex-col items-center px-5 pt-5 pb-3">
+        <div className="relative mb-3 flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 shadow-inner">
+          {origin && ORIGIN_IMAGE[origin] ? (
+            <Image
+              src={ORIGIN_IMAGE[origin]}
+              alt={origin}
+              width={1024}
+              height={1024}
+              className="absolute left-1/2 -top-5 w-[300%] max-w-none -translate-x-1/2"
+              sizes="384px"
+            />
+          ) : (
+            <span className="text-5xl">{CLASS_ICON[cls] ?? "⚔️"}</span>
+          )}
+          <span className="absolute bottom-1 right-1 rounded-md bg-slate-900/80 px-2 py-0.5 text-[11px] font-bold text-white shadow backdrop-blur-sm">
+            Lv.{detail.level}
+          </span>
+        </div>
+        <p className="text-xl font-bold text-white">{detail.characterName}</p>
+        <p className={`mt-0.5 text-xs font-semibold uppercase tracking-wider ${CLASS_ACCENT[cls] ?? "text-slate-400"}`}>
+          {CLASS_LABELS[cls] ?? cls}
+          {origin && ORIGIN_DEFS[origin as CharacterOrigin] && (
+            <span className="ml-1.5 text-slate-500">
+              · {ORIGIN_DEFS[origin as CharacterOrigin].icon}{" "}
+              {ORIGIN_DEFS[origin as CharacterOrigin].label}
+            </span>
+          )}
+        </p>
+      </div>
+
+      {/* Quick info row */}
+      <div className="mx-5 mb-4 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-lg bg-slate-800/60 px-2 py-2">
+          <p className="text-[10px] font-semibold uppercase text-slate-500">Gold</p>
+          <p className="text-sm font-bold text-yellow-400">{detail.gold.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg bg-slate-800/60 px-2 py-2">
+          <p className="text-[10px] font-semibold uppercase text-slate-500">Rating</p>
+          <p className="text-sm font-bold text-white">{detail.pvpRating}</p>
+        </div>
+        <div className="rounded-lg bg-slate-800/60 px-2 py-2">
+          <p className="text-[10px] font-semibold uppercase text-slate-500">W / L</p>
+          <p className="text-sm font-bold">
+            <span className="text-green-400">{detail.pvpWins}</span>
+            <span className="text-slate-600"> / </span>
+            <span className="text-red-400">{detail.pvpLosses}</span>
+          </p>
+        </div>
+      </div>
+
+      {/* Stats grid */}
+      <div className="mx-5 mb-4 grid grid-cols-2 gap-2">
+        {statRows.map((r) => (
+          <div
+            key={r.short}
+            className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2"
+          >
+            <div className="min-w-0 flex-1">
+              <p className={`text-xs font-bold ${r.color}`}>{r.short}</p>
+              <p className="text-[10px] text-slate-400">
+                {r.derived}
+                <span className="ml-1 text-slate-300">{r.derivedValue}</span>
+              </p>
+            </div>
+            <span className="text-lg font-bold text-white">{r.value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Prestige badge */}
+      {detail.prestigeLevel > 0 && (
+        <div className="mx-5 mb-4 rounded-lg bg-amber-900/30 px-3 py-2 text-center text-xs font-bold text-amber-300">
+          Prestige {detail.prestigeLevel} — +{detail.prestigeLevel * 2}% all stats
+        </div>
+      )}
+
+      {/* Stat points notice */}
+      {detail.statPointsAvailable > 0 && (
+        <div className="mx-5 mb-4 rounded-lg bg-indigo-900/30 px-3 py-2 text-center text-xs text-indigo-300">
+          🔔 {detail.statPointsAvailable} stat point{detail.statPointsAvailable > 1 ? "s" : ""} available
+        </div>
+      )}
+
+      {/* Continue button */}
+      <div className="p-5 pt-0">
+        <button
+          type="button"
+          onClick={onContinue}
+          className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3.5 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30 active:scale-[0.98]"
+          aria-label={`Continue as ${detail.characterName}`}
+          tabIndex={0}
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+};
+
 /* ────────────────── Main Page ────────────────── */
 
 export default function CharacterPage() {
@@ -258,6 +447,9 @@ export default function CharacterPage() {
   const [originChoice, setOriginChoice] = useState<CharacterOrigin>("human");
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<CharacterDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -285,10 +477,37 @@ export default function CharacterPage() {
     return () => controller.abort();
   }, [router]);
 
-  const handleSelect = (id: string) => {
-    router.push(`/hub?characterId=${id}`);
+  const handleSelect = useCallback(async (id: string) => {
+    setSelectedId(id);
+    setDetailLoading(true);
+    setSelectedDetail(null);
+    try {
+      const res = await fetch(`/api/inventory?characterId=${id}`);
+      if (!res.ok) {
+        setError("Failed to load character details");
+        setSelectedId(null);
+        return;
+      }
+      const json = await res.json();
+      setSelectedDetail(json.character as CharacterDetail);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error loading details");
+      setSelectedId(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const handleContinue = useCallback(() => {
+    if (!selectedId) return;
+    router.push(`/hub?characterId=${selectedId}`);
     router.refresh();
-  };
+  }, [selectedId, router]);
+
+  const handleClosePreview = useCallback(() => {
+    setSelectedId(null);
+    setSelectedDetail(null);
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,7 +570,7 @@ export default function CharacterPage() {
         <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-indigo-500/5 blur-3xl" />
       </div>
 
-      <div className="relative z-10 w-full max-w-lg">
+      <div className="relative z-10 w-full max-w-4xl">
         {/* Header */}
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold uppercase tracking-wider text-white sm:text-4xl">
@@ -360,171 +579,201 @@ export default function CharacterPage() {
           <p className="mt-2 text-sm text-slate-500">Choose your champion or forge a new one</p>
         </header>
 
-        {/* Character List */}
-        {hasCharacters && (
-          <section className="mb-6">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
-                <span className="text-sm">⭐</span>
-              </div>
-              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">
-                Characters
-              </h2>
-              <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-400">
-                {characters.length}
-              </span>
-            </div>
-
-            <ul className="flex flex-col gap-3">
-              {characters.map((c) => (
-                <li key={c.id}>
-                  <CharacterCard character={c} onSelect={handleSelect} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {/* Create Button / Form */}
-        {hasCharacters && !isCreateVisible && (
-          <button
-            type="button"
-            onClick={() => setShowCreateForm(true)}
-            className="group flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-700/60 bg-slate-900/30 py-5 text-slate-400 transition-all duration-300 hover:border-amber-500/40 hover:bg-slate-900/60 hover:text-amber-400"
-            aria-label="Create new character"
-            tabIndex={0}
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-xl transition-all group-hover:border-amber-500/40 group-hover:bg-amber-500/10">
-              +
-            </span>
-            <span className="text-sm font-bold uppercase tracking-wider">Create New Character</span>
-          </button>
-        )}
-
-        {isCreateVisible && (
-          <section className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/80 shadow-xl">
-            {/* Form header */}
-            <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
-                  <span className="text-sm">✨</span>
-                </div>
-                <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">
-                  {hasCharacters ? "New Character" : "Create Your First Character"}
-                </h2>
-              </div>
-              {hasCharacters && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateForm(false);
-                    setError(null);
-                  }}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-white"
-                  aria-label="Close form"
-                  tabIndex={0}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {/* Form body */}
-            <form onSubmit={handleCreate} className="p-5">
-              {/* Name input */}
-              <label className="mb-5 flex flex-col gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Character Name
-                </span>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  minLength={2}
-                  maxLength={50}
-                  placeholder="Enter a name…"
-                  className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30"
-                  aria-label="Character Name"
-                />
-              </label>
-
-              {/* Race selector */}
-              <div className="mb-5">
-                <span className="mb-3 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Choose Race
-                </span>
-                <div className="grid grid-cols-5 gap-2">
-                  {ALL_ORIGINS.map((o) => (
-                    <OriginSelectorCard
-                      key={o}
-                      origin={o}
-                      selected={originChoice === o}
-                      onSelect={setOriginChoice}
-                    />
-                  ))}
-                </div>
-
-                {/* Race description */}
-                <div className="mt-3 rounded-lg border border-slate-700/40 bg-slate-800/40 px-4 py-2.5 text-center">
-                  <p className={`text-xs font-medium ${ORIGIN_ACCENT[originChoice]}`}>
-                    {ORIGIN_DEFS[originChoice].description}
-                  </p>
-                  <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    {ORIGIN_DEFS[originChoice].bonusDescription}
-                  </p>
-                </div>
-              </div>
-
-              {/* Class selector */}
-              <div className="mb-5">
-                <span className="mb-3 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Choose Class
-                </span>
-                <div className="grid grid-cols-4 gap-2">
-                  {ALL_CLASSES.map((cls) => (
-                    <ClassSelectorCard
-                      key={cls}
-                      cls={cls}
-                      selected={classChoice === cls}
-                      onSelect={setClassChoice}
-                    />
-                  ))}
-                </div>
-
-                {/* Class description */}
-                <div className="mt-3 rounded-lg border border-slate-700/40 bg-slate-800/40 px-4 py-2.5 text-center">
-                  <p className={`text-xs font-medium ${CLASS_ACCENT[classChoice]}`}>
-                    {CLASS_DESCRIPTION[classChoice]}
-                  </p>
-                </div>
-              </div>
-
-              {/* Error */}
-              {error && (
-                <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-center">
-                  <p className="text-xs text-red-400" role="alert">{error}</p>
-                </div>
-              )}
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={creating}
-                className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30 disabled:opacity-50 disabled:hover:from-amber-600 disabled:hover:to-orange-600"
-              >
-                {creating ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Creating…
+        {/* Two-column layout: list on the left, preview on the right */}
+        <div className="flex flex-col gap-6 lg:flex-row">
+          {/* Left column — list + create */}
+          <div className={`w-full ${selectedId ? "lg:w-1/2" : "lg:mx-auto lg:max-w-lg"} transition-all duration-300`}>
+            {/* Character List */}
+            {hasCharacters && (
+              <section className="mb-6">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
+                    <span className="text-sm">⭐</span>
+                  </div>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">
+                    Characters
+                  </h2>
+                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+                    {characters.length}
                   </span>
-                ) : (
-                  "Forge Character"
-                )}
+                </div>
+
+                <ul className="flex flex-col gap-3">
+                  {characters.map((c) => (
+                    <li key={c.id}>
+                      <CharacterCard
+                        character={c}
+                        onSelect={handleSelect}
+                        isSelected={selectedId === c.id}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {/* Create Button / Form */}
+            {hasCharacters && !isCreateVisible && (
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(true)}
+                className="group flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-700/60 bg-slate-900/30 py-5 text-slate-400 transition-all duration-300 hover:border-amber-500/40 hover:bg-slate-900/60 hover:text-amber-400"
+                aria-label="Create new character"
+                tabIndex={0}
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-xl transition-all group-hover:border-amber-500/40 group-hover:bg-amber-500/10">
+                  +
+                </span>
+                <span className="text-sm font-bold uppercase tracking-wider">Create New Character</span>
               </button>
-            </form>
-          </section>
-        )}
+            )}
+
+            {isCreateVisible && (
+              <section className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/80 shadow-xl">
+                {/* Form header */}
+                <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
+                      <span className="text-sm">✨</span>
+                    </div>
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">
+                      {hasCharacters ? "New Character" : "Create Your First Character"}
+                    </h2>
+                  </div>
+                  {hasCharacters && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateForm(false);
+                        setError(null);
+                      }}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-white"
+                      aria-label="Close form"
+                      tabIndex={0}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Form body */}
+                <form onSubmit={handleCreate} className="p-5">
+                  {/* Name input */}
+                  <label className="mb-5 flex flex-col gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      Character Name
+                    </span>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      minLength={2}
+                      maxLength={50}
+                      placeholder="Enter a name…"
+                      className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30"
+                      aria-label="Character Name"
+                    />
+                  </label>
+
+                  {/* Race selector */}
+                  <div className="mb-5">
+                    <span className="mb-3 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      Choose Race
+                    </span>
+                    <div className="grid grid-cols-5 gap-2">
+                      {ALL_ORIGINS.map((o) => (
+                        <OriginSelectorCard
+                          key={o}
+                          origin={o}
+                          selected={originChoice === o}
+                          onSelect={setOriginChoice}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Race description */}
+                    <div className="mt-3 rounded-lg border border-slate-700/40 bg-slate-800/40 px-4 py-2.5 text-center">
+                      <p className={`text-xs font-medium ${ORIGIN_ACCENT[originChoice]}`}>
+                        {ORIGIN_DEFS[originChoice].description}
+                      </p>
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        {ORIGIN_DEFS[originChoice].bonusDescription}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Class selector */}
+                  <div className="mb-5">
+                    <span className="mb-3 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      Choose Class
+                    </span>
+                    <div className="grid grid-cols-4 gap-2">
+                      {ALL_CLASSES.map((cls) => (
+                        <ClassSelectorCard
+                          key={cls}
+                          cls={cls}
+                          selected={classChoice === cls}
+                          onSelect={setClassChoice}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Class description */}
+                    <div className="mt-3 rounded-lg border border-slate-700/40 bg-slate-800/40 px-4 py-2.5 text-center">
+                      <p className={`text-xs font-medium ${CLASS_ACCENT[classChoice]}`}>
+                        {CLASS_DESCRIPTION[classChoice]}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Error */}
+                  {error && (
+                    <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-center">
+                      <p className="text-xs text-red-400" role="alert">{error}</p>
+                    </div>
+                  )}
+
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={creating}
+                    className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30 disabled:opacity-50 disabled:hover:from-amber-600 disabled:hover:to-orange-600"
+                  >
+                    {creating ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        Creating…
+                      </span>
+                    ) : (
+                      "Forge Character"
+                    )}
+                  </button>
+                </form>
+              </section>
+            )}
+          </div>
+
+          {/* Right column — character preview */}
+          {selectedId && (
+            <div className="w-full lg:w-1/2 lg:sticky lg:top-8 lg:self-start">
+              {detailLoading ? (
+                <div className="flex h-64 items-center justify-center rounded-2xl border border-slate-700/60 bg-slate-900/90">
+                  <div className="flex flex-col items-center gap-3">
+                    <span className="h-8 w-8 animate-spin rounded-full border-2 border-slate-600 border-t-amber-500" />
+                    <p className="text-xs text-slate-500">Loading stats…</p>
+                  </div>
+                </div>
+              ) : selectedDetail ? (
+                <CharacterPreview
+                  detail={selectedDetail}
+                  onContinue={handleContinue}
+                  onClose={handleClosePreview}
+                />
+              ) : null}
+            </div>
+          )}
+        </div>
 
         {/* Footer nav */}
         <div className="mt-8 text-center">

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { aggregateArmor } from "@/lib/game/equipment-stats";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +20,12 @@ export async function POST(request: Request) {
     const inventoryId = body.inventoryId as string;
 
     if (!characterId || !inventoryId) {
-      return NextResponse.json({ error: "characterId, inventoryId required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "characterId, inventoryId required" },
+        { status: 400 }
+      );
     }
 
-    // FIX: Unequip + armor update in a single transaction
     await prisma.$transaction(async (tx) => {
       const inv = await tx.equipmentInventory.findFirst({
         where: { id: inventoryId, characterId },
@@ -37,18 +40,14 @@ export async function POST(request: Request) {
         data: { isEquipped: false, equippedSlot: null },
       });
 
-      // Recalculate armor in the same transaction
+      // Recalculate armor
       const character = await tx.character.findFirst({
         where: { id: characterId },
-        include: { equipment: { where: { isEquipped: true }, include: { item: true } } },
-      });
-      const armor = character?.equipment?.reduce(
-        (sum, e) => {
-          const bs = e.item.baseStats as Record<string, number> | null;
-          return sum + (bs?.armor ?? bs?.ARMOR ?? 0);
+        include: {
+          equipment: { where: { isEquipped: true }, include: { item: true } },
         },
-        0
-      ) ?? 0;
+      });
+      const armor = aggregateArmor(character?.equipment ?? []);
       await tx.character.update({
         where: { id: characterId },
         data: { armor },
@@ -58,9 +57,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof Error && error.message === "NOT_FOUND") {
-      return NextResponse.json({ error: "Item not found or not equipped" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Item not found or not equipped" },
+        { status: 404 }
+      );
     }
     console.error("[api/inventory/unequip POST]", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

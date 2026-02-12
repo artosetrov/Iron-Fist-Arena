@@ -1,20 +1,16 @@
-/** GDD §4 - Stamina: 1 per 12 min, max 100, VIP +20 */
+/** GDD §4 - Stamina system (logic only — constants in balance.ts) */
 
-export const STAMINA_REGEN_MINUTES = 12;
-export const MAX_STAMINA_BASE = 100;
-export const MAX_STAMINA_VIP_BONUS = 20;
-export const OVERFLOW_CAP = 200;
+import {
+  STAMINA_REGEN_MINUTES,
+  MAX_STAMINA_BASE,
+  MAX_STAMINA_VIP_BONUS,
+  OVERFLOW_CAP,
+} from "./balance";
 
-export const STAMINA_COST = {
-  PVP: 10,
-  DUNGEON_EASY: 15,
-  DUNGEON_NORMAL: 20,
-  DUNGEON_HARD: 25,
-  BOSS_RAID: 40,
-  SPECIAL_EVENT: 30,
-} as const;
-
-export type StaminaActivity = keyof typeof STAMINA_COST;
+// Re-export constants & types for consumers that imported from here
+export { STAMINA_REGEN_MINUTES, MAX_STAMINA_BASE, MAX_STAMINA_VIP_BONUS, OVERFLOW_CAP };
+export type { StaminaActivity } from "./balance";
+export { STAMINA_COST } from "./balance";
 
 /** Compute current stamina from last update time and regen rate */
 export const computeCurrentStamina = (params: {
@@ -67,7 +63,7 @@ export const applyRegen = (params: {
   lastStaminaUpdate: Date;
   isVip?: boolean;
 }): { currentStamina: number; lastStaminaUpdate: Date } => {
-  const { maxStamina, isVip } = params;
+  const { isVip } = params;
   const cap = getMaxStamina(!!isVip);
   let current = params.currentStamina;
   const last = new Date(params.lastStaminaUpdate).getTime();

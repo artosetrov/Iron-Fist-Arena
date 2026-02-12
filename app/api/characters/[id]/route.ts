@@ -59,6 +59,7 @@ export async function GET(
     const { user: _u, ...rest } = character;
     return NextResponse.json({
       ...rest,
+      gems: character.user?.gems ?? 0,
       currentStamina,
       lastStaminaUpdate: lastStaminaUpdate.toISOString(),
     });

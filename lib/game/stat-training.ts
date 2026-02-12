@@ -1,7 +1,7 @@
 /**
  * Gold cost for stat training (exponential progression).
  *
- * Formula: cost = floor(50 × 1.05^statValue)
+ * Formula: cost = floor(BASE × GROWTH^statValue)
  *
  * Examples:
  *   stat 10 →    81 gold
@@ -13,5 +13,8 @@
  *
  * Shared between API route and UI to keep costs in sync.
  */
+
+import { STAT_TRAIN_BASE, STAT_TRAIN_GROWTH } from "./balance";
+
 export const goldCostForStatTraining = (currentValue: number): number =>
-  Math.floor(50 * Math.pow(1.05, currentValue));
+  Math.floor(STAT_TRAIN_BASE * Math.pow(STAT_TRAIN_GROWTH, currentValue));

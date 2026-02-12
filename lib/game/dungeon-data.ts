@@ -362,4 +362,4 @@ export const DUNGEONS: DungeonDefinition[] = [
 export const getDungeonById = (id: string): DungeonDefinition | undefined =>
   DUNGEONS.find((d) => d.id === id);
 
-export const BOSSES_PER_DUNGEON = 10;
+export { BOSSES_PER_DUNGEON } from "./balance";

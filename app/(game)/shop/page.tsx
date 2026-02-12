@@ -3,7 +3,11 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PageLoader from "@/app/components/PageLoader";
-import { STAMINA_POTIONS, type StaminaPotion } from "@/lib/game/potion-catalog";
+import {
+  CONSUMABLE_CATALOG,
+  type ConsumableDef,
+  type ConsumableType,
+} from "@/lib/game/consumable-catalog";
 
 /* ────────────────── Constants ────────────────── */
 
@@ -29,9 +33,15 @@ type Character = {
   id: string;
   characterName: string;
   gold: number;
+  gems: number;
   level: number;
   currentStamina: number;
   maxStamina: number;
+};
+
+type ConsumableInventoryItem = {
+  consumableType: ConsumableType;
+  quantity: number;
 };
 
 const RARITY_CONFIG: Record<
@@ -496,27 +506,25 @@ const BuyToast = ({ itemName, onClose }: { itemName: string; onClose: () => void
   );
 };
 
-/* ────────────────── Potion Card ────────────────── */
+/* ────────────────── Consumable Card ────────────────── */
 
-const PotionCard = ({
-  potion,
+const ConsumableCard = ({
+  consumable,
+  ownedQty,
   canAfford,
-  currentStamina,
-  maxStamina,
   onBuy,
   buying,
 }: {
-  potion: StaminaPotion;
+  consumable: ConsumableDef;
+  ownedQty: number;
   canAfford: boolean;
-  currentStamina: number;
-  maxStamina: number;
-  onBuy: (id: string) => void;
+  onBuy: (type: ConsumableType) => void;
   buying: string | null;
 }) => {
   const [hovered, setHovered] = useState(false);
-  const isBuying = buying === potion.id;
-  const staminaAfter = Math.min(200, currentStamina + potion.staminaRestore);
-  const atCap = currentStamina >= 200;
+  const isBuying = buying === consumable.type;
+  const atMaxStack = ownedQty >= consumable.maxStack;
+  const currencyIcon = consumable.currency === "gold" ? "🪙" : "💎";
 
   return (
     <div
@@ -529,7 +537,7 @@ const PotionCard = ({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       role="article"
-      aria-label={potion.name}
+      aria-label={consumable.name}
     >
       {/* Top badge */}
       <div className="flex items-center justify-between px-3 pt-3">
@@ -537,7 +545,7 @@ const PotionCard = ({
           Consumable
         </span>
         <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-          +{potion.staminaRestore} ⚡
+          +{consumable.staminaRestore} ⚡
         </span>
       </div>
 
@@ -550,41 +558,34 @@ const PotionCard = ({
             ${hovered ? "scale-110 rotate-3" : ""}
           `}
         >
-          {potion.icon}
+          {consumable.icon}
         </div>
-        <p className="text-center text-sm font-bold leading-tight text-emerald-400">{potion.name}</p>
+        <p className="text-center text-sm font-bold leading-tight text-emerald-400">{consumable.name}</p>
       </div>
 
       {/* Description */}
       <div className="mx-3 mb-2">
-        <p className="text-[10px] italic text-slate-500">{potion.description}</p>
+        <p className="text-[10px] italic text-slate-500">{consumable.description}</p>
       </div>
 
-      {/* Stamina preview */}
+      {/* Stats */}
       <div className="mx-3 mb-2 space-y-1.5 rounded-lg border border-slate-700/30 bg-slate-900/40 px-2.5 py-2">
         <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-400">⚡ Stamina</span>
-          <span className="font-bold text-emerald-400">+{potion.staminaRestore}</span>
+          <span className="text-slate-400">⚡ Stamina restore</span>
+          <span className="font-bold text-emerald-400">+{consumable.staminaRestore}</span>
         </div>
         <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-400">After use</span>
-          <span className="font-medium text-slate-300">
-            {staminaAfter} / {maxStamina}
+          <span className="text-slate-400">📦 Owned</span>
+          <span className={`font-bold ${ownedQty >= consumable.maxStack ? "text-amber-400" : "text-slate-300"}`}>
+            {ownedQty} / {consumable.maxStack}
           </span>
-        </div>
-        {/* Stamina bar */}
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-500"
-            style={{ width: `${Math.min(100, (staminaAfter / maxStamina) * 100)}%` }}
-          />
         </div>
       </div>
 
-      {/* Daily limit */}
+      {/* Stack limit info */}
       <div className="mx-3 mb-2 rounded-lg border border-amber-700/30 bg-amber-950/20 px-2.5 py-1.5">
         <p className="text-[10px] font-medium text-amber-400/80">
-          ✦ Daily limit: {potion.dailyLimit} per day
+          ✦ Max stack: {consumable.maxStack} · Use from inventory
         </p>
       </div>
 
@@ -592,24 +593,24 @@ const PotionCard = ({
       <div className="mt-auto border-t border-slate-700/30 bg-slate-900/40 px-3 py-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-lg">🪙</span>
-            <span className={`text-sm font-bold ${canAfford ? "text-yellow-400" : "text-red-400"}`}>
-              {potion.goldCost.toLocaleString()}
+            <span className="text-lg">{currencyIcon}</span>
+            <span className={`text-sm font-bold ${canAfford && !atMaxStack ? "text-yellow-400" : "text-red-400"}`}>
+              {consumable.cost.toLocaleString()}
             </span>
           </div>
           <button
             type="button"
-            onClick={() => onBuy(potion.id)}
-            disabled={!canAfford || isBuying || atCap}
+            onClick={() => onBuy(consumable.type)}
+            disabled={!canAfford || isBuying || atMaxStack}
             className={`
               rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-200
-              ${canAfford && !atCap
+              ${canAfford && !atMaxStack
                 ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-500 hover:to-emerald-400 hover:shadow-emerald-500/30 active:scale-95"
                 : "cursor-not-allowed bg-slate-800 text-slate-600"
               }
               disabled:opacity-60
             `}
-            aria-label={`Buy ${potion.name}`}
+            aria-label={`Buy ${consumable.name}`}
             tabIndex={0}
           >
             {isBuying ? (
@@ -617,8 +618,8 @@ const PotionCard = ({
                 <span className="h-3 w-3 animate-spin rounded-full border border-white/30 border-t-white" />
                 ...
               </span>
-            ) : atCap ? (
-              "Full"
+            ) : atMaxStack ? (
+              "Max"
             ) : (
               "Buy"
             )}
@@ -646,7 +647,8 @@ function ShopContent() {
   const [rarityFilter, setRarityFilter] = useState<Rarity | "all">("all");
   const [sortBy, setSortBy] = useState<"price_asc" | "price_desc" | "level" | "rarity">("rarity");
   const [goldModalOpen, setGoldModalOpen] = useState(false);
-  const [buyingPotion, setBuyingPotion] = useState<string | null>(null);
+  const [buyingConsumable, setBuyingConsumable] = useState<string | null>(null);
+  const [consumableInv, setConsumableInv] = useState<ConsumableInventoryItem[]>([]);
 
   /* ── Load data ── */
   useEffect(() => {
@@ -655,14 +657,19 @@ function ShopContent() {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [charRes, shopRes] = await Promise.all([
+        const [charRes, shopRes, consRes] = await Promise.all([
           fetch(`/api/characters/${characterId}`, { signal: controller.signal }),
           fetch(`/api/shop/items?characterId=${characterId}`, { signal: controller.signal }),
+          fetch(`/api/consumables?characterId=${characterId}`, { signal: controller.signal }),
         ]);
         if (!charRes.ok || !shopRes.ok) throw new Error("Failed to load shop data");
         const [char, shop] = await Promise.all([charRes.json(), shopRes.json()]);
         setCharacter(char);
         setItems(shop.items ?? []);
+        if (consRes.ok) {
+          const consData = await consRes.json();
+          setConsumableInv(consData.consumables ?? []);
+        }
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") return;
         setError(e instanceof Error ? e.message : "Failed to load shop data");
@@ -741,46 +748,51 @@ function ShopContent() {
     setGoldModalOpen(false);
   }, []);
 
-  /* ── Buy potion handler ── */
-  const handleBuyPotion = useCallback(
-    async (potionId: string) => {
-      if (!characterId || buyingPotion) return;
+  /* ── Buy consumable handler ── */
+  const handleBuyConsumable = useCallback(
+    async (consumableType: ConsumableType) => {
+      if (!characterId || buyingConsumable) return;
       setError(null);
-      setBuyingPotion(potionId);
+      setBuyingConsumable(consumableType);
       try {
-        const res = await fetch("/api/shop/buy-potion", {
+        const res = await fetch("/api/shop/buy-consumable", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ characterId, potionId }),
+          body: JSON.stringify({ characterId, consumableType }),
         });
         const data = await res.json();
         if (res.ok) {
-          const potion = STAMINA_POTIONS.find((p) => p.id === potionId);
+          // Update gold/gems from response
           setCharacter((c) =>
-            c
-              ? {
-                  ...c,
-                  gold: c.gold - (potion?.goldCost ?? 0),
-                  currentStamina: data.currentStamina ?? c.currentStamina,
-                }
-              : null
+            c ? { ...c, gold: data.gold ?? c.gold, gems: data.gems ?? c.gems } : null
           );
-          setToast(`⚡ +${data.staminaRestored ?? 0} Stamina`);
+          // Update consumable inventory
+          setConsumableInv((prev) => {
+            const idx = prev.findIndex((ci) => ci.consumableType === consumableType);
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = { ...updated[idx], quantity: data.quantity };
+              return updated;
+            }
+            return [...prev, { consumableType, quantity: data.quantity }];
+          });
+          const def = CONSUMABLE_CATALOG.find((c) => c.type === consumableType);
+          setToast(`${def?.icon ?? "🧪"} ${def?.name ?? "Potion"} added to inventory`);
         } else {
           setError(data.error ?? "Purchase error");
         }
       } catch {
         setError("Network error");
       } finally {
-        setBuyingPotion(null);
+        setBuyingConsumable(null);
       }
     },
-    [characterId, buyingPotion]
+    [characterId, buyingConsumable]
   );
 
   /* ── Category counts ── */
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: items.length, potions: STAMINA_POTIONS.length };
+    const counts: Record<string, number> = { all: items.length, potions: CONSUMABLE_CATALOG.length };
     for (const item of items) {
       counts[item.itemType] = (counts[item.itemType] ?? 0) + 1;
     }
@@ -820,6 +832,18 @@ function ShopContent() {
                   {character.currentStamina}
                   <span className="text-sm font-medium text-emerald-600">/{character.maxStamina}</span>
                 </p>
+              </div>
+            </div>
+
+            {/* Gems display */}
+            <div
+              className="flex items-center gap-2 rounded-xl border border-purple-700/40 bg-gradient-to-r from-purple-900/30 to-purple-950/50 px-4 py-2 shadow-lg shadow-purple-500/5"
+              aria-label="Gems"
+            >
+              <span className="text-xl">💎</span>
+              <div className="text-left">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-purple-600">Gems</p>
+                <p className="text-lg font-black tabular-nums text-purple-400">{character.gems.toLocaleString()}</p>
               </div>
             </div>
 
@@ -947,20 +971,25 @@ function ShopContent() {
         </div>
       )}
 
-      {/* ── Potions Grid ── */}
+      {/* ── Consumables Grid ── */}
       {activeTab === "potions" ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {STAMINA_POTIONS.map((potion) => (
-            <PotionCard
-              key={potion.id}
-              potion={potion}
-              canAfford={character.gold >= potion.goldCost}
-              currentStamina={character.currentStamina}
-              maxStamina={character.maxStamina}
-              onBuy={handleBuyPotion}
-              buying={buyingPotion}
-            />
-          ))}
+          {CONSUMABLE_CATALOG.map((consumable) => {
+            const owned = consumableInv.find((ci) => ci.consumableType === consumable.type)?.quantity ?? 0;
+            const canAfford = consumable.currency === "gold"
+              ? character.gold >= consumable.cost
+              : character.gems >= consumable.cost;
+            return (
+              <ConsumableCard
+                key={consumable.type}
+                consumable={consumable}
+                ownedQty={owned}
+                canAfford={canAfford}
+                onBuy={handleBuyConsumable}
+                buying={buyingConsumable}
+              />
+            );
+          })}
         </div>
       ) : /* ── Item Grid ── */
       filteredItems.length > 0 ? (

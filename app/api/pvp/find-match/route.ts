@@ -13,6 +13,9 @@ import {
 } from "@/lib/game/progression";
 import { applyLevelUp } from "@/lib/game/levelUp";
 import { updateDailyQuestProgress } from "@/lib/game/quests";
+import { aggregateEquipmentStats } from "@/lib/game/equipment-stats";
+import { PVP_MATCHMAKING_RATING_RANGE } from "@/lib/game/balance";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { CharacterClass, CharacterOrigin } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +30,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const rl = checkRateLimit(authUser.id, { prefix: "pvp", windowMs: 10_000, maxRequests: 3 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      );
+    }
+
     const body = await request.json().catch(() => ({}));
     const characterId = body.characterId as string;
     const opponentId = body.opponentId as string | undefined;
@@ -36,7 +47,10 @@ export async function POST(request: Request) {
 
     const character = await prisma.character.findFirst({
       where: { id: characterId, userId: authUser.id },
-      include: { user: true },
+      include: {
+        user: true,
+        equipment: { where: { isEquipped: true }, include: { item: true } },
+      },
     });
     if (!character) {
       return NextResponse.json({ error: "Character not found" }, { status: 404 });
@@ -56,17 +70,23 @@ export async function POST(request: Request) {
 
     const seasonNumber = await getCurrentSeasonNumber();
 
-    // Find opponent
-    let opponent: Awaited<ReturnType<typeof prisma.character.findFirst>> = null;
+    // Find opponent (with equipment for combat stats)
+    type CharacterWithEquipment = Awaited<ReturnType<typeof prisma.character.findFirst<{
+      include: { equipment: { where: { isEquipped: true }; include: { item: true } } };
+    }>>>;
+    let opponent: CharacterWithEquipment = null;
+
+    const eqInclude = { equipment: { where: { isEquipped: true }, include: { item: true } } } as const;
 
     if (opponentId) {
       opponent = await prisma.character.findFirst({
         where: { id: opponentId, userId: { not: authUser.id } },
+        include: eqInclude,
       });
     }
 
     if (!opponent) {
-      const ratingRange = 100;
+      const ratingRange = PVP_MATCHMAKING_RATING_RANGE;
       const opponents = await prisma.character.findMany({
         where: {
           id: { not: characterId },
@@ -78,11 +98,13 @@ export async function POST(request: Request) {
         },
         take: 10,
         orderBy: { pvpRating: "asc" },
+        include: eqInclude,
       });
       opponent = opponents[Math.floor(Math.random() * opponents.length)] ?? null;
       if (!opponent) {
         opponent = await prisma.character.findFirst({
           where: { id: { not: characterId }, userId: { not: authUser.id } },
+          include: eqInclude,
         });
       }
     }
@@ -94,6 +116,7 @@ export async function POST(request: Request) {
       );
     }
 
+    const playerEqStats = aggregateEquipmentStats(character.equipment ?? []);
     const playerState = buildCombatantState({
       id: character.id,
       name: character.characterName,
@@ -109,8 +132,10 @@ export async function POST(request: Request) {
       luck: character.luck,
       charisma: character.charisma,
       armor: character.armor,
+      equipmentBonuses: playerEqStats,
     });
 
+    const opponentEqStats = aggregateEquipmentStats(opponent.equipment ?? []);
     const opponentState = buildCombatantState({
       id: opponent.id,
       name: opponent.characterName,
@@ -126,6 +151,7 @@ export async function POST(request: Request) {
       luck: opponent.luck,
       charisma: opponent.charisma,
       armor: opponent.armor,
+      equipmentBonuses: opponentEqStats,
     });
 
     const result = runCombat(playerState, opponentState, []);
@@ -165,10 +191,11 @@ export async function POST(request: Request) {
       ? scaleXpByLevel(XP_REWARD.PVP_WIN, character.level)
       : scaleXpByLevel(XP_REWARD.PVP_LOSS, character.level);
 
-    const newWinStreak1 = playerWon ? character.pvpWinStreak + 1 : 0;
-    const newLossStreak1 = playerWon ? 0 : character.pvpLossStreak + 1;
-    const newWinStreak2 = oppWon ? opponent.pvpWinStreak + 1 : 0;
-    const newLossStreak2 = oppWon ? 0 : opponent.pvpLossStreak + 1;
+    // Draw preserves streaks; win resets loss streak and vice versa
+    const newWinStreak1 = draw ? character.pvpWinStreak : playerWon ? character.pvpWinStreak + 1 : 0;
+    const newLossStreak1 = draw ? character.pvpLossStreak : playerWon ? 0 : character.pvpLossStreak + 1;
+    const newWinStreak2 = draw ? opponent.pvpWinStreak : oppWon ? opponent.pvpWinStreak + 1 : 0;
+    const newLossStreak2 = draw ? opponent.pvpLossStreak : oppWon ? 0 : opponent.pvpLossStreak + 1;
 
     const afterXp = character.currentXp + xp1;
     const afterGold = character.gold + gold1;
@@ -190,6 +217,7 @@ export async function POST(request: Request) {
           player2RatingBefore: opponent!.pvpRating,
           player1RatingAfter: newRating1,
           player2RatingAfter: newRating2,
+          // On draw winnerId/loserId are null but DB requires non-null — use player IDs as placeholders
           winnerId: winnerId ?? character.id,
           loserId: loserId ?? opponent!.id,
           combatLog: result.log as object,
@@ -198,7 +226,7 @@ export async function POST(request: Request) {
           player2GoldReward: gold2,
           player1XpReward: xp1,
           player2XpReward: xp2,
-          matchType: "ranked",
+          matchType: draw ? "ranked_draw" : "ranked",
           seasonNumber,
         },
       });
@@ -214,7 +242,7 @@ export async function POST(request: Request) {
         data: {
           pvpRating: newRating1,
           pvpWins: { increment: playerWon ? 1 : 0 },
-          pvpLosses: { increment: playerWon ? 0 : 1 },
+          pvpLosses: { increment: draw ? 0 : playerWon ? 0 : 1 },
           pvpWinStreak: newWinStreak1,
           pvpLossStreak: newLossStreak1,
           highestPvpRank: highestRank1,
@@ -238,7 +266,7 @@ export async function POST(request: Request) {
         data: {
           pvpRating: newRating2,
           pvpWins: { increment: oppWon ? 1 : 0 },
-          pvpLosses: { increment: oppWon ? 0 : 1 },
+          pvpLosses: { increment: draw ? 0 : oppWon ? 0 : 1 },
           pvpWinStreak: newWinStreak2,
           pvpLossStreak: newLossStreak2,
           highestPvpRank: highestRank2,

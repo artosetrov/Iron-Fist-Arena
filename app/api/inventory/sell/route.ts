@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { SELL_RARITY_MULT, SELL_BASE_MULT, SELL_STAT_MULT } from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
 
@@ -10,24 +11,16 @@ export const dynamic = "force-dynamic";
  * Stat_Bonus_Value = sum of all base stats × 5
  */
 
-const RARITY_MULT: Record<string, number> = {
-  common: 1,
-  uncommon: 2,
-  rare: 4,
-  epic: 10,
-  legendary: 25,
-};
-
 const calculateSellPrice = (
   itemLevel: number,
   rarity: string,
   baseStats: Record<string, number> | null
 ): number => {
-  const rarityMult = RARITY_MULT[rarity] ?? 1;
+  const rarityMult = SELL_RARITY_MULT[rarity] ?? 1;
   const statBonusValue = baseStats
-    ? Object.values(baseStats).reduce((sum, v) => sum + (typeof v === "number" ? v : 0), 0) * 5
+    ? Object.values(baseStats).reduce((sum, v) => sum + (typeof v === "number" ? v : 0), 0) * SELL_STAT_MULT
     : 0;
-  return itemLevel * rarityMult * 10 + statBonusValue;
+  return itemLevel * rarityMult * SELL_BASE_MULT + statBonusValue;
 };
 
 export async function POST(request: Request) {

@@ -11,7 +11,7 @@ import {
   HP_PER_VIT,
   ARMOR_DENOMINATOR,
   MAGIC_RESIST_DENOM,
-} from "./constants";
+} from "./balance";
 import { applyOriginBonuses } from "./origins";
 
 /** GDD §2.1 - Max HP from VIT */

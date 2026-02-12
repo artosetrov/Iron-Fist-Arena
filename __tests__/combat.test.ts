@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { runCombat, buildCombatantState } from "@/lib/game/combat";
-import { MAX_TURNS } from "@/lib/game/constants";
+import { MAX_TURNS } from "@/lib/game/balance";
 
 afterEach(() => {
   vi.restoreAllMocks();

@@ -2,15 +2,9 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { applyRegen, getMaxStamina, OVERFLOW_CAP } from "@/lib/game/stamina";
+import { STAMINA_REFILL, type StaminaRefillSize } from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
-
-const GEM_COST_SMALL = 50;
-const GEM_COST_MEDIUM = 90;
-const GEM_COST_LARGE = 150;
-const STAMINA_SMALL = 25;
-const STAMINA_MEDIUM = 50;
-const STAMINA_LARGE = 100;
 
 export async function POST(request: Request) {
   try {
@@ -30,20 +24,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "characterId required" }, { status: 400 });
     }
 
-    let cost = 0;
-    let addStamina = 0;
-    if (size === "small") {
-      cost = GEM_COST_SMALL;
-      addStamina = STAMINA_SMALL;
-    } else if (size === "medium") {
-      cost = GEM_COST_MEDIUM;
-      addStamina = STAMINA_MEDIUM;
-    } else if (size === "large") {
-      cost = GEM_COST_LARGE;
-      addStamina = STAMINA_LARGE;
-    } else {
+    const refillDef = STAMINA_REFILL[size as StaminaRefillSize];
+    if (!refillDef) {
       return NextResponse.json({ error: "size must be small|medium|large" }, { status: 400 });
     }
+
+    const cost = refillDef.gems;
+    const addStamina = refillDef.stamina;
 
     // FIX: Atomic transaction with conditional gems check
     const result = await prisma.$transaction(async (tx) => {

@@ -5,6 +5,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ORIGIN_DEFS, type CharacterOrigin } from "@/lib/game/origins";
+import {
+  CONSUMABLE_CATALOG,
+  type ConsumableType,
+} from "@/lib/game/consumable-catalog";
+import { xpForLevel } from "@/lib/game/progression";
 
 /* ────────────────── Types ────────────────── */
 
@@ -14,11 +19,17 @@ type Character = {
   class: string;
   origin: string;
   level: number;
+  currentXp: number;
   gold: number;
   currentStamina: number;
   maxStamina: number;
   lastStaminaUpdate: string;
   pvpRating: number;
+};
+
+type ConsumableInventoryItem = {
+  consumableType: ConsumableType;
+  quantity: number;
 };
 
 /* ────────────────── Constants ────────────────── */
@@ -54,6 +65,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/shop", label: "Shop", icon: "🪙", description: "Buy Items" },
   { href: "/combat", label: "Test Fight", icon: "💥", description: "Simulation" },
   { href: "/leaderboard", label: "Leaderboard", icon: "🏆", description: "Rankings" },
+];
+
+const ADMIN_NAV_ITEMS: NavItem[] = [
+  { href: "/dev-dashboard", label: "Dev Panel", icon: "🛠", description: "Monitoring" },
+  { href: "/balance-editor", label: "Balance", icon: "⚖️", description: "Game Balance Editor" },
 ];
 
 /* ────────────────── Stamina Hook ────────────────── */
@@ -99,8 +115,34 @@ const GameSidebar = () => {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [consumables, setConsumables] = useState<ConsumableInventoryItem[]>([]);
+  const [usingPotion, setUsingPotion] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>("player");
 
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/me", { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.role) setUserRole(data.role);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  const loadConsumables = useCallback(async (charId: string, signal: AbortSignal) => {
+    try {
+      const res = await fetch(`/api/consumables?characterId=${charId}`, { signal });
+      if (res.ok) {
+        const data = await res.json();
+        setConsumables(data.consumables ?? []);
+      }
+    } catch {
+      // non-critical, silently fail
+    }
+  }, []);
 
   const loadCharacter = useCallback(async (signal: AbortSignal) => {
     try {
@@ -109,6 +151,7 @@ const GameSidebar = () => {
         const res = await fetch(`/api/characters/${characterId}`, { signal });
         if (res.ok) {
           setCharacter(await res.json());
+          loadConsumables(characterId, signal);
           return;
         }
         if (res.status === 401) {
@@ -130,6 +173,7 @@ const GameSidebar = () => {
         return;
       }
       setCharacter(chars[0]);
+      loadConsumables(chars[0].id, signal);
       if (!characterId) {
         router.replace(`${pathname}?characterId=${chars[0].id}`);
       }
@@ -139,7 +183,7 @@ const GameSidebar = () => {
     } finally {
       setLoading(false);
     }
-  }, [characterId, pathname, router]);
+  }, [characterId, pathname, router, loadConsumables]);
 
   useEffect(() => {
     abortControllerRef.current?.abort();
@@ -177,17 +221,73 @@ const GameSidebar = () => {
   );
 
   const staminaPercent = character ? (stamina / character.maxStamina) * 100 : 0;
+  const xpNeeded = character ? xpForLevel(character.level) : 0;
+  const xpPercent = xpNeeded > 0 && character ? Math.min(100, (character.currentXp / xpNeeded) * 100) : 0;
   const nextInStr = nextIn != null
     ? `${Math.floor(nextIn / 60)}:${String(nextIn % 60).padStart(2, "0")}`
     : null;
 
   const buildHref = (base: string) => {
     if (!characterId) return base;
-    if (base === "/leaderboard") return base;
+    if (base === "/leaderboard" || base === "/dev-dashboard" || base === "/balance-editor") return base;
     return `${base}?characterId=${characterId}`;
   };
 
   const isActive = (href: string) => pathname === href;
+
+  /* ── Available potions for quick use ── */
+  const availablePotions = consumables
+    .filter((ci) => ci.quantity > 0)
+    .map((ci) => {
+      const def = CONSUMABLE_CATALOG.find((c) => c.type === ci.consumableType);
+      return def ? { ...def, quantity: ci.quantity } : null;
+    })
+    .filter(Boolean) as (typeof CONSUMABLE_CATALOG[number] & { quantity: number })[];
+
+  const handleUsePotion = useCallback(
+    async (consumableType: ConsumableType) => {
+      const cId = characterId ?? character?.id;
+      if (!cId || usingPotion) return;
+      setUsingPotion(consumableType);
+      try {
+        const res = await fetch("/api/consumables/use", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ characterId: cId, consumableType }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          // Update character stamina locally
+          setCharacter((c) =>
+            c
+              ? {
+                  ...c,
+                  currentStamina: data.currentStamina ?? c.currentStamina,
+                  lastStaminaUpdate: new Date().toISOString(),
+                }
+              : null
+          );
+          // Update consumable inventory
+          setConsumables((prev) =>
+            prev
+              .map((ci) =>
+                ci.consumableType === consumableType
+                  ? { ...ci, quantity: data.remainingQuantity }
+                  : ci
+              )
+              .filter((ci) => ci.quantity > 0)
+          );
+          // Dispatch event so other components can react
+          window.dispatchEvent(new Event("character-updated"));
+        }
+      } catch {
+        // silently fail
+      } finally {
+        setUsingPotion(null);
+      }
+    },
+    [characterId, character?.id, usingPotion]
+  );
 
   /* ────── Sidebar content (shared between desktop & mobile) ────── */
   const sidebarContent = (
@@ -225,21 +325,23 @@ const GameSidebar = () => {
               {/* Avatar */}
               <Link
                 href={buildHref("/inventory")}
-                className="group relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 transition hover:border-indigo-500"
+                className="group relative flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 transition hover:border-indigo-500"
                 aria-label="Open Inventory"
               >
-                {character.origin && ORIGIN_IMAGE[character.origin] ? (
-                  <Image
-                    src={ORIGIN_IMAGE[character.origin]}
-                    alt={character.origin}
-                    width={1024}
-                    height={1024}
-                    className="absolute left-1/2 -top-2 w-[300%] max-w-none -translate-x-1/2"
-                    sizes="168px"
-                  />
-                ) : (
-                  <span className="text-2xl">{CLASS_ICON[character.class] ?? "⚔️"}</span>
-                )}
+                <div className="absolute inset-0 overflow-hidden rounded-[10px]">
+                  {character.origin && ORIGIN_IMAGE[character.origin] ? (
+                    <Image
+                      src={ORIGIN_IMAGE[character.origin]}
+                      alt={character.origin}
+                      width={1024}
+                      height={1024}
+                      className="absolute left-1/2 -top-2 w-[300%] max-w-none -translate-x-1/2"
+                      sizes="168px"
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-2xl">{CLASS_ICON[character.class] ?? "⚔️"}</span>
+                  )}
+                </div>
                 <span className="absolute -bottom-1 -right-1 z-10 rounded bg-slate-700 px-1.5 text-[10px] font-bold text-white">
                   {character.level}
                 </span>
@@ -263,8 +365,21 @@ const GameSidebar = () => {
               </div>
             </div>
 
+            {/* XP bar */}
+            <div className="mt-2.5 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-green-600 to-green-400 transition-all duration-500"
+                  style={{ width: `${xpPercent}%` }}
+                />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400">
+                {Math.round(xpPercent)}%
+              </span>
+            </div>
+
             {/* Stamina bar */}
-            <div className="mt-2.5">
+            <div className="mt-1">
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
@@ -272,6 +387,34 @@ const GameSidebar = () => {
                 />
               </div>
             </div>
+
+            {/* Quick potion use */}
+            {availablePotions.length > 0 && (
+              <div className="mt-2 flex gap-1">
+                {availablePotions.map((p) => {
+                  const isUsing = usingPotion === p.type;
+                  return (
+                    <button
+                      key={p.type}
+                      type="button"
+                      onClick={() => handleUsePotion(p.type)}
+                      disabled={!!usingPotion}
+                      className="flex items-center gap-1 rounded-lg border border-emerald-700/40 bg-emerald-950/30 px-2 py-1 text-[10px] font-medium text-emerald-400 transition hover:border-emerald-600/60 hover:bg-emerald-900/40 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label={`Use ${p.name} (+${p.staminaRestore} stamina)`}
+                      tabIndex={0}
+                      title={`${p.name}: +${p.staminaRestore} ⚡ (×${p.quantity})`}
+                    >
+                      {isUsing ? (
+                        <span className="h-3 w-3 animate-spin rounded-full border border-emerald-400/30 border-t-emerald-400" />
+                      ) : (
+                        <span>{p.icon}</span>
+                      )}
+                      <span className="tabular-nums">×{p.quantity}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </>
         ) : null}
       </div>
@@ -306,6 +449,44 @@ const GameSidebar = () => {
               </li>
             );
           })}
+
+          {/* Admin-only navigation */}
+          {userRole === "admin" && (
+            <>
+              <li className="pt-2">
+                <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-amber-500/70">
+                  Admin
+                </div>
+              </li>
+              {ADMIN_NAV_ITEMS.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={buildHref(item.href)}
+                      className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all
+                        ${active
+                          ? "border border-amber-500/30 bg-amber-500/10 text-white"
+                          : "border border-transparent text-slate-400 hover:border-amber-700/50 hover:bg-amber-900/20 hover:text-white"
+                        }
+                      `}
+                      aria-label={item.label}
+                      aria-current={active ? "page" : undefined}
+                      tabIndex={0}
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-amber-700/50 bg-amber-900/30 text-lg transition group-hover:border-amber-600">
+                        {item.icon}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-bold tracking-wide">{item.label}</p>
+                        <p className="truncate text-[10px] text-slate-500">{item.description}</p>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </>
+          )}
         </ul>
       </nav>
 

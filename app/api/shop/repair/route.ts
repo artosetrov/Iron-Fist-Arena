@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { REPAIR_COST_PCT, REPAIR_FALLBACK_PRICE } from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
 
@@ -38,8 +39,8 @@ export async function POST(request: Request) {
         return { error: "Item is not damaged", status: 400 } as const;
       }
 
-      const basePrice = inv.item.buyPrice ?? inv.item.sellPrice ?? 100;
-      const cost = Math.max(1, Math.floor((basePrice * 0.1 * lost) / inv.maxDurability));
+      const basePrice = inv.item.buyPrice ?? inv.item.sellPrice ?? REPAIR_FALLBACK_PRICE;
+      const cost = Math.max(1, Math.floor((basePrice * REPAIR_COST_PCT * lost) / inv.maxDurability));
 
       if (inv.character.gold < cost) {
         return { error: "Not enough gold", status: 400 } as const;

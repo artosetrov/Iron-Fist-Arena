@@ -46,6 +46,14 @@ alwaysApply: true
 
 > Fantasy RPG character, exaggerated class silhouette, bold cartoon proportions, expressive face, dynamic hero pose, class-defining weapon and armor.
 
+## Главное правило
+
+**НИКОГДА не генерировать изображения без явного подтверждения пользователя.**
+Перед любой генерацией (create-image, edit-image, GenerateImage) ОБЯЗАТЕЛЬНО:
+1. Описать пользователю что именно планируется сгенерировать (список ассетов, промты)
+2. Дождаться явного подтверждения ("да", "ок", "генерируй" и т.п.)
+3. Только после подтверждения запускать генерацию
+
 ## Технические правила генерации
 
 1. Все изображения сохранять в `/public/images/generated/`

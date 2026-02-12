@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 /* ────────────────── Types ────────────────── */
@@ -190,7 +190,7 @@ type FighterCardProps = {
   side: "left" | "right";
 };
 
-const FighterCard = ({
+const FighterCard = memo(({
   snapshot,
   currentHp,
   isShaking,
@@ -259,7 +259,8 @@ const FighterCard = ({
       </div>
     </div>
   );
-};
+});
+FighterCard.displayName = "FighterCard";
 
 /* ────────────────── Battle Log Entry Row ────────────────── */
 
@@ -533,14 +534,20 @@ const CombatBattleScreen = ({
     };
   }, [isFinished, onComplete]);
 
+  /** Stable refs for mount-only effect */
+  const logRef = useRef(log);
+  const processEntryRef = useRef(processEntry);
+  logRef.current = log;
+  processEntryRef.current = processEntry;
+
   /** Start playback on mount */
   useEffect(() => {
     const ids = timeoutIds.current;
     const timer = setTimeout(() => {
       ids.delete(timer);
-      if (log.length > 0) {
+      if (logRef.current.length > 0) {
         setCurrentStep(0);
-        processEntry(log[0]);
+        processEntryRef.current(logRef.current[0]);
       } else {
         setIsFinished(true);
         setIsPlaying(false);
@@ -551,7 +558,6 @@ const CombatBattleScreen = ({
       clearTimeout(timer);
       ids.delete(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

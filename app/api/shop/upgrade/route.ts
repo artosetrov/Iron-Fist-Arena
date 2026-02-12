@@ -1,6 +1,17 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
+import {
+  UPGRADE_MAX_LEVEL,
+  UPGRADE_BASE_CHANCE,
+  UPGRADE_CHANCE_PER_LEVEL,
+  UPGRADE_COST_MULT,
+  UPGRADE_COST_EXP,
+  UPGRADE_FALLBACK_PRICE,
+  UPGRADE_FAIL_STAY,
+  UPGRADE_FAIL_DOWNGRADE,
+} from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +24,14 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(user.id, { prefix: "shop_upgrade", windowMs: 5_000, maxRequests: 5 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      );
     }
 
     const body = await request.json().catch(() => ({}));
@@ -37,26 +56,26 @@ export async function POST(request: Request) {
         return { error: "Not found", status: 404 } as const;
       }
 
-      if (inv.upgradeLevel >= 10) {
+      if (inv.upgradeLevel >= UPGRADE_MAX_LEVEL) {
         return { error: "Already at max upgrade level", status: 400 } as const;
       }
 
-      const basePrice = inv.item.buyPrice ?? 100;
-      const cost = Math.max(1, Math.floor(basePrice * Math.pow(0.2 * (inv.upgradeLevel + 1), 1.5)));
+      const basePrice = inv.item.buyPrice ?? UPGRADE_FALLBACK_PRICE;
+      const cost = Math.max(1, Math.floor(basePrice * Math.pow(UPGRADE_COST_MULT * (inv.upgradeLevel + 1), UPGRADE_COST_EXP)));
       if (inv.character.gold < cost) {
         return { error: "Not enough gold", status: 400 } as const;
       }
 
-      const successChance = 75 - inv.upgradeLevel * 5;
+      const successChance = UPGRADE_BASE_CHANCE - inv.upgradeLevel * UPGRADE_CHANCE_PER_LEVEL;
       let newLevel = inv.upgradeLevel;
       let destroyed = false;
 
       if (successRoll < successChance) {
         newLevel = inv.upgradeLevel + 1;
       } else {
-        if (failRoll < 50) {
+        if (failRoll < UPGRADE_FAIL_STAY) {
           newLevel = inv.upgradeLevel;
-        } else if (failRoll < 80) {
+        } else if (failRoll < UPGRADE_FAIL_DOWNGRADE) {
           newLevel = Math.max(0, inv.upgradeLevel - 1);
         } else {
           destroyed = true;

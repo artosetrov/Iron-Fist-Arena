@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { PVP_OPPONENTS_RATING_RANGE } from "@/lib/game/balance";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Character not found" }, { status: 404 });
     }
 
-    const ratingRange = 150;
+    const ratingRange = PVP_OPPONENTS_RATING_RANGE;
     const candidates = await prisma.character.findMany({
       where: {
         id: { not: characterId },
@@ -84,8 +85,12 @@ export async function GET(request: Request) {
       candidates.push(...fallback);
     }
 
-    // Shuffle and pick 3
-    const shuffled = candidates.sort(() => Math.random() - 0.5).slice(0, 3);
+    // Fisher-Yates shuffle and pick 3
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+    const shuffled = candidates.slice(0, 3);
 
     return NextResponse.json({ opponents: shuffled });
   } catch (error) {
