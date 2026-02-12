@@ -1,0 +1,397 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { ORIGIN_DEFS, type CharacterOrigin } from "@/lib/game/origins";
+
+/* ────────────────── Types ────────────────── */
+
+type Character = {
+  id: string;
+  characterName: string;
+  class: string;
+  origin: string;
+  level: number;
+  gold: number;
+  currentStamina: number;
+  maxStamina: number;
+  lastStaminaUpdate: string;
+  pvpRating: number;
+};
+
+/* ────────────────── Constants ────────────────── */
+
+const STAMINA_REGEN_MINUTES = 12;
+
+const CLASS_ICON: Record<string, string> = {
+  warrior: "⚔️",
+  rogue: "🗡️",
+  mage: "🧙",
+  tank: "🛡️",
+};
+
+const ORIGIN_IMAGE: Record<string, string> = {
+  human: "/images/generated/origin-human.png",
+  orc: "/images/generated/origin-orc.png",
+  skeleton: "/images/generated/origin-skeleton.png",
+  demon: "/images/generated/origin-demon.png",
+  dogfolk: "/images/generated/origin-dogfolk.png",
+};
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: string;
+  description: string;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { href: "/hub", label: "Hub", icon: "🏠", description: "Home" },
+  { href: "/arena", label: "Arena", icon: "⚔️", description: "PvP Battles" },
+  { href: "/dungeon", label: "Dungeons", icon: "🏰", description: "PvE, Loot" },
+  { href: "/shop", label: "Shop", icon: "🪙", description: "Buy Items" },
+  { href: "/combat", label: "Test Fight", icon: "💥", description: "Simulation" },
+  { href: "/leaderboard", label: "Leaderboard", icon: "🏆", description: "Rankings" },
+];
+
+/* ────────────────── Stamina Hook ────────────────── */
+
+const useStaminaRealtime = (current: number, max: number, lastUpdate: string) => {
+  const [stamina, setStamina] = useState(current);
+  const [nextIn, setNextIn] = useState<number | null>(null);
+
+  useEffect(() => {
+    const last = new Date(lastUpdate).getTime();
+
+    const tick = () => {
+      const now = Date.now();
+      const minutesPassed = (now - last) / (60 * 1000);
+      const regenerated = Math.floor(minutesPassed / STAMINA_REGEN_MINUTES);
+      const newCurrent = Math.min(max, current + regenerated);
+      setStamina(newCurrent);
+      if (newCurrent >= max) {
+        setNextIn(null);
+        return;
+      }
+      const nextPointIn = (STAMINA_REGEN_MINUTES - (minutesPassed % STAMINA_REGEN_MINUTES)) * 60 * 1000;
+      setNextIn(Math.round(nextPointIn / 1000));
+    };
+
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [current, max, lastUpdate]);
+
+  return { stamina, nextIn };
+};
+
+/* ────────────────── Sidebar Component ────────────────── */
+
+const GameSidebar = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const characterId = searchParams.get("characterId");
+
+  const [character, setCharacter] = useState<Character | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const loadCharacter = useCallback(async (signal: AbortSignal) => {
+    try {
+      setFetchError(false);
+      if (characterId) {
+        const res = await fetch(`/api/characters/${characterId}`, { signal });
+        if (res.ok) {
+          setCharacter(await res.json());
+          return;
+        }
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+      }
+      // Fallback: load first character
+      const listRes = await fetch("/api/characters", { signal });
+      if (listRes.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!listRes.ok) return;
+      const list = await listRes.json();
+      const chars = list.characters ?? [];
+      if (chars.length === 0) {
+        router.push("/character");
+        return;
+      }
+      setCharacter(chars[0]);
+      if (!characterId) {
+        router.replace(`${pathname}?characterId=${chars[0].id}`);
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [characterId, pathname, router]);
+
+  useEffect(() => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    loadCharacter(controller.signal);
+    return () => {
+      controller.abort();
+    };
+  }, [loadCharacter]);
+
+  // Refresh character data when game state changes (e.g. after combat rewards)
+  useEffect(() => {
+    const handleRefresh = () => {
+      const controller = new AbortController();
+      loadCharacter(controller.signal);
+    };
+    window.addEventListener("character-updated", handleRefresh);
+    window.addEventListener("focus", handleRefresh);
+    return () => {
+      window.removeEventListener("character-updated", handleRefresh);
+      window.removeEventListener("focus", handleRefresh);
+    };
+  }, [loadCharacter]);
+
+  // Close mobile menu on navigation
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const { stamina, nextIn } = useStaminaRealtime(
+    character?.currentStamina ?? 0,
+    character?.maxStamina ?? 100,
+    character?.lastStaminaUpdate ?? new Date().toISOString()
+  );
+
+  const staminaPercent = character ? (stamina / character.maxStamina) * 100 : 0;
+  const nextInStr = nextIn != null
+    ? `${Math.floor(nextIn / 60)}:${String(nextIn % 60).padStart(2, "0")}`
+    : null;
+
+  const buildHref = (base: string) => {
+    if (!characterId) return base;
+    if (base === "/leaderboard") return base;
+    return `${base}?characterId=${characterId}`;
+  };
+
+  const isActive = (href: string) => pathname === href;
+
+  /* ────── Sidebar content (shared between desktop & mobile) ────── */
+  const sidebarContent = (
+    <div className="flex h-full flex-col">
+      {/* Character card */}
+      <div className="border-b border-slate-700/50 p-4">
+        {loading ? (
+          <div className="flex items-center gap-3">
+            <div className="h-14 w-14 animate-pulse rounded-xl bg-slate-800" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-24 animate-pulse rounded bg-slate-800" />
+              <div className="h-3 w-16 animate-pulse rounded bg-slate-800" />
+            </div>
+          </div>
+        ) : fetchError ? (
+          <div className="flex flex-col items-center gap-2 py-2">
+            <p className="text-xs text-red-400">Failed to load character</p>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                setFetchError(false);
+                const controller = new AbortController();
+                abortControllerRef.current = controller;
+                loadCharacter(controller.signal);
+              }}
+              className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-slate-700 hover:text-white"
+            >
+              Retry
+            </button>
+          </div>
+        ) : character ? (
+          <>
+            <div className="flex items-center gap-3">
+              {/* Avatar */}
+              <Link
+                href={buildHref("/inventory")}
+                className="group relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 transition hover:border-indigo-500"
+                aria-label="Open Inventory"
+              >
+                {character.origin && ORIGIN_IMAGE[character.origin] ? (
+                  <Image
+                    src={ORIGIN_IMAGE[character.origin]}
+                    alt={character.origin}
+                    width={1024}
+                    height={1024}
+                    className="absolute left-1/2 -top-2 w-[300%] max-w-none -translate-x-1/2"
+                    sizes="168px"
+                  />
+                ) : (
+                  <span className="text-2xl">{CLASS_ICON[character.class] ?? "⚔️"}</span>
+                )}
+                <span className="absolute -bottom-1 -right-1 z-10 rounded bg-slate-700 px-1.5 text-[10px] font-bold text-white">
+                  {character.level}
+                </span>
+              </Link>
+
+              {/* Name + resources */}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-white">{character.characterName}</p>
+                {character.origin && ORIGIN_DEFS[character.origin as CharacterOrigin] && (
+                  <p className="truncate text-[10px] text-slate-500">
+                    {ORIGIN_DEFS[character.origin as CharacterOrigin].icon}{" "}
+                    {ORIGIN_DEFS[character.origin as CharacterOrigin].label}
+                  </p>
+                )}
+                <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0 text-[11px]">
+                  <span className="text-yellow-400">🪙 {character.gold}</span>
+                  <span className="text-slate-400">⚡ {stamina}/{character.maxStamina}</span>
+                  <span className="text-slate-400">🏅 {character.pvpRating}</span>
+                  {nextInStr && <span className="text-slate-500">⏱ {nextInStr}</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Stamina bar */}
+            <div className="mt-2.5">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
+                  style={{ width: `${staminaPercent}%` }}
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto p-2" aria-label="Game Menu">
+        <ul className="space-y-1">
+          {NAV_ITEMS.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={buildHref(item.href)}
+                  className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all
+                    ${active
+                      ? "border border-indigo-500/30 bg-indigo-500/10 text-white"
+                      : "border border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-800/60 hover:text-white"
+                    }
+                  `}
+                  aria-label={item.label}
+                  aria-current={active ? "page" : undefined}
+                  tabIndex={0}
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/80 text-lg transition group-hover:border-slate-600">
+                    {item.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-bold tracking-wide">{item.label}</p>
+                    <p className="truncate text-[10px] text-slate-500">{item.description}</p>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      {/* Bottom: settings & switch character */}
+      <div className="border-t border-slate-700/50 p-3 space-y-2">
+        <Link
+          href={buildHref("/settings")}
+          className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs transition
+            ${isActive("/settings")
+              ? "border-indigo-500/30 bg-indigo-500/10 text-white"
+              : "border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+            }
+          `}
+          aria-label="Settings"
+          aria-current={isActive("/settings") ? "page" : undefined}
+        >
+          <span>⚙️</span>
+          <span>Settings</span>
+        </Link>
+        <Link
+          href="/character"
+          className="flex items-center justify-center gap-2 rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-xs text-slate-400 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+          aria-label="Switch Character"
+        >
+          <span>🔄</span>
+          <span>Switch Character</span>
+        </Link>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* ── Mobile burger button ── */}
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        className="fixed left-3 top-3 z-40 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/90 text-white backdrop-blur transition hover:bg-slate-800 lg:hidden"
+        aria-label="Open Menu"
+        tabIndex={0}
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      {/* ── Mobile overlay ── */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          onKeyDown={(e) => e.key === "Escape" && setMobileOpen(false)}
+          role="button"
+          tabIndex={-1}
+          aria-label="Close Menu"
+        />
+      )}
+
+      {/* ── Mobile drawer ── */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 transform border-r border-slate-800 bg-slate-900 transition-transform duration-300 lg:hidden
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+        aria-label="Game Menu"
+      >
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"
+          aria-label="Close Menu"
+        >
+          ✕
+        </button>
+        {sidebarContent}
+      </aside>
+
+      {/* ── Desktop sidebar ── */}
+      <aside
+        className="hidden w-64 shrink-0 border-r border-slate-800 bg-slate-900 lg:block"
+        aria-label="Game Menu"
+      >
+        {sidebarContent}
+      </aside>
+    </>
+  );
+};
+
+export default GameSidebar;

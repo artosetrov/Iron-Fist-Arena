@@ -1,0 +1,284 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String?   @map("password_hash")
+  authProvider  String    @default("email") @map("auth_provider")
+  gems          Int       @default(0)
+  premiumUntil  DateTime? @map("premium_until")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  lastLogin     DateTime  @default(now()) @map("last_login")
+  isBanned      Boolean   @default(false) @map("is_banned")
+  banReason     String?   @map("ban_reason")
+
+  characters Character[]
+
+  @@map("users")
+}
+
+model Character {
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  characterName      String   @unique @map("character_name")
+  class              CharacterClass
+  origin             CharacterOrigin @default(human)
+  level              Int      @default(1)
+  currentXp          Int      @default(0) @map("current_xp")
+  prestigeLevel      Int      @default(0) @map("prestige_level")
+
+  statPointsAvailable Int     @default(0) @map("stat_points_available")
+  strength           Int      @default(10)
+  agility            Int      @default(10)
+  vitality           Int      @default(10)
+  endurance          Int      @default(10)
+  intelligence       Int      @default(10)
+  wisdom             Int      @default(10)
+  luck               Int      @default(10)
+  charisma           Int      @default(10)
+
+  gold           Int @default(500)
+  arenaTokens    Int @default(0) @map("arena_tokens")
+
+  maxHp          Int   @default(100) @map("max_hp")
+  currentHp      Int   @default(100) @map("current_hp")
+  armor          Int   @default(0)
+  magicResist    Int   @default(0) @map("magic_resist")
+
+  currentStamina     Int      @default(100) @map("current_stamina")
+  maxStamina         Int      @default(100) @map("max_stamina")
+  lastStaminaUpdate  DateTime @default(now()) @map("last_stamina_update")
+
+  pvpRating      Int    @default(1000) @map("pvp_rating")
+  pvpWins        Int    @default(0) @map("pvp_wins")
+  pvpLosses      Int    @default(0) @map("pvp_losses")
+  pvpWinStreak   Int    @default(0) @map("pvp_win_streak")
+  highestPvpRank String @default("Bronze V") @map("highest_pvp_rank")
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  lastPlayed DateTime @default(now()) @map("last_played")
+
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  equipment         EquipmentInventory[]
+  pvpMatchesAsP1   PvpMatch[]           @relation("Player1")
+  pvpMatchesAsP2   PvpMatch[]           @relation("Player2")
+  dungeonProgress   DungeonProgress[]
+  dungeonRuns       DungeonRun[]
+  legendaryShards   LegendaryShards?
+
+  @@map("characters")
+}
+
+model LegendaryShards {
+  id          String    @id @default(uuid())
+  characterId String    @unique @map("character_id")
+  shardCount  Int       @default(0) @map("shard_count")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@map("legendary_shards")
+}
+
+enum CharacterClass {
+  warrior
+  rogue
+  mage
+  tank
+}
+
+enum CharacterOrigin {
+  human
+  orc
+  skeleton
+  demon
+  dogfolk
+}
+
+model Item {
+  id               String         @id @default(uuid())
+  catalogId        String?        @unique @map("catalog_id")
+  itemName         String         @map("item_name")
+  itemType         ItemType       @map("item_type")
+  rarity           Rarity
+  itemLevel        Int            @map("item_level")
+  baseStats        Json           @map("base_stats")
+  specialEffect    String?        @map("special_effect")
+  uniquePassive    String?        @map("unique_passive")
+  classRestriction CharacterClass? @map("class_restriction")
+  setName          String?        @map("set_name")
+  buyPrice         Int?           @map("buy_price")
+  sellPrice        Int?           @map("sell_price")
+  description      String?
+  imageUrl         String?        @map("image_url")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  equipmentInventory EquipmentInventory[]
+
+  @@map("items")
+}
+
+enum ItemType {
+  weapon
+  helmet
+  chest
+  gloves
+  legs
+  boots
+  accessory
+}
+
+enum Rarity {
+  common
+  uncommon
+  rare
+  epic
+  legendary
+}
+
+model EquipmentInventory {
+  id             String    @id @default(uuid())
+  characterId    String    @map("character_id")
+  itemId         String    @map("item_id")
+  upgradeLevel   Int       @default(0) @map("upgrade_level")
+  durability     Int       @default(100)
+  maxDurability  Int       @default(100) @map("max_durability")
+  isEquipped     Boolean   @default(false) @map("is_equipped")
+  equippedSlot   EquippedSlot? @map("equipped_slot")
+  rolledStats    Json?     @map("rolled_stats")
+  acquiredAt     DateTime  @default(now()) @map("acquired_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  item      Item      @relation(fields: [itemId], references: [id])
+
+  @@index([characterId])
+  @@index([characterId, isEquipped])
+  @@map("equipment_inventory")
+}
+
+enum EquippedSlot {
+  weapon
+  helmet
+  chest
+  gloves
+  legs
+  boots
+  accessory
+}
+
+model PvpMatch {
+  id                  String   @id @default(uuid())
+  player1Id           String   @map("player1_id")
+  player2Id           String   @map("player2_id")
+  player1RatingBefore Int      @map("player1_rating_before")
+  player2RatingBefore Int      @map("player2_rating_before")
+  player1RatingAfter   Int      @map("player1_rating_after")
+  player2RatingAfter   Int      @map("player2_rating_after")
+  winnerId            String   @map("winner_id")
+  loserId             String   @map("loser_id")
+  combatLog           Json     @map("combat_log")
+  matchDuration       Int?     @map("match_duration")
+  turnsTaken          Int      @map("turns_taken")
+  player1GoldReward   Int?     @map("player1_gold_reward")
+  player2GoldReward   Int?     @map("player2_gold_reward")
+  player1XpReward     Int?     @map("player1_xp_reward")
+  player2XpReward     Int?     @map("player2_xp_reward")
+  matchType           String   @default("ranked") @map("match_type")
+  seasonNumber        Int      @map("season_number")
+  playedAt            DateTime @default(now()) @map("played_at")
+
+  player1 Character @relation("Player1", fields: [player1Id], references: [id])
+  player2 Character @relation("Player2", fields: [player2Id], references: [id])
+
+  @@map("pvp_matches")
+}
+
+model DungeonProgress {
+  id          String  @id @default(uuid())
+  characterId String  @map("character_id")
+  dungeonId   String  @map("dungeon_id")
+  bossIndex   Int     @default(0) @map("boss_index")
+  completed   Boolean @default(false)
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, dungeonId])
+  @@index([characterId])
+  @@map("dungeon_progress")
+}
+
+model DungeonRun {
+  id           String   @id @default(uuid())
+  characterId  String   @map("character_id")
+  difficulty   String
+  currentFloor Int      @default(1) @map("current_floor")
+  state        Json
+  seed         Int?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId])
+  @@map("dungeon_runs")
+}
+
+model Season {
+  id        String   @id @default(uuid())
+  number    Int      @unique
+  theme     String?
+  startAt   DateTime @map("start_at")
+  endAt     DateTime @map("end_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("seasons")
+}
+
+model DailyQuest {
+  id          String   @id @default(uuid())
+  characterId String   @map("character_id")
+  questType   String   @map("quest_type")
+  progress    Int      @default(0)
+  target      Int
+  rewardGold  Int      @map("reward_gold")
+  rewardXp    Int      @map("reward_xp")
+  rewardGems  Int      @default(0) @map("reward_gems")
+  completed   Boolean  @default(false)
+  day         DateTime @db.Date
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([characterId, questType, day])
+  @@index([characterId])
+  @@map("daily_quests")
+}
+
+model BattlePass {
+  id           String   @id @default(uuid())
+  characterId  String   @map("character_id")
+  seasonId     String   @map("season_id")
+  premium      Boolean  @default(false)
+  bpXp         Int      @default(0) @map("bp_xp")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([characterId, seasonId])
+  @@map("battle_pass")
+}
+
+model Cosmetic {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String
+  refId     String   @map("ref_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("cosmetics")
+}

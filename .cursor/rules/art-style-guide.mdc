@@ -1,0 +1,59 @@
+---
+description: Визуальный стиль и промт-гайд для генерации изображений Iron Fist Arena через AI. Применяй при ЛЮБОЙ генерации картинок (create-image, edit-image).
+globs:
+alwaysApply: true
+---
+
+# Art Style Guide — Iron Fist Arena
+
+## Базовый промт (ВСЕГДА добавлять в начало)
+
+При генерации ЛЮБОГО изображения для проекта ОБЯЗАТЕЛЬНО начинай промт с этого блока:
+
+> Create a 2D hand-painted cartoon fantasy RPG scene in casual browser game style.
+> Thick clean black outlines, exaggerated proportions, humorous grotesque tone.
+> Big expressive eyes, oversized weapons, simplified anatomy.
+> Soft gradient shading, one main soft light source, subtle rim light.
+> Vibrant but slightly muted colors, slightly darkened edges.
+> Stylized semi-isometric perspective, whimsical tabletop adventure map feeling.
+> Simplified textures, no realism, no photo textures.
+> Clean readable silhouettes, high contrast, mobile-friendly clarity.
+> Polished casual MMO aesthetic. No UI, no text, no panels.
+
+## Модификаторы по категориям
+
+### Локации (арена, подземелья, город, карта мира)
+
+Добавь к базовому промту:
+
+> Stylized fantasy environment, cartoon trees and rocks, playful proportions, layered depth, soft ambient lighting, rich but balanced color palette.
+
+### Монстры и враги
+
+Добавь к базовому промту:
+
+> Funny fantasy monster, slightly menacing but comedic, exaggerated facial features, bold contour lines, dynamic idle battle pose, glowing accent elements.
+
+### Объекты мира (оружие, броня, зелья, реквизит)
+
+Добавь к базовому промту:
+
+> Fantasy prop object, strong silhouette, bold outline, minimal small details, soft shading, game-ready asset.
+
+### Персонажи (Warrior, Rogue, Mage, Tank)
+
+Добавь к базовому промту:
+
+> Fantasy RPG character, exaggerated class silhouette, bold cartoon proportions, expressive face, dynamic hero pose, class-defining weapon and armor.
+
+## Технические правила генерации
+
+1. Все изображения сохранять в `/public/images/generated/`
+2. Формат: **PNG**
+3. Размеры:
+   - Персонажи/монстры/объекты: `1024x1024`
+   - Локации/баннеры: `1536x1024`
+4. Качество: `high`
+5. Фон: `transparent` для персонажей, монстров и объектов; `opaque` для локаций
+6. НИКОГДА не использовать фотореализм
+7. НИКОГДА не добавлять текст, UI элементы или панели на картинку
