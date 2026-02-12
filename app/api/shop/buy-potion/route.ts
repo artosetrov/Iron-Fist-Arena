@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { getPotionById } from "@/lib/game/potion-catalog";
 import { applyRegen, OVERFLOW_CAP, getMaxStamina } from "@/lib/game/stamina";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const supabase = await createServerSupabaseClient();

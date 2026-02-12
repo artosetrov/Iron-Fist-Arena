@@ -15,6 +15,8 @@ import { applyLevelUp } from "@/lib/game/levelUp";
 import { updateDailyQuestProgress } from "@/lib/game/quests";
 import type { CharacterClass, CharacterOrigin } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const supabase = await createServerSupabaseClient();

@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { CharacterClass, CharacterOrigin } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 async function ensureUserExists(
   authUserId: string,
   email: string,

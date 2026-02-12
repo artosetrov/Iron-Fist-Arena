@@ -11,7 +11,7 @@ CREATE TYPE "Rarity" AS ENUM ('common', 'uncommon', 'rare', 'epic', 'legendary')
 CREATE TYPE "EquippedSlot" AS ENUM ('weapon', 'helmet', 'chest', 'gloves', 'legs', 'boots', 'accessory');
 
 -- CreateTable
-CREATE TABLE "User" (
+CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "username" TEXT NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE "User" (
     "is_banned" BOOLEAN NOT NULL DEFAULT false,
     "ban_reason" TEXT,
 
-    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -66,7 +66,7 @@ CREATE TABLE "characters" (
 );
 
 -- CreateTable
-CREATE TABLE "Item" (
+CREATE TABLE "items" (
     "id" TEXT NOT NULL,
     "item_name" TEXT NOT NULL,
     "item_type" "ItemType" NOT NULL,
@@ -81,11 +81,11 @@ CREATE TABLE "Item" (
     "image_url" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "Item_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "items_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "EquipmentInventory" (
+CREATE TABLE "equipment_inventory" (
     "id" TEXT NOT NULL,
     "character_id" TEXT NOT NULL,
     "item_id" TEXT NOT NULL,
@@ -97,11 +97,11 @@ CREATE TABLE "EquipmentInventory" (
     "rolled_stats" JSONB,
     "acquired_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "EquipmentInventory_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "equipment_inventory_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "PvpMatch" (
+CREATE TABLE "pvp_matches" (
     "id" TEXT NOT NULL,
     "player1_id" TEXT NOT NULL,
     "player2_id" TEXT NOT NULL,
@@ -122,11 +122,11 @@ CREATE TABLE "PvpMatch" (
     "season_number" INTEGER NOT NULL,
     "played_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "PvpMatch_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "pvp_matches_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "DungeonRun" (
+CREATE TABLE "dungeon_runs" (
     "id" TEXT NOT NULL,
     "character_id" TEXT NOT NULL,
     "difficulty" TEXT NOT NULL,
@@ -135,11 +135,11 @@ CREATE TABLE "DungeonRun" (
     "seed" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "DungeonRun_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "dungeon_runs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "Season" (
+CREATE TABLE "seasons" (
     "id" TEXT NOT NULL,
     "number" INTEGER NOT NULL,
     "theme" TEXT,
@@ -147,11 +147,11 @@ CREATE TABLE "Season" (
     "end_at" TIMESTAMP(3) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "Season_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "seasons_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "DailyQuest" (
+CREATE TABLE "daily_quests" (
     "id" TEXT NOT NULL,
     "character_id" TEXT NOT NULL,
     "quest_type" TEXT NOT NULL,
@@ -164,11 +164,11 @@ CREATE TABLE "DailyQuest" (
     "day" DATE NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "DailyQuest_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "daily_quests_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "BattlePass" (
+CREATE TABLE "battle_pass" (
     "id" TEXT NOT NULL,
     "character_id" TEXT NOT NULL,
     "season_id" TEXT NOT NULL,
@@ -177,79 +177,79 @@ CREATE TABLE "BattlePass" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "BattlePass_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "battle_pass_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "Cosmetic" (
+CREATE TABLE "cosmetics" (
     "id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "ref_id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "Cosmetic_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "cosmetics_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
+CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "characters_character_name_key" ON "characters"("character_name");
 
 -- CreateIndex
-CREATE INDEX "EquipmentInventory_character_id_idx" ON "EquipmentInventory"("character_id");
+CREATE INDEX "equipment_inventory_character_id_idx" ON "equipment_inventory"("character_id");
 
 -- CreateIndex
-CREATE INDEX "EquipmentInventory_character_id_is_equipped_idx" ON "EquipmentInventory"("character_id", "is_equipped");
+CREATE INDEX "equipment_inventory_character_id_is_equipped_idx" ON "equipment_inventory"("character_id", "is_equipped");
 
 -- CreateIndex
-CREATE INDEX "DungeonRun_character_id_idx" ON "DungeonRun"("character_id");
+CREATE INDEX "dungeon_runs_character_id_idx" ON "dungeon_runs"("character_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Season_number_key" ON "Season"("number");
+CREATE UNIQUE INDEX "seasons_number_key" ON "seasons"("number");
 
 -- CreateIndex
-CREATE INDEX "DailyQuest_character_id_idx" ON "DailyQuest"("character_id");
+CREATE INDEX "daily_quests_character_id_idx" ON "daily_quests"("character_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "DailyQuest_character_id_quest_type_day_key" ON "DailyQuest"("character_id", "quest_type", "day");
+CREATE UNIQUE INDEX "daily_quests_character_id_quest_type_day_key" ON "daily_quests"("character_id", "quest_type", "day");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "BattlePass_character_id_season_id_key" ON "BattlePass"("character_id", "season_id");
+CREATE UNIQUE INDEX "battle_pass_character_id_season_id_key" ON "battle_pass"("character_id", "season_id");
 
 -- CreateIndex
-CREATE INDEX "Cosmetic_user_id_idx" ON "Cosmetic"("user_id");
+CREATE INDEX "cosmetics_user_id_idx" ON "cosmetics"("user_id");
 
 -- AddForeignKey
-ALTER TABLE "characters" ADD CONSTRAINT "characters_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "characters" ADD CONSTRAINT "characters_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EquipmentInventory" ADD CONSTRAINT "EquipmentInventory_character_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "equipment_inventory" ADD CONSTRAINT "equipment_inventory_character_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EquipmentInventory" ADD CONSTRAINT "EquipmentInventory_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "Item"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "equipment_inventory" ADD CONSTRAINT "equipment_inventory_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "items"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "PvpMatch" ADD CONSTRAINT "PvpMatch_player1_id_fkey" FOREIGN KEY ("player1_id") REFERENCES "characters"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "pvp_matches" ADD CONSTRAINT "pvp_matches_player1_id_fkey" FOREIGN KEY ("player1_id") REFERENCES "characters"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "PvpMatch" ADD CONSTRAINT "PvpMatch_player2_id_fkey" FOREIGN KEY ("player2_id") REFERENCES "characters"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "pvp_matches" ADD CONSTRAINT "pvp_matches_player2_id_fkey" FOREIGN KEY ("player2_id") REFERENCES "characters"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "DungeonRun" ADD CONSTRAINT "DungeonRun_character_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "dungeon_runs" ADD CONSTRAINT "dungeon_runs_character_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "DailyQuest" ADD CONSTRAINT "DailyQuest_character_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "daily_quests" ADD CONSTRAINT "daily_quests_character_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "BattlePass" ADD CONSTRAINT "BattlePass_character_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "battle_pass" ADD CONSTRAINT "battle_pass_character_id_fkey" FOREIGN KEY ("character_id") REFERENCES "characters"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "BattlePass" ADD CONSTRAINT "BattlePass_season_id_fkey" FOREIGN KEY ("season_id") REFERENCES "Season"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "battle_pass" ADD CONSTRAINT "battle_pass_season_id_fkey" FOREIGN KEY ("season_id") REFERENCES "seasons"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Cosmetic" ADD CONSTRAINT "Cosmetic_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "cosmetics" ADD CONSTRAINT "cosmetics_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

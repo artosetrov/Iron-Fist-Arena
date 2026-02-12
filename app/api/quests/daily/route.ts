@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 const QUEST_POOL: { questType: string; target: number; rewardGold: number; rewardXp: number; rewardGems: number }[] = [
   { questType: "pvp_wins", target: 3, rewardGold: 200, rewardXp: 200, rewardGems: 20 },
   { questType: "dungeons_complete", target: 2, rewardGold: 300, rewardXp: 300, rewardGems: 25 },

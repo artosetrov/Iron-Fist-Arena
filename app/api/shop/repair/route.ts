@@ -2,6 +2,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 /** GDD §7.4 - Repair cost = 10% of purchase price * (durability lost / 100) */
 export async function POST(request: Request) {
   try {

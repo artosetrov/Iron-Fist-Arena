@@ -58,18 +58,38 @@ const LoginForm = () => {
     setError(null);
     setLoading(true);
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:handleSubmit:entry',message:'handleSubmit called',data:{email,redirect,supabaseUrl:process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(0,30)},timestamp:Date.now(),hypothesisId:'A,E'})}).catch(()=>{});
+      // #endregion
       const supabase = createClient();
       const { error: signError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:handleSubmit:afterSignIn',message:'signInWithPassword result',data:{hasError:!!signError,errorMessage:signError?.message,errorStatus:signError?.status},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       if (signError) {
         setError(signError.message);
         return;
       }
-      await fetch("/api/auth/sync-user", { method: "POST" });
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:handleSubmit:beforeSync',message:'About to call sync-user',data:{},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      const syncRes = await fetch("/api/auth/sync-user", { method: "POST" });
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:handleSubmit:afterSync',message:'sync-user response',data:{status:syncRes.status,ok:syncRes.ok},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:handleSubmit:beforeRedirect',message:'About to redirect',data:{redirect,cookieCount:document.cookie.split(';').length,cookieKeys:document.cookie.split(';').map(c=>c.trim().split('=')[0]).filter(Boolean)},timestamp:Date.now(),hypothesisId:'B,D'})}).catch(()=>{});
+      // #endregion
       router.push(redirect);
       router.refresh();
+    } catch (unexpectedErr) {
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:handleSubmit:catch',message:'Unexpected error in handleSubmit',data:{error:String(unexpectedErr),stack:(unexpectedErr as Error)?.stack?.slice(0,500)},timestamp:Date.now(),hypothesisId:'A,C,E'})}).catch(()=>{});
+      // #endregion
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

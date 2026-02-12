@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { CharacterOrigin } from "@prisma/client";
 import { ORIGIN_CHANGE_COST } from "@/lib/game/origins";
 
+export const dynamic = "force-dynamic";
+
 const VALID_ORIGINS: CharacterOrigin[] = [
   "human",
   "orc",

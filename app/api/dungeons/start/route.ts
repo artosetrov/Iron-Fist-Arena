@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { spendStamina } from "@/lib/game/stamina";
 import { getDungeonById, getBossStats } from "@/lib/game/dungeon";
 
+export const dynamic = "force-dynamic";
+
 /** State stored in dungeon_runs.state JSON */
 export type DungeonRunState = {
   runId: string;

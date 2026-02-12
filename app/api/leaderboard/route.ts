@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { getCurrentSeasonNumber } from "@/lib/db/season";
 import { getRankFromRating } from "@/lib/game/elo";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

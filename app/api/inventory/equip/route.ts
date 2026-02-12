@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import type { EquippedSlot } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 const SLOTS: EquippedSlot[] = ["weapon", "helmet", "chest", "gloves", "legs", "boots", "accessory"];
 
 export async function POST(request: Request) {

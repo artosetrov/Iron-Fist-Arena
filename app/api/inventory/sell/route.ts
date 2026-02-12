@@ -2,6 +2,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GDD §7.2 — Item Selling
  * Sell_Price = (Item_Level × Rarity_Mult × 10) + Stat_Bonus_Value

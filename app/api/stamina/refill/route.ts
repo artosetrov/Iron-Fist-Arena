@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { applyRegen, getMaxStamina, OVERFLOW_CAP } from "@/lib/game/stamina";
 
+export const dynamic = "force-dynamic";
+
 const GEM_COST_SMALL = 50;
 const GEM_COST_MEDIUM = 90;
 const GEM_COST_LARGE = 150;

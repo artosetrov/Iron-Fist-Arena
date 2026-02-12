@@ -41,6 +41,7 @@ export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname;
     const isApi = pathname.startsWith("/api");
 
+
     /* ── Helper: redirect while preserving Supabase session cookies ── */
     const redirectTo = (destination: string, searchParams?: Record<string, string>) => {
       const url = request.nextUrl.clone();

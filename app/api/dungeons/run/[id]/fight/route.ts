@@ -26,6 +26,8 @@ import { applyLevelUp } from "@/lib/game/levelUp";
 import { updateDailyQuestProgress } from "@/lib/game/quests";
 import { ratingForBossKill, ratingForDungeonComplete, getRankFromRating, rankOrder } from "@/lib/game/elo";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

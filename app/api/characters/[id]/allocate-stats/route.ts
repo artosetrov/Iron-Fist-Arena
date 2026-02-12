@@ -4,6 +4,8 @@ import { goldCostForStatTraining } from "@/lib/game/stat-training";
 import { getMaxHp } from "@/lib/game/stats";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GDD §3.2 — Stat allocation (free stat points from level-ups)
  * + Gold training: buy +1 stat for gold (exponential cost curve)

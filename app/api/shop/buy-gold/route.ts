@@ -2,6 +2,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const GOLD_PACKAGES = {
   gold_1000: { gold: 1000, priceUsd: 0.99, label: "1,000 Gold" },
   gold_5000: { gold: 5000, priceUsd: 3.99, label: "5,000 Gold" },

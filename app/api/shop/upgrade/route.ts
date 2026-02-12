@@ -2,6 +2,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 /** GDD §7.5 - Success 75% - 5*level, on fail: 50% stay, 30% -1, 20% destroy */
 export async function POST(request: Request) {
   try {

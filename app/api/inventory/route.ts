@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getMaxHp } from "@/lib/game/stats";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
     const supabase = await createServerSupabaseClient();
