@@ -126,7 +126,7 @@ export const getActiveSetBonuses = (
 
   const result: ActiveSetBonus[] = [];
 
-  for (const [setName, count] of setCounts) {
+  for (const [setName, count] of Array.from(setCounts)) {
     const matchingBonuses = SET_BONUS_DEFINITIONS.filter(
       (def) => def.setName === setName && count >= def.piecesRequired
     );
