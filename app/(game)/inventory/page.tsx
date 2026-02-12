@@ -355,9 +355,9 @@ const AttributesTab = ({
   const rows: { label: string; statKey: string | null; value: number; secondary: string; secondaryValue: string; color: string }[] = [
     { label: "STR", statKey: "strength", value: stats.str, secondary: "DMG", secondaryValue: `${derived.physicalDamage}`, color: "text-red-400" },
     { label: "VIT", statKey: "vitality", value: stats.vit, secondary: "HP", secondaryValue: `${derived.maxHp}`, color: "text-green-400" },
-    { label: "AGI", statKey: "agility", value: stats.agi, secondary: "DEF", secondaryValue: `${derived.defense}`, color: "text-cyan-400" },
+    { label: "AGI", statKey: "agility", value: stats.agi, secondary: "DODGE", secondaryValue: `${derived.dodgeChance}%`, color: "text-cyan-400" },
     { label: "LCK", statKey: "luck", value: stats.lck, secondary: "CRIT", secondaryValue: `${derived.critChance}%`, color: "text-yellow-400" },
-    { label: "INT", statKey: "intelligence", value: stats.int, secondary: "DEF", secondaryValue: `${derived.magicDefense}`, color: "text-blue-400" },
+    { label: "INT", statKey: "intelligence", value: stats.int, secondary: "MDMG", secondaryValue: `${derived.magicDamage}`, color: "text-blue-400" },
     { label: "ARMOR", statKey: null, value: armor, secondary: "DMG RED.", secondaryValue: `${derived.armorReduction}%`, color: "text-orange-400" },
   ];
 
@@ -521,9 +521,10 @@ const DescriptionTab = ({ character }: DescTabProps) => (
 type InfoTabProps = {
   stats: CharStats;
   derived: DerivedStats;
+  armor: number;
 };
 
-const InfoTab = ({ stats, derived }: InfoTabProps) => {
+const InfoTab = ({ stats, derived, armor }: InfoTabProps) => {
   const allStats: { label: string; value: string }[] = [
     { label: "Strength (STR)", value: `${stats.str}` },
     { label: "Agility (AGI)", value: `${stats.agi}` },
@@ -541,7 +542,8 @@ const InfoTab = ({ stats, derived }: InfoTabProps) => {
     { label: "Crit Chance", value: `${derived.critChance}%` },
     { label: "Crit Multiplier", value: `×${derived.critDamage}` },
     { label: "Dodge", value: `${derived.dodgeChance}%` },
-    { label: "Dmg Reduction (armor)", value: `${derived.armorReduction}%` },
+    { label: "Armor", value: `${armor}` },
+    { label: "Dmg Reduction", value: `${derived.armorReduction}%` },
     { label: "Magic Resist", value: `${derived.magicResistPercent}%` },
     { label: "Max HP", value: `${derived.maxHp}` },
   ];
@@ -969,7 +971,7 @@ function InventoryContent() {
                 />
               )}
               {activeTab === "description" && <DescriptionTab character={character} />}
-              {activeTab === "info" && <InfoTab stats={character.stats} derived={character.derived} />}
+              {activeTab === "info" && <InfoTab stats={character.stats} derived={character.derived} armor={character.armor} />}
             </div>
           </div>
         </section>

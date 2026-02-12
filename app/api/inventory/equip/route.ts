@@ -66,7 +66,10 @@ export async function POST(request: Request) {
         include: { equipment: { where: { isEquipped: true }, include: { item: true } } },
       });
       const armor = character?.equipment?.reduce(
-        (sum, e) => sum + ((e.item.baseStats as { armor?: number })?.armor ?? 0),
+        (sum, e) => {
+          const bs = e.item.baseStats as Record<string, number> | null;
+          return sum + (bs?.armor ?? bs?.ARMOR ?? 0);
+        },
         0
       ) ?? 0;
       await tx.character.update({

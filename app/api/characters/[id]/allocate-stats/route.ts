@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { goldCostForStatTraining } from "@/lib/game/stat-training";
+import { getMaxHp } from "@/lib/game/stats";
 import { NextResponse } from "next/server";
 
 /**
@@ -92,6 +93,12 @@ export async function POST(
     // Soft cap warning (allow exceeding via gold, but warn)
     const softCap = SOFT_CAP[statKey];
 
+    // If vitality changes, recalculate maxHp
+    const derivedUpdates =
+      statKey === "vitality"
+        ? { maxHp: getMaxHp(currentValue + 1) }
+        : {};
+
     if (mode === "points") {
       if (character.statPointsAvailable <= 0) {
         return NextResponse.json(
@@ -105,6 +112,7 @@ export async function POST(
         data: {
           [statKey]: currentValue + 1,
           statPointsAvailable: character.statPointsAvailable - 1,
+          ...derivedUpdates,
         },
       });
 
@@ -137,6 +145,7 @@ export async function POST(
       data: {
         [statKey]: currentValue + 1,
         gold: character.gold - cost,
+        ...derivedUpdates,
       },
     });
 

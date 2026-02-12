@@ -26,9 +26,10 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: { name: string; value: string; options?: object }[]) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+            response.cookies.set(name, value, options);
+          });
         },
       },
     });
@@ -40,17 +41,26 @@ export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname;
     const isApi = pathname.startsWith("/api");
 
-    if (!isApi && isGamePath(pathname) && !user) {
+    /* ── Helper: redirect while preserving Supabase session cookies ── */
+    const redirectTo = (destination: string, searchParams?: Record<string, string>) => {
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(url);
+      url.pathname = destination;
+      if (searchParams) {
+        Object.entries(searchParams).forEach(([k, v]) => url.searchParams.set(k, v));
+      }
+      const redirectResponse = NextResponse.redirect(url);
+      response.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie.name, cookie.value);
+      });
+      return redirectResponse;
+    };
+
+    if (!isApi && isGamePath(pathname) && !user) {
+      return redirectTo("/login", { redirect: pathname });
     }
 
     if (!isApi && isAuthPath(pathname) && user) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/hub";
-      return NextResponse.redirect(url);
+      return redirectTo("/hub");
     }
 
     return response;

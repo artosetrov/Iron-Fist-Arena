@@ -52,6 +52,47 @@ const SECONDARY_STAT_COUNT: Record<Rarity, number> = {
   legendary: 4,
 };
 
+/** Armor ranges per slot per rarity (GDD balance) */
+const ARMOR_SLOTS = new Set<ItemType>(["helmet", "chest", "gloves", "legs", "boots"]);
+
+const ARMOR_RANGE: Record<string, Record<Rarity, [number, number]>> = {
+  helmet: {
+    common: [21, 29],
+    uncommon: [30, 40],
+    rare: [42, 55],
+    epic: [60, 78],
+    legendary: [55, 95],
+  },
+  chest: {
+    common: [38, 52],
+    uncommon: [55, 72],
+    rare: [78, 96],
+    epic: [110, 135],
+    legendary: [100, 165],
+  },
+  gloves: {
+    common: [13, 17],
+    uncommon: [18, 24],
+    rare: [25, 32],
+    epic: [36, 44],
+    legendary: [30, 60],
+  },
+  legs: {
+    common: [15, 20],
+    uncommon: [21, 28],
+    rare: [27, 35],
+    epic: [38, 48],
+    legendary: [35, 65],
+  },
+  boots: {
+    common: [13, 17],
+    uncommon: [18, 24],
+    rare: [25, 32],
+    epic: [36, 44],
+    legendary: [35, 60],
+  },
+};
+
 /** Item type → primary stat, pool of secondary stats, name prefixes */
 const ITEM_TYPE_CONFIG: Record<
   ItemType,
@@ -154,6 +195,15 @@ export const generateItemStats = (
       const idx = Math.floor(Math.random() * pool.length);
       const stat = pool.splice(idx, 1)[0];
       stats[stat] = Math.floor(sLo + Math.random() * (sHi - sLo + 1));
+    }
+  }
+
+  // Add armor for armor-type slots
+  if (ARMOR_SLOTS.has(itemType)) {
+    const armorRange = ARMOR_RANGE[itemType]?.[rarity];
+    if (armorRange) {
+      const [aLo, aHi] = armorRange;
+      stats.armor = Math.floor(aLo + Math.random() * (aHi - aLo + 1));
     }
   }
 
