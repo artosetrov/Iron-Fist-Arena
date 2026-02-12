@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -11,15 +12,16 @@ export default function HomePage() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center gap-8">
-        {/* Logo / Title */}
-        <div className="text-center">
-          <div className="mb-4 text-6xl">⚔️</div>
-          <h1 className="text-4xl font-bold uppercase tracking-wider text-white sm:text-5xl">
-            Iron Fist
-          </h1>
-          <h2 className="mt-1 text-2xl font-bold uppercase tracking-[0.3em] text-amber-500 sm:text-3xl">
-            Arena
-          </h2>
+        {/* Logo */}
+        <div className="flex flex-col items-center text-center">
+          <Image
+            src="/images/logo.png"
+            alt="BumKnight Arena"
+            width={320}
+            height={320}
+            priority
+            className="mix-blend-lighten drop-shadow-[0_0_40px_rgba(217,119,6,0.3)]"
+          />
           <p className="mt-4 max-w-xs text-sm text-slate-500">
             Battle, loot, and conquer in the ultimate browser PvP RPG
           </p>
