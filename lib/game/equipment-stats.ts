@@ -1,13 +1,26 @@
 /**
  * Shared utility to aggregate equipment stats from equipped items.
  * Used by equip/unequip APIs and combat routes.
+ *
+ * Supports weapon class affinity: +15% to weapon stats when character class
+ * matches the weapon's recommended category.
  */
 
 import type { ItemStatKey } from "./item-catalog";
+import {
+  WEAPON_AFFINITY_BONUS,
+  getWeaponCategory,
+  hasWeaponAffinity,
+} from "./weapon-affinity";
 
 type EquippedItem = {
+  equippedSlot?: string | null;
   item: {
     baseStats: unknown;
+    itemType?: string;
+    catalogId?: string | null;
+    description?: string | null;
+    itemName?: string;
   };
   upgradeLevel?: number;
 };
@@ -21,9 +34,14 @@ export type AggregatedEquipmentStats = {
   ARMOR: number;
 };
 
-/** Sum all baseStats from equipped items into a single aggregated object */
+/**
+ * Sum all baseStats from equipped items into a single aggregated object.
+ * When `characterClass` is provided, weapons matching the class affinity
+ * receive a +15% bonus to all their stats.
+ */
 export const aggregateEquipmentStats = (
-  equipped: EquippedItem[]
+  equipped: EquippedItem[],
+  characterClass?: string,
 ): AggregatedEquipmentStats => {
   const result: AggregatedEquipmentStats = {
     ATK: 0,
@@ -39,8 +57,24 @@ export const aggregateEquipmentStats = (
   for (const eq of equipped) {
     const bs = eq.item.baseStats as Record<string, number> | null;
     if (!bs) continue;
+
+    // Determine if this weapon gets affinity bonus
+    const isWeaponSlot =
+      eq.equippedSlot === "weapon" ||
+      eq.equippedSlot === "weapon_offhand" ||
+      eq.item.itemType === "weapon";
+
+    let affinityMult = 1;
+    if (isWeaponSlot && characterClass) {
+      const category = getWeaponCategory(eq.item);
+      if (category && hasWeaponAffinity(characterClass, category)) {
+        affinityMult = 1 + WEAPON_AFFINITY_BONUS;
+      }
+    }
+
     for (const k of keys) {
-      result[k] += bs[k] ?? bs[k.toLowerCase()] ?? 0;
+      const raw = bs[k] ?? bs[k.toLowerCase()] ?? 0;
+      result[k] += Math.floor(raw * affinityMult);
     }
   }
 

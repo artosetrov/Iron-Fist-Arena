@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
 import { useAdminGuard } from "@/lib/hooks/useAdminGuard";
 
@@ -672,19 +672,7 @@ const DevDashboardContent = () => {
 
   return (
     <div className="min-h-full bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      {/* Header */}
-      <div className="relative border-b border-slate-800 bg-slate-950/80 px-6 py-4 text-center">
-        <Link
-          href="/hub"
-          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-          aria-label="Back to Hub"
-          tabIndex={0}
-        >
-          ✕
-        </Link>
-        <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-white">Dev Dashboard</h1>
-        <p className="text-xs text-slate-500">System monitoring, tests & game analytics</p>
-      </div>
+      <PageHeader title="Dev Dashboard" />
 
       {/* Content */}
       <div className="space-y-4 p-4 sm:p-6">

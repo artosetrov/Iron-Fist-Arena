@@ -267,6 +267,7 @@ body {
   background: rgb(30 41 59);
 }
 
+
 /* ── Dungeon carousel ── */
 .dungeon-carousel {
   display: flex;
@@ -438,4 +439,53 @@ body {
   height: 8px;
   border-radius: 9999px;
   background: transparent;
+}
+
+/* ── Card flip (3D) ── */
+.card-flip-container {
+  perspective: 900px;
+  height: 100%;
+}
+
+.card-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.card-flip-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-flip-front {
+  position: relative;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.card-flip-inner.flipped .card-flip-front {
+  pointer-events: none;
+}
+
+.card-flip-back {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: rotateY(180deg);
+}
+
+.card-flip-inner.flipped .card-flip-back {
+  pointer-events: auto;
+}
+
+/* ── Hide stat circles on mobile in battle view ── */
+@media (max-width: 639px) {
+  .battle-fighter-card .hero-card-stats {
+    display: none;
+  }
 }

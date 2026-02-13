@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import PageHeader from "@/app/components/PageHeader";
 import { useDisplaySettings, useSoundSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/client";
 import PageLoader from "@/app/components/PageLoader";
@@ -770,19 +770,7 @@ const SettingsContent = () => {
 
   return (
     <div className="relative p-4 lg:p-6">
-      <Link
-        href="/hub"
-        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-        aria-label="Back to Hub"
-        tabIndex={0}
-      >
-        ✕
-      </Link>
-      {/* Header */}
-      <div className="mb-6 text-center">
-        <h1 className="font-display text-2xl font-bold uppercase text-white">Settings</h1>
-        <p className="mt-1 text-sm text-slate-500">Customize your game experience</p>
-      </div>
+      <PageHeader title="Settings" />
 
       {/* Settings card */}
       <div className="mx-auto max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/50">

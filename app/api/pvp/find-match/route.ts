@@ -104,7 +104,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const playerEqStats = aggregateEquipmentStats(character.equipment ?? []);
+    const playerEqStats = aggregateEquipmentStats(character.equipment ?? [], character.class);
     const playerState = buildCombatantState({
       id: character.id,
       name: character.characterName,
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       equipmentBonuses: playerEqStats,
     });
 
-    const opponentEqStats = aggregateEquipmentStats(opponent.equipment ?? []);
+    const opponentEqStats = aggregateEquipmentStats(opponent.equipment ?? [], opponent.class);
     const opponentState = buildCombatantState({
       id: opponent.id,
       name: opponent.characterName,

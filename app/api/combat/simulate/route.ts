@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     }
 
     /* ── Build player combatant ── */
-    const playerEqStats = aggregateEquipmentStats(character.equipment ?? []);
+    const playerEqStats = aggregateEquipmentStats(character.equipment ?? [], character.class);
     const playerState = buildCombatantState({
       id: character.id,
       name: character.characterName,

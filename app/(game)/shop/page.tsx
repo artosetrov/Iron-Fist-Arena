@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
 import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 import {
@@ -10,6 +10,11 @@ import {
   type ConsumableDef,
   type ConsumableType,
 } from "@/lib/game/consumable-catalog";
+import {
+  WEAPON_AFFINITY_BONUS,
+  getWeaponCategory,
+  hasWeaponAffinity,
+} from "@/lib/game/weapon-affinity";
 
 /* ────────────────── Constants ────────────────── */
 
@@ -34,6 +39,7 @@ type Item = {
 type Character = {
   id: string;
   characterName: string;
+  class: string;
   gold: number;
   gems: number;
   level: number;
@@ -145,6 +151,38 @@ const CLASS_LABELS: Record<string, string> = {
   rogue: "Rogue",
   mage: "Mage",
   tank: "Tank",
+};
+
+const CLASS_ICON: Record<string, string> = {
+  warrior: "⚔️",
+  rogue: "🗡️",
+  mage: "🔮",
+  tank: "🛡️",
+};
+
+const CLASS_BADGE_STYLE: Record<string, string> = {
+  warrior: "bg-red-900/50 text-red-400 border-red-700/40",
+  rogue: "bg-emerald-900/50 text-emerald-400 border-emerald-700/40",
+  mage: "bg-violet-900/50 text-violet-400 border-violet-700/40",
+  tank: "bg-sky-900/50 text-sky-400 border-sky-700/40",
+};
+
+/** Reverse mapping: weaponCategory → recommended class */
+const WEAPON_CATEGORY_CLASS: Record<string, string> = {
+  sword: "warrior",
+  dagger: "rogue",
+  mace: "tank",
+  staff: "mage",
+};
+
+/** Determine the recommended class for an item (classRestriction or weapon affinity) */
+const getItemClass = (item: Item): string | null => {
+  if (item.classRestriction) return item.classRestriction;
+  if (item.itemType !== "weapon") return null;
+  // Try catalog/description lookup first
+  const category = getWeaponCategory(item);
+  if (category) return WEAPON_CATEGORY_CLASS[category] ?? null;
+  return null;
 };
 
 type Tab = "all" | ItemType | "potions";
@@ -363,11 +401,13 @@ const ItemCard = ({
   canAfford,
   onBuy,
   buying,
+  characterClass,
 }: {
   item: Item;
   canAfford: boolean;
   onBuy: (id: string) => void;
   buying: string | null;
+  characterClass?: string;
 }) => {
   const [hovered, setHovered] = useState(false);
   const rarity = RARITY_CONFIG[item.rarity] ?? RARITY_CONFIG.common;
@@ -375,6 +415,17 @@ const ItemCard = ({
   const stats = item.baseStats ?? {};
   const statEntries = Object.entries(stats).filter(([, v]) => v !== 0);
   const isBuying = buying === item.id;
+
+  // Determine recommended/restricted class
+  const itemClass = getItemClass(item);
+
+  // Check weapon affinity
+  const isAffinityWeapon = (() => {
+    if (item.itemType !== "weapon" || !characterClass) return false;
+    const category = getWeaponCategory(item);
+    if (!category) return false;
+    return hasWeaponAffinity(characterClass, category);
+  })();
 
   return (
     <div
@@ -411,6 +462,17 @@ const ItemCard = ({
         </div>
         <p className={`text-center text-sm font-bold leading-tight ${rarity.text}`}>{item.itemName}</p>
         <p className="mt-0.5 text-center text-[11px] text-slate-500">{itemType.label}</p>
+        {itemClass && (
+          <span className={`mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold ${CLASS_BADGE_STYLE[itemClass] ?? "bg-slate-800 text-slate-400 border-slate-700"}`}>
+            <span className="text-xs">{CLASS_ICON[itemClass] ?? "👤"}</span>
+            {CLASS_LABELS[itemClass] ?? itemClass}
+          </span>
+        )}
+        {isAffinityWeapon && (
+          <span className="mt-1 inline-block rounded-md bg-emerald-900/50 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+            +{Math.round(WEAPON_AFFINITY_BONUS * 100)}% Affinity
+          </span>
+        )}
       </div>
 
       {/* Stats */}
@@ -430,17 +492,12 @@ const ItemCard = ({
         </div>
       )}
 
-      {/* Set / class restriction badge */}
+      {/* Set badge */}
       {item.setName && (
         <div className="mx-3 mb-2 rounded-lg border border-amber-600/30 bg-amber-950/30 px-2.5 py-1.5">
           <p className="text-[10px] font-bold text-amber-400">
-            {SET_DISPLAY_NAMES[item.setName] ?? item.setName}
+            🏅 {SET_DISPLAY_NAMES[item.setName] ?? item.setName}
           </p>
-          {item.classRestriction && (
-            <p className="text-[9px] text-amber-500/70">
-              {CLASS_LABELS[item.classRestriction] ?? item.classRestriction} only
-            </p>
-          )}
         </div>
       )}
 
@@ -826,19 +883,8 @@ function ShopContent() {
   return (
     <div className="flex min-h-full flex-col p-4 lg:p-6">
       {/* ── Header ── */}
-      <div className="relative mb-6">
-        <Link
-          href="/hub"
-          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-          aria-label="Back to Hub"
-          tabIndex={0}
-        >
-          ✕
-        </Link>
-        <div className="mb-3 text-center">
-          <h1 className="font-display text-2xl font-bold uppercase text-white">Shop</h1>
-          <p className="text-xs text-slate-500">Items matched to your level</p>
-        </div>
+      <PageHeader title="Shop" />
+      <div className="mb-6">
         <div className="flex flex-wrap items-center justify-center gap-3">
             {/* Stamina display — click to jump to potions tab */}
             <button
@@ -1027,6 +1073,7 @@ function ShopContent() {
               canAfford={character.gold >= (item.buyPrice ?? 0)}
               onBuy={handleBuy}
               buying={buying}
+              characterClass={character.class}
             />
           ))}
         </div>

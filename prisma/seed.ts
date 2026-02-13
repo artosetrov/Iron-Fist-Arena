@@ -18,7 +18,13 @@ async function seedGenericItems() {
     });
     console.log(`Cleaned up ${deleted.count} old generic items (${oldCount - deleted.count} kept — owned by players).`);
   }
-  const types = ["weapon", "helmet", "chest", "gloves", "legs", "boots", "accessory"] as const;
+  const armorTypes = ["helmet", "chest", "gloves", "legs", "boots", "accessory"] as const;
+  const weaponCategories = [
+    { name: "Sword", description: "Sword" },
+    { name: "Dagger", description: "Dagger" },
+    { name: "Mace", description: "Mace" },
+    { name: "Staff", description: "Staff" },
+  ] as const;
   const rarities = ["common", "uncommon", "rare", "epic", "legendary"] as const;
   const RARITY_MULT: Record<string, number> = { legendary: 50, epic: 15, rare: 6, uncommon: 2.5, common: 1 };
 
@@ -28,13 +34,27 @@ async function seedGenericItems() {
     for (let level = 1; level <= 50; level++) {
       const base = level * 4 + 10;
       const buyPrice = Math.floor(100 * Math.pow(1 + level / 10, 1.5) * (RARITY_MULT[rarity] ?? 1));
-      for (const itemType of types) {
+      // Armor types
+      for (const itemType of armorTypes) {
         batch.push({
           itemName: `${rarity} ${itemType} Lv.${level}`,
           itemType,
           rarity,
           itemLevel: level,
-          baseStats: { strength: base, armor: itemType !== "weapon" ? Math.floor(base * 0.5) : 0 },
+          baseStats: { strength: base, armor: Math.floor(base * 0.5) },
+          buyPrice,
+          sellPrice: Math.floor(buyPrice * 0.5),
+        });
+      }
+      // Weapon types — one per category (Sword, Dagger, Mace, Staff)
+      for (const wep of weaponCategories) {
+        batch.push({
+          itemName: `${rarity} ${wep.name} Lv.${level}`,
+          itemType: "weapon",
+          rarity,
+          itemLevel: level,
+          baseStats: { strength: base },
+          description: wep.description,
           buyPrice,
           sellPrice: Math.floor(buyPrice * 0.5),
         });

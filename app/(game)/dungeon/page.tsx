@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
+import PageHeader from "@/app/components/PageHeader";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatLootScreen from "@/app/components/CombatLootScreen";
 import PageLoader from "@/app/components/PageLoader";
@@ -698,7 +698,7 @@ function DungeonContent() {
             </span>{" "}
             / {dungeon.bosses.length}
           </p>
-          <div className="w-72">
+          <div className="w-[280px]">
             <HeroCard
               name={boss.name}
               imageSrc={BOSS_IMAGES[boss.name]}
@@ -1165,32 +1165,7 @@ function DungeonContent() {
 
   return (
     <div className="flex min-h-full flex-col p-4 lg:p-6">
-      {/* Header */}
-      <div className="relative mb-6 flex flex-col items-center gap-2">
-        <Link
-          href="/hub"
-          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-          aria-label="Back to Hub"
-          tabIndex={0}
-        >
-          ✕
-        </Link>
-        <h1 className="font-display text-3xl font-bold uppercase text-white">Dungeons</h1>
-        <p className="text-xs text-slate-500">
-          Defeat 10 bosses in sequence to conquer each dungeon.
-        </p>
-        <div className="w-32">
-          <div className="relative h-6 w-full overflow-hidden rounded-full bg-slate-800 border border-slate-700">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
-              style={{ width: `${character.maxStamina ? (character.currentStamina / character.maxStamina) * 100 : 0}%` }}
-            />
-            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold leading-none text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-              ⚡ {character.currentStamina}/{character.maxStamina}
-            </span>
-          </div>
-        </div>
-      </div>
+      <PageHeader title="Dungeons" />
 
       {/* Error */}
       {error && (

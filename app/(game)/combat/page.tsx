@@ -1,8 +1,8 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import PageHeader from "@/app/components/PageHeader";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatResultModal from "@/app/components/CombatResultModal";
 import PageLoader from "@/app/components/PageLoader";
@@ -146,6 +146,101 @@ type ScreenState =
   | { kind: "battle"; result: CombatResult }
   | { kind: "result"; result: CombatResult };
 
+/* ────────────────── Training Card Back ────────────────── */
+
+type TrainingCardBackProps = {
+  card: PresetCard;
+  character: Character;
+  limitReached: boolean;
+  fighting: boolean;
+  error: string | null;
+  onTrain: () => void;
+  onFlipBack: () => void;
+};
+
+const TrainingCardBack = ({
+  card,
+  character,
+  limitReached,
+  fighting,
+  error,
+  onTrain,
+  onFlipBack,
+}: TrainingCardBackProps) => {
+  const dummyLvl = getDummyLevel(character.level);
+  const dummyHp = getDummyHp(character.vitality, card.vitW);
+
+  const handleTrain = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onTrain();
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onFlipBack}
+      onKeyDown={(e) => { if (e.key === "Escape") onFlipBack(); }}
+      aria-label={`Flip back ${card.label}`}
+      className="relative flex h-full w-full flex-col items-stretch justify-center overflow-hidden rounded-2xl border-2 border-slate-700/80 bg-slate-950/95 p-4 transition-colors hover:border-slate-600"
+    >
+      {/* Close button */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onFlipBack(); }}
+        aria-label="Cancel"
+        tabIndex={0}
+        className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-slate-600 bg-slate-800 text-sm text-slate-400 transition hover:border-slate-500 hover:bg-slate-700 hover:text-slate-200"
+      >
+        ✕
+      </button>
+
+      {/* Icon + Name */}
+      <div className="mb-3 flex flex-col items-center gap-1">
+        <span className="text-4xl">{card.icon}</span>
+        <p className="font-display text-lg font-bold text-white">{card.label}</p>
+        <p className="text-xs text-slate-500">Level {dummyLvl} · HP {dummyHp}</p>
+      </div>
+
+      {/* Divider */}
+      <div className="mb-3 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+
+      {/* Description */}
+      <p className="mb-4 text-center text-sm leading-relaxed text-slate-400">
+        {card.description}
+      </p>
+
+      <p className="mb-4 text-center text-[10px] text-slate-600">
+        Stats scale to your level
+      </p>
+
+      {/* Error */}
+      {error && (
+        <p className="mb-3 text-center text-sm text-red-400">{error}</p>
+      )}
+
+      {/* Train button */}
+      <button
+        type="button"
+        onClick={handleTrain}
+        disabled={limitReached || fighting}
+        aria-label={limitReached ? "Daily limit reached" : `Train vs ${card.label}`}
+        className={`mt-auto w-full rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-md transition ${
+          limitReached
+            ? "cursor-not-allowed bg-slate-700 text-slate-400 shadow-none"
+            : "bg-gradient-to-r from-amber-600 to-orange-600 shadow-amber-900/30 hover:from-amber-500 hover:to-orange-500"
+        } disabled:opacity-50`}
+      >
+        {limitReached
+          ? "Daily Limit Reached"
+          : fighting
+            ? "Fighting…"
+            : `${card.icon} Train`}
+      </button>
+    </div>
+  );
+};
+
 /* ────────────────── Combat Content ────────────────── */
 
 function CombatContent() {
@@ -154,6 +249,7 @@ function CombatContent() {
   const avatarSrc = useCharacterAvatar(characterId);
   const [character, setCharacter] = useState<Character | null>(null);
   const [preset, setPreset] = useState("warrior");
+  const [flippedCard, setFlippedCard] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fighting, setFighting] = useState(false);
   const [screen, setScreen] = useState<ScreenState>({ kind: "select" });
@@ -196,8 +292,10 @@ function CombatContent() {
     }
   }, [characterId]);
 
-  const handleTrain = async () => {
+  const handleTrain = async (overridePreset?: string) => {
     if (!character) return;
+    const selectedPreset = overridePreset ?? preset;
+    setPreset(selectedPreset);
     setError(null);
     setFighting(true);
     try {
@@ -206,7 +304,7 @@ function CombatContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           characterId: character.id,
-          opponentPreset: preset,
+          opponentPreset: selectedPreset,
         }),
       });
       if (!res.ok) {
@@ -257,105 +355,132 @@ function CombatContent() {
 
   /* ── Result modal overlay on select screen ── */
   const showResult = screen.kind === "result";
-  const selected = PRESETS.find((p) => p.id === preset)!;
   const limitReached = status !== null && status.remaining <= 0;
 
   return (
     <div className="flex min-h-full flex-col p-4 lg:p-6">
-      {/* Header */}
-      <div className="relative mb-2 flex flex-col items-center gap-2">
-        <Link
-          href="/hub"
-          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-          aria-label="Back to Hub"
-          tabIndex={0}
-        >
-          ✕
-        </Link>
-        <h1 className="font-display text-2xl font-bold uppercase tracking-wider text-amber-400">
-          Training Arena
-        </h1>
+      <PageHeader title="Training Arena" />
 
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {status && (
-            <>
-              <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5">
-                <span className="text-xs text-slate-400">Today:</span>
-                <div className="flex gap-1">
-                  {Array.from({ length: status.max }, (_, i) => (
-                    <div
-                      key={i}
-                      className={`h-2 w-2 rounded-full transition-colors ${
-                        i < status.used
-                          ? "bg-amber-500"
-                          : "bg-slate-700"
-                      }`}
-                      aria-label={i < status.used ? "Used" : "Available"}
-                    />
-                  ))}
-                </div>
-                <span
-                  className={`text-xs font-bold tabular-nums ${
-                    limitReached ? "text-red-400" : "text-amber-400"
-                  }`}
-                >
-                  {status.remaining}/{status.max}
-                </span>
-              </div>
-
-              <div className="flex items-center rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5 text-xs text-slate-400">
-                Win: <span className="ml-1 font-semibold text-blue-400">{10 + character.level * 2} XP</span>
-                <span className="mx-1">·</span>Defeat: <span className="ml-1 text-slate-500">0 XP</span>
-              </div>
-            </>
-          )}
-
-        </div>
-      </div>
-
-      <p className="mb-4 text-xs text-slate-500">
+      <p className="mb-2 text-xs text-slate-500 text-center">
         Fight training dummies to gain XP. No stamina cost, no rating, no loot.
       </p>
+
+      {status && (
+        <div className="mx-auto mb-4 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5">
+          <span className="text-xs text-slate-400">Today:</span>
+          <div className="flex gap-1">
+            {Array.from({ length: status.max }, (_, i) => (
+              <div
+                key={i}
+                className={`h-2 w-2 rounded-full transition-colors ${
+                  i < status.used
+                    ? "bg-amber-500"
+                    : "bg-slate-700"
+                }`}
+                aria-label={i < status.used ? "Used" : "Available"}
+              />
+            ))}
+          </div>
+          <span
+            className={`text-xs font-bold tabular-nums ${
+              limitReached ? "text-red-400" : "text-amber-400"
+            }`}
+          >
+            {status.remaining}/{status.max}
+          </span>
+        </div>
+      )}
 
       {/* Choose an opponent */}
       <h2 className="mb-4 text-center font-display text-base text-slate-300">
         Choose your opponent:
       </h2>
 
-      {/* Opponent cards grid */}
-      <div className="scrollbar-hide mx-auto mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4" style={{ maxWidth: 4 * 320 + 3 * 16 }}>
+      {/* ── Mobile scroll (< sm): flip cards ── */}
+      <div className="scrollbar-hide -mx-4 mb-6 flex max-w-[100vw] snap-x snap-mandatory gap-4 overflow-x-auto px-[calc(50vw-140px)] pb-2 sm:hidden">
         {PRESETS.map((card) => {
           const dummyLvl = getDummyLevel(character.level);
           const dummyHp = getDummyHp(character.vitality, card.vitW);
 
           return (
-            <div
-              key={card.id}
-              className="w-[75vw] min-w-[220px] max-w-[320px] flex-shrink-0 snap-center sm:w-auto sm:min-w-0 sm:max-w-none sm:flex-shrink"
-            >
+            <div key={card.id} className="w-[280px] flex-shrink-0 snap-center">
               <HeroCard
                 name={card.label}
                 className={card.id}
                 icon={card.icon}
                 level={dummyLvl}
                 hp={{ current: dummyHp, max: dummyHp }}
-                selected={preset === card.id}
-                onClick={() => setPreset(card.id)}
-                ariaLabel={`Select ${card.label}`}
+                onClick={() => setFlippedCard(card.id)}
+                ariaLabel={`View ${card.label}`}
                 description={card.description}
-              >
-                <p className="pb-1 text-center text-[10px] text-slate-600">
-                  Stats scale to your level
-                </p>
-              </HeroCard>
+              />
             </div>
           );
         })}
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-800/50 bg-red-950/30 px-4 py-2.5">
+      {/* ── Mobile flip-back modal ── */}
+      {flippedCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:hidden">
+          <div className="w-full max-w-sm">
+            <TrainingCardBack
+              card={PRESETS.find((p) => p.id === flippedCard)!}
+              character={character}
+              limitReached={limitReached}
+              fighting={fighting}
+              error={error}
+              onTrain={() => handleTrain(flippedCard)}
+              onFlipBack={() => setFlippedCard(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Desktop (sm+): flip cards ── */}
+      <div className="hidden sm:mx-auto sm:mb-6 sm:grid sm:gap-4 sm:grid-cols-2 lg:grid-cols-4" style={{ maxWidth: "fit-content" }}>
+        {PRESETS.map((card) => {
+          const dummyLvl = getDummyLevel(character.level);
+          const dummyHp = getDummyHp(character.vitality, card.vitW);
+          const isFlipped = flippedCard === card.id;
+
+          return (
+            <div key={card.id} className="card-flip-container w-[260px]">
+              <div className={`card-flip-inner ${isFlipped ? "flipped" : ""}`}>
+                {/* Front */}
+                <div className="card-flip-front">
+                  <HeroCard
+                    name={card.label}
+                    className={card.id}
+                    icon={card.icon}
+                    level={dummyLvl}
+                    hp={{ current: dummyHp, max: dummyHp }}
+                    onClick={() => setFlippedCard(card.id)}
+                    ariaLabel={`View ${card.label}`}
+                    description={card.description}
+                    fillHeight
+                  />
+                </div>
+                {/* Back */}
+                <div className="card-flip-back">
+                  <TrainingCardBack
+                    card={card}
+                    character={character}
+                    limitReached={limitReached}
+                    fighting={fighting}
+                    error={error}
+                    onTrain={() => handleTrain(card.id)}
+                    onFlipBack={() => setFlippedCard(null)}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Error (desktop) */}
+      {error && !flippedCard && (
+        <div className="mb-4 hidden items-center gap-2 rounded-lg border border-red-800/50 bg-red-950/30 px-4 py-2.5 sm:flex">
           <span>⚠️</span>
           <p className="text-sm text-red-400">{error}</p>
           <button
@@ -369,25 +494,6 @@ function CombatContent() {
           </button>
         </div>
       )}
-
-      {/* Action button */}
-      <button
-        type="button"
-        onClick={handleTrain}
-        disabled={fighting || limitReached}
-        aria-label={limitReached ? "Daily limit reached" : "Start Training"}
-        className={`rounded-2xl px-6 py-4 text-sm font-bold text-white shadow-lg transition ${
-          limitReached
-            ? "cursor-not-allowed bg-slate-700 text-slate-400 shadow-none"
-            : "bg-gradient-to-r from-amber-600 to-orange-600 shadow-amber-900/40 hover:from-amber-500 hover:to-orange-500"
-        } disabled:opacity-50`}
-      >
-        {limitReached
-          ? "Daily Limit Reached — Come Back Tomorrow"
-          : fighting
-            ? "Fighting…"
-            : `${selected.icon} Train vs ${selected.label}`}
-      </button>
 
       {/* Result modal */}
       {showResult && screen.kind === "result" && (

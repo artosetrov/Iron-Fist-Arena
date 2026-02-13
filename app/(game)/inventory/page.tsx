@@ -3,12 +3,17 @@
 import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
+import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
 import { xpForLevel } from "@/lib/game/progression";
 import { goldCostForStatTraining } from "@/lib/game/stat-training";
 import { isWeaponTwoHanded } from "@/lib/game/item-catalog";
 import { MAX_STAT_VALUE } from "@/lib/game/balance";
+import {
+  WEAPON_AFFINITY_BONUS,
+  getWeaponCategory,
+  hasWeaponAffinity,
+} from "@/lib/game/weapon-affinity";
 import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 
 /* ────────────────── Types ────────────────── */
@@ -173,6 +178,36 @@ const CLASS_LABEL: Record<string, string> = {
   tank: "Tank",
 };
 
+const CLASS_BADGE_ICON: Record<string, string> = {
+  warrior: "⚔️",
+  rogue: "🗡️",
+  mage: "🔮",
+  tank: "🛡️",
+};
+
+const CLASS_BADGE_STYLE: Record<string, string> = {
+  warrior: "bg-red-900/50 text-red-400 border-red-700/40",
+  rogue: "bg-emerald-900/50 text-emerald-400 border-emerald-700/40",
+  mage: "bg-violet-900/50 text-violet-400 border-violet-700/40",
+  tank: "bg-sky-900/50 text-sky-400 border-sky-700/40",
+};
+
+/** Reverse mapping: weaponCategory → recommended class */
+const WEAPON_CATEGORY_CLASS: Record<string, string> = {
+  sword: "warrior",
+  dagger: "rogue",
+  mace: "tank",
+  staff: "mage",
+};
+
+/** Determine the recommended class for an inventory item */
+const getInvItemClass = (inv: InventoryItem): string | null => {
+  if (inv.item.itemType !== "weapon") return null;
+  const cat = getWeaponCategory(inv.item);
+  if (cat) return WEAPON_CATEGORY_CLASS[cat] ?? null;
+  return null;
+};
+
 const INVENTORY_SLOTS_TOTAL = 50;
 
 /* ────────────────── Helpers ────────────────── */
@@ -209,6 +244,14 @@ const statLabel: Record<string, string> = {
   SPEED: "Speed",
 };
 
+/** Check if an inventory weapon item has class affinity */
+const checkWeaponAffinity = (inv: InventoryItem, characterClass: string): boolean => {
+  if (inv.item.itemType !== "weapon") return false;
+  const category = getWeaponCategory(inv.item);
+  if (!category) return false;
+  return hasWeaponAffinity(characterClass, category);
+};
+
 /* ────────────────── Item Tooltip ────────────────── */
 
 type TooltipProps = {
@@ -216,12 +259,16 @@ type TooltipProps = {
   /** Currently equipped item in the same slot — for stat comparison */
   equippedItem?: InventoryItem | null;
   style?: React.CSSProperties;
+  /** Character class for affinity check */
+  characterClass?: string;
 };
 
-const ItemTooltip = ({ inv, equippedItem, style }: TooltipProps) => {
+const ItemTooltip = ({ inv, equippedItem, style, characterClass }: TooltipProps) => {
   const stats = getItemStats(inv);
   const equippedStats = equippedItem ? getItemStats(equippedItem) : null;
   const rarity = inv.item.rarity;
+  const showAffinity = characterClass ? checkWeaponAffinity(inv, characterClass) : false;
+  const itemClass = getInvItemClass(inv);
 
   /* Collect all stat keys from both items for comparison */
   const allStatKeys = equippedStats
@@ -240,6 +287,17 @@ const ItemTooltip = ({ inv, equippedItem, style }: TooltipProps) => {
       <p className="text-xs text-slate-400">
         {RARITY_LABEL[rarity] ?? rarity} · {SLOT_LABELS[inv.item.itemType as SlotKey] ?? inv.item.itemType} · Lv. {inv.item.itemLevel}
       </p>
+      {itemClass && (
+        <span className={`mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold ${CLASS_BADGE_STYLE[itemClass] ?? "bg-slate-800 text-slate-400 border-slate-700"}`}>
+          <span className="text-xs">{CLASS_BADGE_ICON[itemClass] ?? "👤"}</span>
+          {CLASS_LABEL[itemClass] ?? itemClass}
+        </span>
+      )}
+      {showAffinity && (
+        <p className="mt-1 text-xs font-semibold text-emerald-400">
+          +{Math.round(WEAPON_AFFINITY_BONUS * 100)}% Affinity Bonus
+        </p>
+      )}
 
       {allStatKeys.length > 0 && (
         <div className="mt-2 space-y-0.5">
@@ -310,6 +368,8 @@ type EquipSlotProps = {
   onDragLeaveSlot?: () => void;
   /** This slot is a valid drop target for the currently dragged item */
   isValidTarget?: boolean;
+  /** Show affinity indicator on weapon slots */
+  hasAffinity?: boolean;
 };
 
 const EquipmentSlot = ({
@@ -318,6 +378,7 @@ const EquipmentSlot = ({
   onDragStart, onDragEnd, onDropItem,
   isDragOver, onDragOverSlot, onDragLeaveSlot,
   isValidTarget,
+  hasAffinity,
 }: EquipSlotProps) => {
   const rarity = item?.item.rarity ?? "";
 
@@ -395,6 +456,15 @@ const EquipmentSlot = ({
       {!locked && item && item.upgradeLevel > 0 && (
         <span className="absolute -right-1 -top-1 rounded bg-yellow-600 px-1 text-[10px] font-bold text-white">
           +{item.upgradeLevel}
+        </span>
+      )}
+
+      {!locked && item && hasAffinity && (
+        <span
+          className="absolute -bottom-1 -left-1 rounded bg-emerald-600 px-1 text-[8px] font-bold text-white"
+          title={`Affinity +${Math.round(WEAPON_AFFINITY_BONUS * 100)}%`}
+        >
+          +{Math.round(WEAPON_AFFINITY_BONUS * 100)}%
         </span>
       )}
 
@@ -492,6 +562,18 @@ const InventoryCell = memo(({
       {inv.durability < inv.maxDurability * 0.3 && (
         <span className="absolute -bottom-0.5 -left-0.5 rounded bg-red-600 px-0.5 text-[9px] text-white">⚠</span>
       )}
+      {(() => {
+        const cls = getInvItemClass(inv);
+        if (!cls) return null;
+        return (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[8px] shadow ring-1 ring-slate-700"
+            title={CLASS_LABEL[cls] ?? cls}
+          >
+            {CLASS_BADGE_ICON[cls] ?? "👤"}
+          </span>
+        );
+      })()}
     </button>
   );
 });
@@ -775,13 +857,17 @@ type ItemDetailProps = {
   onClose: () => void;
   /** Whether main-hand weapon is two-handed (blocks off-hand) */
   mainHandTwoHanded?: boolean;
+  /** Character class for affinity check */
+  characterClass?: string;
 };
 
-const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose, mainHandTwoHanded }: ItemDetailProps) => {
+const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose, mainHandTwoHanded, characterClass }: ItemDetailProps) => {
   const rarity = inv.item.rarity;
   const stats = getItemStats(inv);
   const isWeapon = inv.item.itemType.toLowerCase() === "weapon";
   const isTwoHanded = isWeapon && !!inv.item.catalogId && isWeaponTwoHanded(inv.item.catalogId);
+  const showAffinity = characterClass ? checkWeaponAffinity(inv, characterClass) : false;
+  const itemClass = getInvItemClass(inv);
 
   return (
     <div className={`rounded-xl border-2 p-4 ${RARITY_BORDER[rarity]} bg-slate-900/90`}>
@@ -795,6 +881,17 @@ const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose, 
             {RARITY_LABEL[rarity]} · {SLOT_LABELS[inv.item.itemType as SlotKey]} · Lv. {inv.item.itemLevel}
             {isTwoHanded && <span className="ml-1 text-amber-400">(Two-Handed)</span>}
           </p>
+          {itemClass && (
+            <span className={`mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold ${CLASS_BADGE_STYLE[itemClass] ?? "bg-slate-800 text-slate-400 border-slate-700"}`}>
+              <span className="text-xs">{CLASS_BADGE_ICON[itemClass] ?? "👤"}</span>
+              {CLASS_LABEL[itemClass] ?? itemClass}
+            </span>
+          )}
+          {showAffinity && (
+            <p className="mt-1 text-xs font-semibold text-emerald-400">
+              +{Math.round(WEAPON_AFFINITY_BONUS * 100)}% Affinity Bonus
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -1258,15 +1355,7 @@ function InventoryContent() {
 
   return (
     <div className="relative min-h-full text-white">
-      {/* Close button */}
-      <Link
-        href="/hub"
-        className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-        aria-label="Back to Hub"
-        tabIndex={0}
-      >
-        ✕
-      </Link>
+      <PageHeader title="Inventory" />
 
       {error && (
         <div className="border-b border-red-900/50 bg-red-950/30 px-4 py-2 text-xs text-red-400">{error}</div>
@@ -1358,6 +1447,7 @@ function InventoryContent() {
                     onSelectItem={handleSelectItem}
                     isDragOver={isSlotDragOver("weapon")}
                     isValidTarget={isSlotValidTarget("weapon")}
+                    hasAffinity={!!equippedMap.weapon && checkWeaponAffinity(equippedMap.weapon, character.class)}
                     {...equipDragProps}
                   />
                   <EquipmentSlot
@@ -1370,6 +1460,7 @@ function InventoryContent() {
                     lockReason="Two-handed weapon equipped"
                     isDragOver={isSlotDragOver("weapon_offhand")}
                     isValidTarget={isSlotValidTarget("weapon_offhand")}
+                    hasAffinity={!!equippedMap.weapon_offhand && checkWeaponAffinity(equippedMap.weapon_offhand, character.class)}
                     {...equipDragProps}
                   />
                 </div>
@@ -1445,6 +1536,7 @@ function InventoryContent() {
               isSelling={isSelling}
               onClose={() => setSelectedItem(null)}
               mainHandTwoHanded={mainHandIsTwoHanded}
+              characterClass={character.class}
             />
           )}
 
@@ -1516,6 +1608,7 @@ function InventoryContent() {
             left: Math.min(hoveredItem.x, window.innerWidth - 280),
             top: Math.min(hoveredItem.y, window.innerHeight - 300),
           }}
+          characterClass={character.class}
         />
       )}
     </div>

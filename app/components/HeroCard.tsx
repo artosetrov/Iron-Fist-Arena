@@ -289,6 +289,8 @@ export type HeroCardProps = {
   disabled?: boolean;
   /** Aria label override */
   ariaLabel?: string;
+  /** Replace aspect-ratio with h-full so parent grid/flex controls height (cards become equal-height) */
+  fillHeight?: boolean;
   /** Children rendered below stats (e.g. action buttons) */
   children?: React.ReactNode;
 };
@@ -316,6 +318,7 @@ const HeroCard = memo(({
   hideDescription = false,
   disabled = false,
   ariaLabel,
+  fillHeight = false,
   children,
 }: HeroCardProps) => {
   const classKey = cls?.toLowerCase() ?? "";
@@ -333,7 +336,7 @@ const HeroCard = memo(({
 
   // Selected / hover states
   const selectedClasses = selected
-    ? "border-amber-500 ring-2 ring-amber-400/50 shadow-xl shadow-amber-600/30 scale-[1.03]"
+    ? "border-amber-500 ring-2 ring-amber-400/50 shadow-xl shadow-amber-600/30"
     : "hover:border-amber-600/50";
 
   // Stat config
@@ -362,7 +365,8 @@ const HeroCard = memo(({
       aria-pressed={onClick ? selected : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={`
-        group relative flex aspect-[9/14] flex-col overflow-hidden border-2 transition-all duration-300
+        group relative flex flex-col overflow-hidden border-2 transition-all duration-300
+        ${fillHeight ? "h-full" : "aspect-[9/14]"}
         ${selectedClasses}
         ${shakeClass} ${dodgeClass}
         ${disabled ? "opacity-60 cursor-not-allowed" : onClick ? "cursor-pointer" : ""}
@@ -475,7 +479,7 @@ const HeroCard = memo(({
       {/* ═══ Description ═══ */}
       {!hideDescription && description && (
         <div className="px-3 pt-2">
-          <p className="text-center text-[11px] leading-relaxed text-slate-400">
+          <p className="line-clamp-2 min-h-[36px] text-center text-[11px] leading-relaxed text-slate-400">
             {description}
           </p>
         </div>
@@ -483,7 +487,7 @@ const HeroCard = memo(({
 
       {/* ═══ Stat circles ═══ */}
       {!hideStats && visibleStats.length > 0 && (
-        <div className="flex flex-wrap items-center justify-center gap-2 px-2 py-3">
+        <div className="hero-card-stats flex flex-wrap items-center justify-center gap-2 px-2 py-3">
           {visibleStats.map((s) => (
             <StatCircle
               key={s.key}

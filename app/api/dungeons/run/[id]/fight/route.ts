@@ -83,7 +83,7 @@ export async function POST(
     }
 
     // Build player combatant with equipment bonuses
-    const playerEqStats = aggregateEquipmentStats(character.equipment ?? []);
+    const playerEqStats = aggregateEquipmentStats(character.equipment ?? [], character.class);
     const playerState = buildCombatantState({
       id: character.id,
       name: character.characterName,

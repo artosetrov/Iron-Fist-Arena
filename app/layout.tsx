@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Inter, Bangers } from "next/font/google";
+import { Inter, Bangers, MedievalSharp } from "next/font/google";
 import DesignTokenProvider from "./components/DesignTokenProvider";
 import "./globals.css";
 
@@ -17,6 +17,13 @@ const bangers = Bangers({
   display: "swap",
 });
 
+const medievalSharp = MedievalSharp({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-medieval",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Iron Fist Arena",
   description: "Browser PvP RPG",
@@ -29,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${bangers.variable}`}>
+    <html lang="en" className={`${inter.variable} ${bangers.variable} ${medievalSharp.variable}`}>
       <head>
         <Suspense fallback={null}>
           <DesignTokenProvider />

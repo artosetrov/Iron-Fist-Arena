@@ -122,7 +122,7 @@ const FighterCard = memo(({
   const cls = snapshot.class.toLowerCase();
 
   return (
-    <div className="w-full max-w-[220px]">
+    <div className="battle-fighter-card w-full max-w-[220px]">
       <HeroCard
         name={snapshot.name}
         className={cls}
@@ -205,6 +205,7 @@ const CombatBattleScreen = ({
   const [dodgingRight, setDodgingRight] = useState(false);
   const [currentTurnLabel, setCurrentTurnLabel] = useState(0);
   const [visibleLog, setVisibleLog] = useState<CombatLogEntry[]>([]);
+  const [showLog, setShowLog] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const logEndRef = useRef<HTMLDivElement | null>(null);
@@ -461,76 +462,128 @@ const CombatBattleScreen = ({
       </div>
 
       {/* Battle area */}
-      <div className="relative flex flex-1 items-center justify-center gap-4 px-4 py-6 lg:gap-8 lg:px-8">
-        {/* Left fighter */}
-        <div className="relative">
-          <FighterCard
-            snapshot={leftSnapshot}
-            currentHp={leftHp}
-            isShaking={shakingLeft}
-            isDodging={dodgingLeft}
-            side="left"
-          />
-          {/* Floating numbers for left */}
-          {floatingNumbers
-            .filter((f) => f.side === "left")
-            .map((f) => (
-              <FloatingNumber key={f.id} data={f} />
-            ))}
+      <div className="relative flex flex-1 flex-col items-center justify-center px-4 py-6 lg:px-8">
+        {/* Fighters row */}
+        <div className="flex items-center justify-center gap-4 lg:gap-8">
+          {/* Left fighter */}
+          <div className="relative">
+            <FighterCard
+              snapshot={leftSnapshot}
+              currentHp={leftHp}
+              isShaking={shakingLeft}
+              isDodging={dodgingLeft}
+              side="left"
+            />
+            {floatingNumbers
+              .filter((f) => f.side === "left")
+              .map((f) => (
+                <FloatingNumber key={f.id} data={f} />
+              ))}
+          </div>
+
+          {/* Center VS */}
+          <span className="font-display text-3xl text-slate-700">VS</span>
+
+          {/* Right fighter */}
+          <div className="relative">
+            <FighterCard
+              snapshot={rightSnapshot}
+              currentHp={rightHp}
+              isShaking={shakingRight}
+              isDodging={dodgingRight}
+              side="right"
+            />
+            {floatingNumbers
+              .filter((f) => f.side === "right")
+              .map((f) => (
+                <FloatingNumber key={f.id} data={f} />
+              ))}
+          </div>
         </div>
 
-        {/* Center VS area */}
-        <div className="flex flex-col items-center gap-2">
-          <span className="font-display text-3xl text-slate-700">VS</span>
-          {/* Current action message */}
+        {/* Action message — centered below cards */}
+        <div className="mt-4 h-9">
           {currentStep >= 0 && currentStep < log.length && (
-            <div className="max-w-[180px] rounded-lg bg-slate-800/80 px-3 py-1.5 text-center text-[10px] text-slate-400 shadow-lg">
+            <div className="max-w-[360px] rounded-xl bg-slate-800/90 px-5 py-2 text-center text-sm font-medium text-slate-300 shadow-lg">
               {log[currentStep].message}
             </div>
           )}
         </div>
+      </div>
 
-        {/* Right fighter */}
-        <div className="relative">
-          <FighterCard
-            snapshot={rightSnapshot}
-            currentHp={rightHp}
-            isShaking={shakingRight}
-            isDodging={dodgingRight}
-            side="right"
-          />
-          {/* Floating numbers for right */}
-          {floatingNumbers
-            .filter((f) => f.side === "right")
-            .map((f) => (
-              <FloatingNumber key={f.id} data={f} />
-            ))}
+      {/* Battle log slide-in panel (right side) */}
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ${
+          showLog ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setShowLog(false)}
+        aria-hidden="true"
+      />
+      {/* Panel */}
+      <div
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-sm flex-col border-l border-slate-700 bg-slate-900/95 shadow-2xl backdrop-blur-sm transition-transform duration-300 ease-out ${
+          showLog ? "translate-x-0" : "translate-x-full"
+        }`}
+        role="dialog"
+        aria-label="Battle Log"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-700/60 px-5 py-3">
+          <p className="text-sm font-bold uppercase tracking-wider text-slate-300">
+            📜 Battle Log
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowLog(false)}
+            aria-label="Close log"
+            tabIndex={0}
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-600 bg-slate-800 text-sm text-slate-400 transition hover:border-slate-500 hover:bg-slate-700 hover:text-slate-200"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Log entries */}
+        <div className="flex-1 overflow-y-auto px-5 py-3">
+          {visibleLog.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              {visibleLog.map((entry, i) => (
+                <LogEntryRow
+                  key={i}
+                  entry={entry}
+                  playerName={playerSnapshot.name}
+                  enemyName={enemySnapshot.name}
+                  playerId={playerSnapshot.id}
+                />
+              ))}
+              <div ref={logEndRef} />
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-slate-500">
+              No actions yet…
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Battle log */}
-      {visibleLog.length > 0 && (
-        <div className="mx-4 mb-2 max-h-40 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 lg:mx-8">
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-            Battle Log
-          </p>
-          <div className="flex flex-col gap-0.5">
-            {visibleLog.map((entry, i) => (
-              <LogEntryRow
-                key={i}
-                entry={entry}
-                playerName={playerSnapshot.name}
-                enemyName={enemySnapshot.name}
-                playerId={playerSnapshot.id}
-              />
-            ))}
-            <div ref={logEndRef} />
-          </div>
-        </div>
-      )}
-
       {/* Controls */}
       <div className="flex items-center justify-center gap-3 border-t border-slate-800 bg-slate-950/80 px-4 py-3">
+        {/* Log toggle */}
+        <button
+          type="button"
+          onClick={() => setShowLog((prev) => !prev)}
+          aria-label={showLog ? "Hide battle log" : "Show battle log"}
+          aria-pressed={showLog}
+          className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm transition ${
+            showLog
+              ? "border-amber-500/60 bg-amber-900/30 text-amber-400"
+              : "border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700"
+          }`}
+        >
+          📜
+        </button>
+
         {!isFinished ? (
           <>
             <button

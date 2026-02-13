@@ -10,6 +10,7 @@ import {
   type ConsumableType,
 } from "@/lib/game/consumable-catalog";
 import { xpForLevel } from "@/lib/game/progression";
+import { useMobileSidebar } from "@/app/components/MobileSidebarProvider";
 
 /* ────────────────── Types ────────────────── */
 
@@ -136,11 +137,11 @@ const GameSidebar = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const characterId = searchParams.get("characterId");
+  const { open: mobileOpen, setOpen: setMobileOpen } = useMobileSidebar();
 
   const [character, setCharacter] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [consumables, setConsumables] = useState<ConsumableInventoryItem[]>([]);
   const [usingPotion, setUsingPotion] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("player");
@@ -253,7 +254,7 @@ const GameSidebar = () => {
   // Close mobile menu on navigation
   useEffect(() => {
     setMobileOpen(false);
-  }, [pathname]);
+  }, [pathname, setMobileOpen]);
 
   const { stamina, nextIn } = useStaminaRealtime(
     character?.currentStamina ?? 0,
@@ -527,7 +528,7 @@ const GameSidebar = () => {
                     <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/80 text-xl transition group-hover:border-slate-600">
                       {item.icon}
                     </span>
-                    <span className="min-w-0 truncate font-black tracking-wide text-base">{item.label}</span>
+                    <span className="min-w-0 truncate font-nav text-lg tracking-wide">{item.label}</span>
                   </Link>
                 </li>
               );
@@ -556,7 +557,7 @@ const GameSidebar = () => {
                   <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/80 text-xl transition group-hover:border-slate-600">
                     {item.icon}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-left font-black tracking-wide text-base">{item.label}</span>
+                  <span className="min-w-0 flex-1 truncate text-left font-nav text-lg tracking-wide">{item.label}</span>
                   {/* Chevron */}
                   <svg
                     className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
@@ -572,26 +573,26 @@ const GameSidebar = () => {
                 {/* Collapsible children */}
                 <div
                   className="overflow-hidden transition-all duration-200"
-                  style={{ maxHeight: isOpen ? `${item.children.length * 44}px` : "0px", opacity: isOpen ? 1 : 0 }}
+                  style={{ maxHeight: isOpen ? "80px" : "0px", opacity: isOpen ? 1 : 0 }}
                 >
-                  <ul className="ml-6 mt-1 space-y-0.5 border-l border-slate-700/50 pl-3">
+                  <ul className="mt-1 flex flex-wrap items-center gap-1 px-2">
                     {item.children.map((child) => {
                       const childActive = isActive(child.href);
                       return (
                         <li key={child.href}>
                           <Link
                             href={buildHref(child.href)}
-                            className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-all
+                            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all
                               ${childActive
-                                ? "bg-slate-800/80 font-semibold text-white"
-                                : "text-slate-400 hover:bg-slate-800/40 hover:text-white"
+                                ? "border border-slate-600 bg-slate-800/80 text-white"
+                                : "border border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-800/40 hover:text-white"
                               }
                             `}
                             aria-label={child.label}
                             aria-current={childActive ? "page" : undefined}
                             tabIndex={0}
                           >
-                            <span className="text-base">{child.icon}</span>
+                            <span className="text-sm">{child.icon}</span>
                             <span className="truncate">{child.label}</span>
                           </Link>
                         </li>
@@ -673,25 +674,12 @@ const GameSidebar = () => {
 
   return (
     <>
-      {/* ── Mobile burger button ── */}
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        className="fixed left-3 top-3 z-40 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/90 text-white backdrop-blur transition hover:bg-slate-800 lg:hidden"
-        aria-label="Open Menu"
-        tabIndex={0}
-      >
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-
       {/* ── Mobile overlay ── */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileOpen(false)}
-          onKeyDown={(e) => e.key === "Escape" && setMobileOpen(false)}
+          onKeyDown={(e) => { if (e.key === "Escape") setMobileOpen(false); }}
           role="button"
           tabIndex={-1}
           aria-label="Close Menu"
