@@ -21,9 +21,9 @@ Legendary sets are the ultimate endgame chase items.
 Генерируются автоматически при seed базы данных. Покрывают все уровни и типы:
 
 - **Уровни:** 1–50 (каждый уровень)
-- **Типы:** weapon, helmet, chest, gloves, legs, boots, accessory (7 типов)
+- **Типы:** weapon, helmet, chest, gloves, legs, boots, accessory, amulet, belt, relic, necklace, ring (12 типов)
 - **Рарности:** common, uncommon, rare, epic, legendary (5 рарностей)
-- **Итого:** 7 × 5 × 50 = **1750 предметов**
+- **Итого:** 12 × 5 × 50 = **3000 предметов** (generic pool)
 - **Название:** автоматическое (`"{rarity} {type} Lv.{level}"`)
 - **Статы:** формульные (`base = level × 4 + 10`, armor = 50% от base для неоружия)
 - **Цена покупки:** `100 × (1 + level/10)^1.5 × Rarity_Mult`
@@ -80,15 +80,23 @@ Rarity multiplier applies to **base item stats**.
 
 ## 5. Equipment Slots
 
-Each player has **5 equipment slots**:
+Each player has **13 equipment slots**:
 
-| Slot   | Primary Stats     |
-| ------ | ----------------- |
-| Weapon | ATK, CRIT, SPEED  |
-| Helmet | DEF, HP           |
-| Gloves | ATK               |
-| Chest  | DEF, HP           |
-| Boots  | ATK, DEF, SPEED   |
+| Slot           | Primary Stats      | Notes                       |
+| -------------- | ------------------ | --------------------------- |
+| Weapon         | ATK, CRIT, SPEED   | Main hand                   |
+| Weapon Offhand | ATK, DEF           | Second weapon or shield      |
+| Helmet         | DEF, HP            |                             |
+| Chest          | DEF, HP            |                             |
+| Gloves         | ATK                |                             |
+| Legs           | DEF, HP            |                             |
+| Boots          | ATK, DEF, SPEED    |                             |
+| Accessory      | Mixed              |                             |
+| Amulet         | Mixed              |                             |
+| Belt           | DEF, HP            |                             |
+| Relic          | Mixed              | Special effects             |
+| Necklace       | Mixed              |                             |
+| Ring           | Mixed              |                             |
 
 ---
 
@@ -103,6 +111,7 @@ Items can provide 1–3 stats from the following pool:
 | HP    | Max health points          |
 | CRIT  | Critical strike chance (%) |
 | SPEED | Speed / initiative         |
+| ARMOR | Flat armor value           |
 
 ---
 
@@ -303,7 +312,7 @@ Full item catalog with stats: `lib/game/item-catalog.ts`
 - Legendary items have `classRestriction` and `setName` fields
 - Set bonuses computed at runtime in `lib/game/set-bonuses.ts`
 - Crafting shards tracked in `legendary_shards` table per character
-- Existing 7 equipment slots (weapon, helmet, chest, gloves, legs, boots, accessory) remain; catalog items use weapon + 4 armor slots
+- 13 equipment slots: weapon, weapon_offhand, helmet, chest, gloves, legs, boots, accessory, amulet, belt, relic, necklace, ring
 - Existing uncommon rarity preserved for backward compatibility
 - Weapon subtypes (Sword, Dagger, Mace, Staff) stored in `description` field for UI display
 - Generic items: `catalogId = null`, catalog items: `catalogId = "warrior-helmet-crimson-conqueror"` (unique)

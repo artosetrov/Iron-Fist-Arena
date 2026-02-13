@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import PageLoader from "@/app/components/PageLoader";
+import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
+import { GameButton } from "@/app/components/ui";
 import {
   ALL_ORIGINS,
   ORIGIN_DEFS,
@@ -13,6 +15,7 @@ import {
   ORIGIN_ACCENT,
   type CharacterOrigin,
 } from "@/lib/game/origins";
+import { CLASS_LORE } from "@/lib/game/lore";
 
 /* ────────────────── Types ────────────────── */
 
@@ -70,11 +73,11 @@ const CLASS_LABELS: Record<string, string> = {
   tank: "Tank",
 };
 
-const CLASS_ICON: Record<string, string> = {
-  warrior: "⚔️",
-  rogue: "🗡️",
-  mage: "🧙",
-  tank: "🛡️",
+const CLASS_ICON: Record<string, GameIconKey> = {
+  warrior: "warrior",
+  rogue: "rogue",
+  mage: "mage",
+  tank: "tank",
 };
 
 const CLASS_DESCRIPTION: Record<string, string> = {
@@ -163,7 +166,7 @@ const CharacterCard = ({
               sizes="56px"
             />
           ) : (
-            <span className="text-3xl">{CLASS_ICON[cls] ?? "⚔️"}</span>
+            <GameIcon name={CLASS_ICON[cls] ?? "warrior"} size={32} />
           )}
           <span className="absolute -bottom-1 -left-1 z-10 rounded-md bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
             Lv.{character.level}
@@ -184,10 +187,10 @@ const CharacterCard = ({
           </p>
           <div className="mt-1.5 flex items-center gap-4 text-[11px] text-slate-400">
             <span className="flex items-center gap-1">
-              <span className="text-yellow-400">🪙</span> {character.gold}
+              <GameIcon name="gold" size={14} /> {character.gold}
             </span>
             <span className="flex items-center gap-1">
-              <span>🏅</span> {character.pvpRating}
+              <GameIcon name="pvp-rating" size={14} /> {character.pvpRating}
             </span>
           </div>
         </div>
@@ -349,7 +352,7 @@ const CharacterPreview = ({ detail, onContinue, onClose }: CharacterPreviewProps
               sizes="128px"
             />
           ) : (
-            <span className="text-5xl">{CLASS_ICON[cls] ?? "⚔️"}</span>
+            <GameIcon name={CLASS_ICON[cls] ?? "warrior"} size={48} />
           )}
           <span className="absolute bottom-1 right-1 rounded-md bg-slate-900/80 px-2 py-0.5 text-[11px] font-bold text-white shadow backdrop-blur-sm">
             Lv.{detail.level}
@@ -422,15 +425,15 @@ const CharacterPreview = ({ detail, onContinue, onClose }: CharacterPreviewProps
 
       {/* Continue button */}
       <div className="p-5 pt-0">
-        <button
-          type="button"
+        <GameButton
+          size="lg"
+          fullWidth
           onClick={onContinue}
-          className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3.5 font-display text-lg tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30 active:scale-[0.98]"
           aria-label={`Continue as ${detail.characterName}`}
           tabIndex={0}
         >
           Continue
-        </button>
+        </GameButton>
       </div>
     </div>
   );
@@ -438,13 +441,21 @@ const CharacterPreview = ({ detail, onContinue, onClose }: CharacterPreviewProps
 
 /* ────────────────── Main Page ────────────────── */
 
-export default function CharacterPage() {
+const CharacterPageInner = () => {
+  const searchParams = useSearchParams();
+  const onboardingOrigin = searchParams.get("origin") as CharacterOrigin | null;
+  const fromOnboarding = searchParams.get("fromOnboarding") === "true";
+
+  const isValidOnboardingOrigin = onboardingOrigin && ALL_ORIGINS.includes(onboardingOrigin);
+
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [classChoice, setClassChoice] = useState<string>("warrior");
-  const [originChoice, setOriginChoice] = useState<CharacterOrigin>("human");
+  const [originChoice, setOriginChoice] = useState<CharacterOrigin>(
+    isValidOnboardingOrigin ? onboardingOrigin : "human"
+  );
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -538,7 +549,7 @@ export default function CharacterPage() {
   };
 
   if (loading) {
-    return <PageLoader emoji="🧙" text="Loading characters…" />;
+    return <PageLoader icon={<GameIcon name="mage" size={32} />} text="Loading characters…" />;
   }
 
   if (error && characters.length === 0) {
@@ -547,31 +558,33 @@ export default function CharacterPage() {
         <div className="rounded-2xl border border-red-500/30 bg-slate-900/80 px-8 py-6 text-center">
           <p className="text-2xl">💀</p>
           <p className="mt-2 text-sm text-red-400" role="alert">{error}</p>
-          <button
-            type="button"
+          <GameButton
+            variant="secondary"
             onClick={() => window.location.reload()}
-            className="mt-4 rounded-lg border border-slate-700 bg-slate-800 px-5 py-2 text-sm text-slate-300 transition hover:bg-slate-700 hover:text-white"
+            className="mt-4"
           >
             Retry
-          </button>
+          </GameButton>
         </div>
       </main>
     );
   }
 
   const hasCharacters = characters.length > 0;
-  const isCreateVisible = showCreateForm || !hasCharacters;
+  const isCreateVisible = fromOnboarding || showCreateForm || !hasCharacters;
 
   return (
     <main className="relative flex min-h-screen flex-col items-center bg-slate-950 px-4 py-8 sm:px-8">
-      <Link
-        href="/hub"
-        className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-        aria-label="Back to Hub"
-        tabIndex={0}
-      >
-        ✕
-      </Link>
+      {!fromOnboarding && (
+        <Link
+          href="/hub"
+          className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
+      )}
       {/* Background decoration */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-amber-500/5 blur-3xl" />
@@ -582,9 +595,13 @@ export default function CharacterPage() {
         {/* Header */}
         <header className="mb-8 text-center">
           <h1 className="font-display text-4xl font-bold uppercase tracking-wider text-white sm:text-5xl">
-            Character Selection
+            {fromOnboarding ? "Forge Your Champion" : "Character Selection"}
           </h1>
-          <p className="mt-2 text-sm text-slate-500">Choose your champion or forge a new one</p>
+          <p className="mt-2 text-sm text-slate-500">
+            {fromOnboarding
+              ? "Name your hero and choose a fighting style"
+              : "Choose your champion or forge a new one"}
+          </p>
         </header>
 
         {/* Two-column layout: list on the left, preview on the right */}
@@ -642,7 +659,7 @@ export default function CharacterPage() {
                 <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
-                      <span className="text-sm">✨</span>
+                      <GameIcon name="xp" size={16} />
                     </div>
                     <h2 className="font-display text-base tracking-widest text-slate-300">
                       {hasCharacters ? "New Character" : "Create Your First Character"}
@@ -684,32 +701,48 @@ export default function CharacterPage() {
                     />
                   </label>
 
-                  {/* Race selector */}
-                  <div className="mb-5">
-                    <span className="mb-3 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      Choose Race
-                    </span>
-                    <div className="grid grid-cols-5 gap-2">
-                      {ALL_ORIGINS.map((o) => (
-                        <OriginSelectorCard
-                          key={o}
-                          origin={o}
-                          selected={originChoice === o}
-                          onSelect={setOriginChoice}
-                        />
-                      ))}
+                  {/* Race selector — hidden if pre-selected via onboarding */}
+                  {isValidOnboardingOrigin && fromOnboarding ? (
+                    <div className="mb-5">
+                      <span className="mb-3 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Your Race
+                      </span>
+                      <div className="rounded-lg border border-slate-700/40 bg-slate-800/40 px-4 py-3 text-center">
+                        <p className={`text-sm font-bold ${ORIGIN_ACCENT[originChoice]}`}>
+                          {ORIGIN_DEFS[originChoice].icon} {ORIGIN_DEFS[originChoice].label}
+                        </p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          {ORIGIN_DEFS[originChoice].bonusDescription}
+                        </p>
+                      </div>
                     </div>
+                  ) : (
+                    <div className="mb-5">
+                      <span className="mb-3 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Choose Race
+                      </span>
+                      <div className="grid grid-cols-5 gap-2">
+                        {ALL_ORIGINS.map((o) => (
+                          <OriginSelectorCard
+                            key={o}
+                            origin={o}
+                            selected={originChoice === o}
+                            onSelect={setOriginChoice}
+                          />
+                        ))}
+                      </div>
 
-                    {/* Race description */}
-                    <div className="mt-3 rounded-lg border border-slate-700/40 bg-slate-800/40 px-4 py-2.5 text-center">
-                      <p className={`text-xs font-medium ${ORIGIN_ACCENT[originChoice]}`}>
-                        {ORIGIN_DEFS[originChoice].description}
-                      </p>
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                        {ORIGIN_DEFS[originChoice].bonusDescription}
-                      </p>
+                      {/* Race description */}
+                      <div className="mt-3 rounded-lg border border-slate-700/40 bg-slate-800/40 px-4 py-2.5 text-center">
+                        <p className={`text-xs font-medium ${ORIGIN_ACCENT[originChoice]}`}>
+                          {ORIGIN_DEFS[originChoice].description}
+                        </p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          {ORIGIN_DEFS[originChoice].bonusDescription}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Class selector */}
                   <div className="mb-5">
@@ -732,6 +765,11 @@ export default function CharacterPage() {
                       <p className={`text-xs font-medium ${CLASS_ACCENT[classChoice]}`}>
                         {CLASS_DESCRIPTION[classChoice]}
                       </p>
+                      {CLASS_LORE[classChoice] && (
+                        <p className="mt-1 text-[10px] italic text-slate-500">
+                          &ldquo;{CLASS_LORE[classChoice].tagline}&rdquo;
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -743,10 +781,11 @@ export default function CharacterPage() {
                   )}
 
                   {/* Submit */}
-                  <button
+                  <GameButton
                     type="submit"
+                    size="lg"
+                    fullWidth
                     disabled={creating}
-                    className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3 font-display text-lg tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30 disabled:opacity-50 disabled:hover:from-amber-600 disabled:hover:to-orange-600"
                   >
                     {creating ? (
                       <span className="flex items-center justify-center gap-2">
@@ -756,7 +795,7 @@ export default function CharacterPage() {
                     ) : (
                       "Forge Character"
                     )}
-                  </button>
+                  </GameButton>
                 </form>
               </section>
             )}
@@ -784,19 +823,31 @@ export default function CharacterPage() {
         </div>
 
         {/* Footer nav */}
-        <div className="mt-8 text-center">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-xs text-slate-500 transition hover:text-slate-300"
-            tabIndex={0}
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Home
-          </Link>
-        </div>
+        {!fromOnboarding && (
+          <div className="mt-8 text-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-xs text-slate-500 transition hover:text-slate-300"
+              tabIndex={0}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Home
+            </Link>
+          </div>
+        )}
       </div>
     </main>
+  );
+};
+
+/* ────────────────── Page Export ────────────────── */
+
+export default function CharacterPage() {
+  return (
+    <Suspense fallback={<PageLoader icon={<GameIcon name="mage" size={32} />} text="Loading characters…" />}>
+      <CharacterPageInner />
+    </Suspense>
   );
 }

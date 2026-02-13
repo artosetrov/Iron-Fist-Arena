@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
+import { GameButton, PageContainer } from "@/app/components/ui";
+import GameIcon from "@/app/components/ui/GameIcon";
 
 type Entry = {
   rank: number;
@@ -164,25 +166,23 @@ export default function LeaderboardPage() {
     return (
       <div className="flex min-h-full flex-col items-center justify-center gap-4 p-8">
         <p className="text-red-400" role="alert">{error}</p>
-        <button
-          type="button"
+        <GameButton
+          variant="secondary"
           onClick={() => { setError(null); setLoading(true); window.location.reload(); }}
-          className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-700"
-          tabIndex={0}
           aria-label="Retry loading leaderboard"
         >
           Retry
-        </button>
+        </GameButton>
       </div>
     );
   }
 
   if (loading || !data) {
-    return <PageLoader emoji="🏆" text="Loading leaderboard…" />;
+    return <PageLoader icon={<GameIcon name="leaderboard" size={32} />} text="Loading leaderboard…" />;
   }
 
   return (
-    <div className="relative p-4 lg:p-6">
+    <PageContainer>
       <PageHeader title={`Leaderboard · Season ${data.season}`} />
 
       <div className="overflow-x-auto rounded-xl border border-slate-800">
@@ -201,7 +201,7 @@ export default function LeaderboardPage() {
           <tbody>
             {data.leaderboard.map((e) => (
               <tr
-                key={e.rank}
+                key={`${e.rank}-${e.characterName}`}
                 className="border-b border-slate-800/50 text-slate-300 transition hover:bg-slate-800/30"
                 onMouseEnter={(ev) => handleRowMouseEnter(e, ev)}
                 onMouseMove={(ev) => handleRowMouseMove(e, ev)}
@@ -235,6 +235,6 @@ export default function LeaderboardPage() {
       </div>
 
       {tooltip && <HeroTooltip state={tooltip} />}
-    </div>
+    </PageContainer>
   );
 }

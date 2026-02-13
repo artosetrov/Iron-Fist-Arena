@@ -73,7 +73,7 @@ export const computeDerivedStats = (
     critDamageMult: getCritDamageMult(base.strength, critDmgEquipmentPercent),
     dodgeChance: getDodgeChance(base.agility, dodgeEquipmentBonus),
     armor: armorValue,
-    magicResist: getMagicResistPercent(base.wisdom) * 100,
+    magicResist: getMagicResistPercent(base.wisdom) * 100, // UI display %: 0-70; damage.ts uses raw decimal from getMagicResistPercent()
   };
 };
 

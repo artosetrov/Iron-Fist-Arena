@@ -55,7 +55,10 @@ export async function POST(request: Request) {
     }
 
     /* ── Parse body ── */
-    const body = await request.json().catch(() => ({}));
+    let body: Record<string, unknown>;
+    try { body = await request.json(); } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const characterId = body.characterId as string;
     const opponentPreset = (body.opponentPreset as string) ?? "warrior";
 

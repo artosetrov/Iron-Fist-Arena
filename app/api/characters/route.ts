@@ -96,7 +96,12 @@ export async function POST(request: Request) {
       user.app_metadata?.provider ?? "email"
     );
 
-    const body = await request.json().catch(() => ({}));
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const characterName = String(body?.characterName ?? "").trim();
     const classRaw = body?.class as string;
     const originRaw = body?.origin as string;

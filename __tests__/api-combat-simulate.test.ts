@@ -17,17 +17,17 @@ beforeEach(() => {
 describe("Training XP formula", () => {
   it("returns base + level * per_level for level 1", () => {
     const xp = TRAINING_XP_BASE + 1 * TRAINING_XP_PER_LEVEL;
-    expect(xp).toBe(12);
+    expect(xp).toBe(25); // 20 + 1*5
   });
 
   it("returns base + level * per_level for level 10", () => {
     const xp = TRAINING_XP_BASE + 10 * TRAINING_XP_PER_LEVEL;
-    expect(xp).toBe(30);
+    expect(xp).toBe(70); // 20 + 10*5
   });
 
   it("returns base + level * per_level for level 50", () => {
     const xp = TRAINING_XP_BASE + 50 * TRAINING_XP_PER_LEVEL;
-    expect(xp).toBe(110);
+    expect(xp).toBe(270); // 20 + 50*5
   });
 
   it("returns 0 XP on loss (business rule, not formula)", () => {
@@ -44,12 +44,12 @@ describe("Training dummy stats", () => {
 
   it("dummy level = max(1, playerLevel + offset)", () => {
     const dummyLevel = Math.max(1, playerLevel + TRAINING_DUMMY_LEVEL_OFFSET);
-    expect(dummyLevel).toBe(7);
+    expect(dummyLevel).toBe(12); // max(1, 10 + 2)
   });
 
   it("dummy level floors at 1 for low-level players", () => {
     const dummyLevel = Math.max(1, 1 + TRAINING_DUMMY_LEVEL_OFFSET);
-    expect(dummyLevel).toBe(1);
+    expect(dummyLevel).toBe(3); // max(1, 1 + 2)
   });
 
   it("dummy stat is player stat * mult * weight, min 5", () => {

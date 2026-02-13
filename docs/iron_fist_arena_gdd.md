@@ -1,8 +1,8 @@
 # GAME DESIGN DOCUMENT
 ## Browser-Based PvP RPG: "IRON FIST ARENA"
 
-**Version:** 3.0  
-**Document Date:** February 12, 2026  
+**Version:** 3.1  
+**Document Date:** February 13, 2026  
 **Status:** Production-Ready Master Document (Synced with codebase)  
 **Platform:** Web (Desktop + Mobile Responsive)  
 **Tech Stack:** React/Next.js + Supabase/PostgreSQL
@@ -477,6 +477,8 @@ Focus: High crit%, dodge-heavy
 **Max Prestige:** 10 (P10)  
 **Total Bonus at P10:** +20% all stats
 
+**Status:** PLANNED — Not Yet Implemented
+
 ### Time Investment
 ```
 P0 → P1: 800-1,000 hours
@@ -487,6 +489,26 @@ P9 → P10: 300-400 hours
 
 Total to P10: ~6,000-7,000 hours (hardcore endgame)
 ```
+
+## 3.4 Training Dummy
+
+Practice combat against an AI dummy without stamina cost. Uses the same combat engine as PvP and dungeons.
+
+### Formulas
+
+| Parameter | Formula / Value |
+|-----------|-----------------|
+| **Training XP** | `XP = 20 + level × 5` |
+| **Dummy Level** | `player_level + 2` (dummy is 2 levels above player) |
+| **Dummy Stat Multiplier** | `0.6` (dummy has 60% of player's stats) |
+| **Max Daily Trainings** | 10 |
+
+### Notes
+
+- No stamina cost
+- Dummy uses class-flavored stat weights (Warrior, Rogue, Mage, Tank)
+- Rewards XP only (no gold, no rating change)
+- Reset: 00:00 UTC daily
 
 ---
 
@@ -1156,6 +1178,7 @@ I'll continue with the remaining sections. This is getting quite comprehensive! 
 ### Dual Currency Model
 
 **1. Gold (Soft Currency)**
+- **Starting gold:** 500 (new characters)
 - Earned: PvP, dungeons, quests, item sales
 - Spent: Equipment, repairs, NPC shops, respec
 - Tradeable: No (bind on account)
@@ -2917,6 +2940,10 @@ Version 1.0 - February 11, 2026
 | Repair Cost | `basePrice × 0.1 × (lostDur / maxDur)` | |
 | Upgrade Chance | `75% - 5% × level` | max level: +10 |
 | Stat Training | `floor(50 × 1.05^statValue)` | exponential gold cost |
+| Training XP | `20 + level × 5` | per fight |
+| Training Dummy Level | `player_level + 2` | dummy 2 levels above |
+| Training Dummy Stats | `player_stats × 0.6` | |
+| Max Daily Trainings | 10 | |
 
 # APPENDIX B — Equipment Slot Reference
 
@@ -2959,6 +2986,43 @@ Version 1.0 - February 11, 2026
 |---------|------|---------|
 | 1.0 | Feb 11, 2026 | Initial GDD |
 | 3.0 | Feb 12, 2026 | Synced with codebase: PvP rating starts at 0 (was 1000), floor at 0 (was 1000), 13 equipment slots (was 7), added minigame docs, marked prestige as planned, added formula reference table |
+| 3.1 | Feb 13, 2026 | Training Dummy section (XP 20+level×5, dummy +2 levels, 0.6 stat mult, 10/day); starting gold 500; Implementation Status appendix |
+
+# Implementation Status
+
+### Implemented
+- Combat system (PvP + Training + Dungeon bosses)
+- Character creation with 4 classes (Warrior, Rogue, Mage, Tank)
+- 5 character origins (Human, Orc, Skeleton, Demon, Dogfolk)
+- 13 equipment slots with weapon affinity system
+- NPC Shop with sliding window
+- Item catalog (232 authored items + procedural generation)
+- Legendary class sets (4 classes × 8 pieces)
+- ELO rating system (K=32, starting 0)
+- Stamina system (100 max, 1/12min regen)
+- Dungeon system with boss progression
+- Dungeon Rush mini-game (5 waves)
+- Gold Mine mini-game
+- Shell Game mini-game
+- Daily quests (8 quest types)
+- Leaderboard with seasonal ranking
+- Training dummy system
+- Stat training (exponential gold cost)
+- Combat VFX system (sprite-based)
+- Stray City hub with 8 buildings
+
+### Planned / Not Yet Implemented
+- Prestige system (P1-P10)
+- Daily login streak rewards
+- Daily flash sales
+- Weekly events
+- Guild system
+- Tournament arena mode
+- Casual arena mode
+- Crafting system (legendary shards exist in DB but craft UI not built)
+- Battle Pass progression
+
+---
 
 ## DOCUMENT END
 
@@ -2966,6 +3030,6 @@ Version 1.0 - February 11, 2026
 **Sections Covered:** 12 major sections + 4 appendices  
 **Production Readiness:** ✓ In production  
 
-**Last Updated:** February 12, 2026
+**Last Updated:** February 13, 2026
 
 ---

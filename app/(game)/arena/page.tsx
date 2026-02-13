@@ -8,7 +8,8 @@ import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatResultModal from "@/app/components/CombatResultModal";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard, { CLASS_ICON, ORIGIN_IMAGE } from "@/app/components/HeroCard";
-import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
+import GameIcon from "@/app/components/ui/GameIcon";
+import { GameButton, PageContainer } from "@/app/components/ui";
 
 /* ────────────────── Types ────────────────── */
 
@@ -247,15 +248,15 @@ const CardBack = ({ character, opponent, canAfford, fighting, onFight, onFlipBac
       </div>
 
       {/* Fight button */}
-      <button
-        type="button"
+      <GameButton
         onClick={handleFight}
         disabled={!canAfford || fighting}
         aria-label={`Fight ${opponent.characterName}`}
-        className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-amber-900/30 transition hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
+        fullWidth
+        className="mt-6"
       >
-        {fighting ? "Fighting…" : `⚔️ Fight (⚡ ${STAMINA_COST})`}
-      </button>
+        {fighting ? "Fighting…" : <><GameIcon name="fights" size={16} /> Fight (<GameIcon name="stamina" size={16} /> {STAMINA_COST})</>}
+      </GameButton>
 
       {!canAfford && (
         <p className="mt-1 text-center text-[9px] text-red-400">
@@ -278,7 +279,6 @@ type ScreenState =
 function ArenaContent() {
   const searchParams = useSearchParams();
   const characterId = searchParams.get("characterId");
-  const avatarSrc = useCharacterAvatar(characterId);
   const [character, setCharacter] = useState<Character | null>(null);
   const [opponents, setOpponents] = useState<Opponent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -388,7 +388,7 @@ function ArenaContent() {
 
   /* ── Loading state ── */
   if (loading || !character) {
-    return <PageLoader emoji="🏟️" text="Loading arena…" avatarSrc={avatarSrc} />;
+    return <PageLoader icon={<GameIcon name="arena" size={32} />} text="Loading arena…" />;
   }
 
   /* ── Battle screen ── */
@@ -413,20 +413,7 @@ function ArenaContent() {
   const canAfford = character.currentStamina >= STAMINA_COST;
 
   return (
-    <div className="relative flex min-h-full flex-col p-4 lg:p-6">
-      {/* Arena background */}
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <Image
-          src="/images/ui/arena-background.png"
-          alt=""
-          fill
-          className="object-cover opacity-20"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent" />
-      </div>
-      {/* Content wrapper above background */}
-      <div className="relative z-10 flex min-h-full flex-1 flex-col">
+    <PageContainer bgImage="/images/ui/arena-background.png">
       <PageHeader title="Arena" />
 
       {/* Choose opponent */}
@@ -447,20 +434,16 @@ function ArenaContent() {
           <div className="relative mx-auto h-10 w-10">
             <div className="absolute inset-0 animate-spin rounded-full border-2 border-slate-700 border-t-indigo-400" />
             <div className="absolute inset-1.5 animate-spin rounded-full border-2 border-slate-700 border-t-purple-400" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
-            <span className="absolute inset-0 flex items-center justify-center text-sm">🏟️</span>
+            <span className="absolute inset-0 flex items-center justify-center"><GameIcon name="arena" size={20} /></span>
           </div>
         </div>
       ) : opponents.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-500">
           <p className="mb-3 text-4xl">🏜️</p>
           <p className="text-sm">No opponents available</p>
-          <button
-            type="button"
-            onClick={loadOpponents}
-            className="mt-3 rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-400 transition hover:bg-slate-800"
-          >
+          <GameButton variant="secondary" size="sm" onClick={loadOpponents} className="mt-3">
             Refresh
-          </button>
+          </GameButton>
         </div>
       ) : (
         <>
@@ -493,7 +476,7 @@ function ArenaContent() {
               <div className="w-full max-w-sm">
                 <CardBack
                   character={character}
-                  opponent={opponents.find((o) => o.id === flippedCard)!}
+                  opponent={opponents.find((o) => o.id === flippedCard) ?? opponents[0]}
                   canAfford={canAfford}
                   fighting={fighting}
                   onFight={() => handleFight(flippedCard)}
@@ -557,16 +540,14 @@ function ArenaContent() {
 
           {/* Refresh button under cards */}
           <div className="flex justify-center">
-            <button
-              type="button"
+            <GameButton
+              variant="secondary"
               onClick={loadOpponents}
               disabled={loadingOpponents}
               aria-label="Refresh opponents"
-              tabIndex={0}
-              className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-400 transition hover:bg-slate-700 hover:text-white disabled:opacity-50"
             >
-              🔄 Refresh
-            </button>
+              <GameIcon name="switch-char" size={16} /> Refresh
+            </GameButton>
           </div>
         </>
       )}
@@ -587,8 +568,7 @@ function ArenaContent() {
           rewards={screen.matchResult.rewards}
         />
       )}
-      </div>{/* end content wrapper */}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -596,7 +576,7 @@ function ArenaContent() {
 
 export default function ArenaPage() {
   return (
-    <Suspense fallback={<PageLoader emoji="🏟️" text="Loading arena…" />}>
+    <Suspense fallback={<PageLoader icon={<GameIcon name="arena" size={32} />} text="Loading arena…" />}>
       <ArenaContent />
     </Suspense>
   );

@@ -19,7 +19,7 @@ const PageHeader = ({ title, backHref = "/hub", actions, hideClose = false }: Pa
   const { toggle } = useMobileSidebar();
 
   return (
-    <header className="relative flex h-14 shrink-0 items-center px-3 lg:px-6">
+    <header className="relative flex h-14 w-full shrink-0 items-center px-3 lg:px-6">
       {/* Burger — mobile only */}
       <button
         type="button"

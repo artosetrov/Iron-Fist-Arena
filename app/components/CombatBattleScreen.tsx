@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import HeroCard, { BOSS_IMAGES } from "@/app/components/HeroCard";
+import CombatVfxLayer, { type VfxCommand } from "@/app/components/CombatVfxLayer";
 
 /* ────────────────── Types ────────────────── */
 
@@ -206,6 +207,8 @@ const CombatBattleScreen = ({
   const [currentTurnLabel, setCurrentTurnLabel] = useState(0);
   const [visibleLog, setVisibleLog] = useState<CombatLogEntry[]>([]);
   const [showLog, setShowLog] = useState(false);
+  const [vfxCommand, setVfxCommand] = useState<VfxCommand | null>(null);
+  const [screenShaking, setScreenShaking] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const logEndRef = useRef<HTMLDivElement | null>(null);
@@ -237,6 +240,19 @@ const CombatBattleScreen = ({
   });
   const leftHp = hpById[leftSnapshot.id] ?? 0;
   const rightHp = hpById[rightSnapshot.id] ?? 0;
+
+  /** Unique counter so each VFX command triggers a new effect */
+  const vfxSeqRef = useRef(0);
+
+  /** Handle screen shake from VFX layer */
+  const handleScreenShake = useCallback(() => {
+    setScreenShaking(true);
+    const tid = setTimeout(() => {
+      timeoutIds.current.delete(tid);
+      setScreenShaking(false);
+    }, 400);
+    timeoutIds.current.add(tid);
+  }, []);
 
   /** Determine if an actor is the left fighter */
   const isLeftFighter = useCallback(
@@ -290,6 +306,30 @@ const CombatBattleScreen = ({
 
       const actorIsLeft = isLeftFighter(entry.actorId);
       const targetSide = actorIsLeft ? "right" : "left";
+      const actorSide: "left" | "right" = actorIsLeft ? "left" : "right";
+
+      /* Resolve actor class from snapshots */
+      const actorClass = entry.actorId === playerSnapshot.id
+        ? playerSnapshot.class
+        : enemySnapshot.class;
+
+      /* Determine if this is a buff/heal (self-targeting) */
+      const isSelfBuff = entry.actorId === entry.targetId && !entry.damage && !entry.dodge;
+      const isHealAction = !!(entry.healed && entry.healed > 0 && !entry.damage);
+
+      /* Dispatch VFX command */
+      vfxSeqRef.current += 1;
+      const vfxCmd: VfxCommand = {
+        action: entry.action,
+        actorClass: actorClass?.toLowerCase(),
+        actorSide,
+        isCrit: !!entry.crit,
+        isDodge: !!entry.dodge,
+        isHeal: isHealAction,
+        isBuff: isSelfBuff && !isHealAction,
+      };
+      /* Create a new object reference each time so React picks up the change */
+      setVfxCommand({ ...vfxCmd });
 
       if (entry.dodge) {
         /* Dodge */
@@ -343,7 +383,7 @@ const CombatBattleScreen = ({
         }
       }
     },
-    [isLeftFighter, spawnFloat]
+    [isLeftFighter, spawnFloat, playerSnapshot, enemySnapshot]
   );
 
   /** Skip to end */
@@ -360,6 +400,8 @@ const CombatBattleScreen = ({
     });
     setCurrentTurnLabel(result.turns);
     setFloatingNumbers([]);
+    setVfxCommand(null);
+    setScreenShaking(false);
     setVisibleLog([...log]);
     setIsFinished(true);
   }, [log, result]);
@@ -444,25 +486,30 @@ const CombatBattleScreen = ({
     };
   }, []);
 
+  const turnProgress = log.length > 0 ? ((currentStep + 1) / log.length) * 100 : 0;
+
   return (
-    <div className="flex min-h-full flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      {/* Turn indicator */}
-      <div className="flex items-center justify-center gap-3 border-b border-slate-800 bg-slate-950/80 px-4 py-2">
-        <span className="text-xs font-medium text-slate-500">
-          Turn {currentTurnLabel} / {result.turns}
-        </span>
-        <div className="h-1.5 w-32 overflow-hidden rounded-full bg-slate-800">
-          <div
-            className="h-full rounded-full bg-amber-500 transition-all duration-300"
-            style={{
-              width: `${log.length > 0 ? ((currentStep + 1) / log.length) * 100 : 0}%`,
-            }}
-          />
-        </div>
-      </div>
+    <div className="relative flex min-h-full flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      {/* Log toggle — top right corner */}
+      <button
+        type="button"
+        onClick={() => setShowLog((prev) => !prev)}
+        aria-label={showLog ? "Hide battle log" : "Show battle log"}
+        aria-pressed={showLog}
+        className={`absolute right-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-lg border text-sm transition ${
+          showLog
+            ? "border-amber-500/60 bg-amber-900/30 text-amber-400"
+            : "border-slate-700 bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+        }`}
+      >
+        📜
+      </button>
 
       {/* Battle area */}
-      <div className="relative flex flex-1 flex-col items-center justify-center px-4 py-6 lg:px-8">
+      <div className={`relative flex flex-1 flex-col items-center justify-center px-4 py-6 lg:px-8 ${screenShaking ? "animate-screen-shake" : ""}`}>
+        {/* VFX layer — renders projectiles, impacts, pop-up texts */}
+        <CombatVfxLayer command={vfxCommand} onScreenShake={handleScreenShake} />
+
         {/* Fighters row */}
         <div className="flex items-center justify-center gap-4 lg:gap-8">
           {/* Left fighter */}
@@ -501,13 +548,54 @@ const CombatBattleScreen = ({
           </div>
         </div>
 
-        {/* Action message — centered below cards */}
-        <div className="mt-4 h-9">
-          {currentStep >= 0 && currentStep < log.length && (
-            <div className="max-w-[360px] rounded-xl bg-slate-800/90 px-5 py-2 text-center text-sm font-medium text-slate-300 shadow-lg">
-              {log[currentStep].message}
+        {/* Combined turn + action block below cards */}
+        <div className="mt-6 w-full max-w-md">
+          <div className="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-b from-slate-800/90 to-slate-900/90 shadow-xl shadow-black/30 backdrop-blur-sm">
+            {/* Turn header */}
+            <div className="flex items-center justify-between px-5 pt-3 pb-2">
+              <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                Turn
+              </span>
+              <span className="font-display text-lg font-bold tabular-nums text-amber-400">
+                {currentTurnLabel}
+                <span className="text-sm font-normal text-slate-500"> / {result.turns}</span>
+              </span>
             </div>
-          )}
+
+            {/* Progress bar */}
+            <div className="mx-5 mb-3 h-1.5 overflow-hidden rounded-full bg-slate-700/60">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500 ease-out"
+                style={{ width: `${turnProgress}%` }}
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-gradient-to-r from-transparent via-slate-700/60 to-transparent" />
+
+            {/* Action message */}
+            <div className="flex min-h-[48px] items-center justify-center px-5 py-3">
+              {currentStep >= 0 && currentStep < log.length ? (
+                <p className="text-center text-base font-medium leading-snug text-slate-200">
+                  {log[currentStep].message}
+                  {log[currentStep].crit && (
+                    <span className="ml-2 inline-block rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-bold text-amber-400">
+                      CRIT!
+                    </span>
+                  )}
+                  {log[currentStep].dodge && (
+                    <span className="ml-2 inline-block rounded bg-cyan-500/20 px-1.5 py-0.5 text-xs font-bold text-cyan-400">
+                      DODGE
+                    </span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-center text-sm text-slate-500 animate-pulse">
+                  Preparing battle…
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -569,21 +657,6 @@ const CombatBattleScreen = ({
 
       {/* Controls */}
       <div className="flex items-center justify-center gap-3 border-t border-slate-800 bg-slate-950/80 px-4 py-3">
-        {/* Log toggle */}
-        <button
-          type="button"
-          onClick={() => setShowLog((prev) => !prev)}
-          aria-label={showLog ? "Hide battle log" : "Show battle log"}
-          aria-pressed={showLog}
-          className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm transition ${
-            showLog
-              ? "border-amber-500/60 bg-amber-900/30 text-amber-400"
-              : "border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700"
-          }`}
-        >
-          📜
-        </button>
-
         {!isFinished ? (
           <>
             <button

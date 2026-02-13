@@ -2,19 +2,26 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
-import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 import {
   CONSUMABLE_CATALOG,
   type ConsumableDef,
   type ConsumableType,
+  getConsumableImagePath,
 } from "@/lib/game/consumable-catalog";
+import {
+  getItemImagePath,
+  getCatalogItemById,
+} from "@/lib/game/item-catalog";
 import {
   WEAPON_AFFINITY_BONUS,
   getWeaponCategory,
   hasWeaponAffinity,
 } from "@/lib/game/weapon-affinity";
+import { GameButton, PageContainer } from "@/app/components/ui";
+import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
 
 /* ────────────────── Constants ────────────────── */
 
@@ -98,45 +105,45 @@ const RARITY_CONFIG: Record<
   },
 };
 
-const ITEM_TYPE_CONFIG: Record<ItemType, { label: string; icon: string }> = {
-  weapon: { label: "Weapon", icon: "⚔️" },
-  helmet: { label: "Helmet", icon: "🪖" },
-  chest: { label: "Chestplate", icon: "🛡️" },
-  gloves: { label: "Gloves", icon: "🧤" },
-  legs: { label: "Leggings", icon: "👖" },
-  boots: { label: "Boots", icon: "🥾" },
-  accessory: { label: "Accessory", icon: "💍" },
-  amulet: { label: "Amulet", icon: "🧿" },
-  belt: { label: "Belt", icon: "🪢" },
-  relic: { label: "Relic", icon: "🔮" },
-  necklace: { label: "Necklace", icon: "📿" },
-  ring: { label: "Ring", icon: "💍" },
+const ITEM_TYPE_CONFIG: Record<ItemType, { label: string; icon: GameIconKey }> = {
+  weapon: { label: "Weapon", icon: "weapon" },
+  helmet: { label: "Helmet", icon: "helmet" },
+  chest: { label: "Chestplate", icon: "chest" },
+  gloves: { label: "Gloves", icon: "gloves" },
+  legs: { label: "Leggings", icon: "legs" },
+  boots: { label: "Boots", icon: "boots" },
+  accessory: { label: "Accessory", icon: "accessory" },
+  amulet: { label: "Amulet", icon: "amulet" },
+  belt: { label: "Belt", icon: "belt" },
+  relic: { label: "Relic", icon: "relic" },
+  necklace: { label: "Necklace", icon: "amulet" },
+  ring: { label: "Ring", icon: "ring" },
 };
 
-const STAT_LABELS: Record<string, { label: string; icon: string }> = {
-  strength: { label: "Strength", icon: "💪" },
-  agility: { label: "Agility", icon: "🏃" },
-  vitality: { label: "Vitality", icon: "❤️" },
-  intelligence: { label: "Intelligence", icon: "🧠" },
-  wisdom: { label: "Wisdom", icon: "📖" },
-  luck: { label: "Luck", icon: "🍀" },
-  charisma: { label: "Charisma", icon: "✨" },
-  crit_chance: { label: "Crit", icon: "💥" },
-  crit_damage: { label: "Crit Damage", icon: "🔥" },
-  armor: { label: "Armor", icon: "🛡️" },
-  magic_resist: { label: "Magic Resist", icon: "🔮" },
-  dodge: { label: "Dodge", icon: "💨" },
-  attack: { label: "Attack", icon: "⚔️" },
-  defense: { label: "Defense", icon: "🛡️" },
-  hp: { label: "HP", icon: "❤️" },
-  mp: { label: "MP", icon: "🔵" },
+const STAT_LABELS: Record<string, { label: string; icon: GameIconKey | null; iconEmoji?: string }> = {
+  strength: { label: "Strength", icon: "strength" },
+  agility: { label: "Agility", icon: "agility" },
+  vitality: { label: "Vitality", icon: "vitality" },
+  intelligence: { label: "Intelligence", icon: "intelligence" },
+  wisdom: { label: "Wisdom", icon: "wisdom" },
+  luck: { label: "Luck", icon: "luck" },
+  charisma: { label: "Charisma", icon: "charisma" },
+  crit_chance: { label: "Crit", icon: null, iconEmoji: "💥" },
+  crit_damage: { label: "Crit Damage", icon: null, iconEmoji: "🔥" },
+  armor: { label: "Armor", icon: "endurance" },
+  magic_resist: { label: "Magic Resist", icon: "relic" },
+  dodge: { label: "Dodge", icon: "agility" },
+  attack: { label: "Attack", icon: "weapon" },
+  defense: { label: "Defense", icon: "chest" },
+  hp: { label: "HP", icon: "vitality" },
+  mp: { label: "MP", icon: null, iconEmoji: "🔵" },
   // Item System v1.0 stats
-  ATK: { label: "Attack", icon: "⚔️" },
-  DEF: { label: "Defense", icon: "🛡️" },
-  HP: { label: "Health", icon: "❤️" },
-  CRIT: { label: "Crit", icon: "💥" },
-  SPEED: { label: "Speed", icon: "⚡" },
-  ARMOR: { label: "Armor", icon: "🛡️" },
+  ATK: { label: "Attack", icon: "weapon" },
+  DEF: { label: "Defense", icon: "chest" },
+  HP: { label: "Health", icon: "vitality" },
+  CRIT: { label: "Crit", icon: null, iconEmoji: "💥" },
+  SPEED: { label: "Speed", icon: "stamina" },
+  ARMOR: { label: "Armor", icon: "endurance" },
 };
 
 const SET_DISPLAY_NAMES: Record<string, string> = {
@@ -153,11 +160,11 @@ const CLASS_LABELS: Record<string, string> = {
   tank: "Tank",
 };
 
-const CLASS_ICON: Record<string, string> = {
-  warrior: "⚔️",
-  rogue: "🗡️",
-  mage: "🔮",
-  tank: "🛡️",
+const CLASS_ICON: Record<string, GameIconKey> = {
+  warrior: "warrior",
+  rogue: "rogue",
+  mage: "mage",
+  tank: "tank",
 };
 
 const CLASS_BADGE_STYLE: Record<string, string> = {
@@ -188,21 +195,21 @@ const getItemClass = (item: Item): string | null => {
 type Tab = "all" | ItemType | "potions";
 
 
-const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: "all", label: "All", icon: "🏪" },
-  { key: "weapon", label: "Weapons", icon: "⚔️" },
-  { key: "helmet", label: "Helmets", icon: "🪖" },
-  { key: "chest", label: "Armor", icon: "🛡️" },
-  { key: "gloves", label: "Gloves", icon: "🧤" },
-  { key: "legs", label: "Leggings", icon: "👖" },
-  { key: "boots", label: "Boots", icon: "🥾" },
-  { key: "necklace", label: "Necklaces", icon: "📿" },
-  { key: "ring", label: "Rings", icon: "💍" },
-  { key: "amulet", label: "Amulets", icon: "🧿" },
-  { key: "belt", label: "Belts", icon: "🪢" },
-  { key: "relic", label: "Relics", icon: "🔮" },
-  { key: "accessory", label: "Accessories", icon: "💍" },
-  { key: "potions", label: "Potions", icon: "🧪" },
+const TABS: { key: Tab; label: string; icon: GameIconKey | null; iconEmoji?: string }[] = [
+  { key: "all", label: "All", icon: "shop" },
+  { key: "weapon", label: "Weapons", icon: "weapon" },
+  { key: "helmet", label: "Helmets", icon: "helmet" },
+  { key: "chest", label: "Armor", icon: "chest" },
+  { key: "gloves", label: "Gloves", icon: "gloves" },
+  { key: "legs", label: "Leggings", icon: "legs" },
+  { key: "boots", label: "Boots", icon: "boots" },
+  { key: "necklace", label: "Necklaces", icon: "amulet" },
+  { key: "ring", label: "Rings", icon: "ring" },
+  { key: "amulet", label: "Amulets", icon: "amulet" },
+  { key: "belt", label: "Belts", icon: "belt" },
+  { key: "relic", label: "Relics", icon: "relic" },
+  { key: "accessory", label: "Accessories", icon: "accessory" },
+  { key: "potions", label: "Potions", icon: null, iconEmoji: "🧪" },
 ];
 
 const RARITY_ORDER: Rarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
@@ -214,14 +221,14 @@ type GoldPackage = {
   gold: number;
   priceUsd: number;
   label: string;
-  icon: string;
+  icon: GameIconKey;
   popular?: boolean;
 };
 
 const GOLD_PACKAGES: GoldPackage[] = [
-  { id: "gold_1000", gold: 1000, priceUsd: 0.99, label: "Pouch of Gold", icon: "💰" },
-  { id: "gold_5000", gold: 5000, priceUsd: 3.99, label: "Chest of Gold", icon: "🏆", popular: true },
-  { id: "gold_10000", gold: 10000, priceUsd: 6.99, label: "Vault of Gold", icon: "👑" },
+  { id: "gold_1000", gold: 1000, priceUsd: 0.99, label: "Pouch of Gold", icon: "gold" },
+  { id: "gold_5000", gold: 5000, priceUsd: 3.99, label: "Chest of Gold", icon: "leaderboard", popular: true },
+  { id: "gold_10000", gold: 10000, priceUsd: 6.99, label: "Vault of Gold", icon: "helmet" },
 ];
 
 /* ────────────────── Gold Purchase Modal ────────────────── */
@@ -298,8 +305,8 @@ const GoldPurchaseModal = ({
 
         {/* Header */}
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-amber-600/50 bg-gradient-to-br from-amber-800/30 to-amber-900/50 text-3xl shadow-lg shadow-amber-500/20">
-            🪙
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-amber-600/50 bg-gradient-to-br from-amber-800/30 to-amber-900/50 shadow-lg shadow-amber-500/20">
+            <GameIcon name="gold" size={36} />
           </div>
           <h2 className="font-display text-2xl text-white">Buy Gold</h2>
           <p className="mt-1 text-sm text-slate-500">Choose a package to boost your treasury</p>
@@ -338,19 +345,19 @@ const GoldPurchaseModal = ({
                 <div className="flex items-center gap-3">
                   <div
                     className={`
-                      flex h-12 w-12 items-center justify-center rounded-xl text-2xl
+                      flex h-12 w-12 items-center justify-center rounded-xl
                       ${pkg.popular
                         ? "border-2 border-amber-600/40 bg-amber-900/40"
                         : "border border-slate-700 bg-slate-800"
                       }
                     `}
                   >
-                    {pkg.icon}
+                    <GameIcon name={pkg.icon} size={28} />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-white">{pkg.label}</p>
                     <p className="flex items-center gap-1 text-lg font-black text-yellow-400">
-                      🪙 {pkg.gold.toLocaleString()}
+                      <GameIcon name="gold" size={20} /> {pkg.gold.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -364,7 +371,7 @@ const GoldPurchaseModal = ({
                     rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-200
                     ${pkg.popular
                       ? "bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-amber-400 active:scale-95"
-                      : "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:from-indigo-500 hover:to-indigo-400 active:scale-95"
+                      : "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg shadow-amber-500/20 hover:from-amber-500 hover:to-orange-500 active:scale-95"
                     }
                     disabled:opacity-50 disabled:cursor-not-allowed
                   `}
@@ -394,32 +401,163 @@ const GoldPurchaseModal = ({
   );
 };
 
-/* ────────────────── Item Card ────────────────── */
+/* ────────────────── helpers ────────────────── */
 
-const ItemCard = ({
+/** Map itemType to the correct image filename (weapons use their category). */
+const resolveItemFilename = (item: Item): string => {
+  if (item.itemType === "weapon") {
+    return getWeaponCategory(item) ?? "sword";
+  }
+  if (item.itemType === "accessory") return "amulet";
+  return item.itemType;
+};
+
+/** Render item image (catalog → generic → icon fallback) */
+const ItemImage = ({ item, size = 56 }: { item: Item; size?: number }) => {
+  const itemType = ITEM_TYPE_CONFIG[item.itemType] ?? { label: item.itemType, icon: "accessory" as GameIconKey };
+
+  if (item.catalogId && getCatalogItemById(item.catalogId)) {
+    return (
+      <Image
+        src={getItemImagePath(getCatalogItemById(item.catalogId)!)}
+        alt={item.itemName}
+        width={size}
+        height={size}
+        className="object-contain"
+      />
+    );
+  }
+
+  const genericRarity = (item.rarity === "common" || item.rarity === "rare") ? item.rarity : null;
+  if (genericRarity) {
+    return (
+      <Image
+        src={`/images/items/${genericRarity}/${resolveItemFilename(item)}.png`}
+        alt={item.itemName}
+        width={size}
+        height={size}
+        className="object-contain"
+      />
+    );
+  }
+
+  return <GameIcon name={itemType.icon} size={Math.round(size * 0.6)} />;
+};
+
+/** Determine the "primary stat" label for the modal header (like D4 "1150 Defense") */
+const getPrimaryStat = (item: Item): { label: string; value: number } | null => {
+  const stats = item.baseStats ?? {};
+  const isArmor = ["helmet", "chest", "gloves", "legs", "boots"].includes(item.itemType);
+  if (isArmor && stats.DEF) return { label: "Defense", value: stats.DEF };
+  if (stats.ATK) return { label: "Attack", value: stats.ATK };
+  if (stats.DEF) return { label: "Defense", value: stats.DEF };
+  if (stats.HP) return { label: "Health", value: stats.HP };
+  return null;
+};
+
+/** Tile-specific image — fills the tile area while keeping aspect ratio */
+const TileImage = ({ item }: { item: Item }) => {
+  const itemType = ITEM_TYPE_CONFIG[item.itemType] ?? { label: item.itemType, icon: "accessory" as GameIconKey };
+
+  if (item.catalogId && getCatalogItemById(item.catalogId)) {
+    return (
+      <Image
+        src={getItemImagePath(getCatalogItemById(item.catalogId)!)}
+        alt={item.itemName}
+        fill
+        sizes="(max-width: 640px) 25vw, (max-width: 1024px) 20vw, 12.5vw"
+        className="object-contain p-1.5"
+      />
+    );
+  }
+
+  const genericRarity = (item.rarity === "common" || item.rarity === "rare") ? item.rarity : null;
+  if (genericRarity) {
+    return (
+      <Image
+        src={`/images/items/${genericRarity}/${resolveItemFilename(item)}.png`}
+        alt={item.itemName}
+        fill
+        sizes="(max-width: 640px) 25vw, (max-width: 1024px) 20vw, 12.5vw"
+        className="object-contain p-1.5"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <GameIcon name={itemType.icon} size={48} />
+    </div>
+  );
+};
+
+/* ────────────────── Shop Item Tile (compact grid cell) ────────────────── */
+
+const ShopItemTile = ({
+  item,
+  canAfford,
+  onSelect,
+}: {
+  item: Item;
+  canAfford: boolean;
+  onSelect: (item: Item) => void;
+}) => {
+  const rarity = RARITY_CONFIG[item.rarity] ?? RARITY_CONFIG.common;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item)}
+      className={`
+        group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-all duration-200
+        ${rarity.border} ${rarity.bg} ${rarity.glow}
+        hover:scale-105 hover:brightness-125 active:scale-95
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
+      `}
+      aria-label={`${item.itemName} — ${rarity.label}`}
+      tabIndex={0}
+    >
+      {/* Item image — fills the tile */}
+      <div className="relative flex-1 w-full overflow-hidden">
+        <TileImage item={item} />
+      </div>
+
+      {/* Price strip at bottom */}
+      <div className="flex w-full items-center justify-center gap-1 border-t border-slate-700/30 bg-slate-900/60 py-1">
+        <GameIcon name="gold" size={20} />
+        <span className={`text-[15px] font-bold leading-none ${canAfford ? "text-yellow-400" : "text-red-400"}`}>
+          {(item.buyPrice ?? 0).toLocaleString()}
+        </span>
+      </div>
+    </button>
+  );
+};
+
+/* ────────────────── Item Detail Modal (Diablo-style) ────────────────── */
+
+const ItemDetailModal = ({
   item,
   canAfford,
   onBuy,
   buying,
   characterClass,
+  onClose,
 }: {
   item: Item;
   canAfford: boolean;
   onBuy: (id: string) => void;
   buying: string | null;
   characterClass?: string;
+  onClose: () => void;
 }) => {
-  const [hovered, setHovered] = useState(false);
   const rarity = RARITY_CONFIG[item.rarity] ?? RARITY_CONFIG.common;
-  const itemType = ITEM_TYPE_CONFIG[item.itemType] ?? { label: item.itemType, icon: "📦" };
+  const itemType = ITEM_TYPE_CONFIG[item.itemType] ?? { label: item.itemType, icon: "accessory" as GameIconKey };
   const stats = item.baseStats ?? {};
   const statEntries = Object.entries(stats).filter(([, v]) => v !== 0);
   const isBuying = buying === item.id;
-
-  // Determine recommended/restricted class
+  const primaryStat = getPrimaryStat(item);
   const itemClass = getItemClass(item);
 
-  // Check weapon affinity
   const isAffinityWeapon = (() => {
     if (item.itemType !== "weapon" || !characterClass) return false;
     const category = getWeaponCategory(item);
@@ -427,129 +565,198 @@ const ItemCard = ({
     return hasWeaponAffinity(characterClass, category);
   })();
 
+  /* Close on Escape */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div
-      className={`
-        group relative flex flex-col overflow-hidden rounded-xl border transition-all duration-300
-        ${rarity.border} ${rarity.bg} ${rarity.glow}
-        hover:scale-[1.02] hover:brightness-110
-      `}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      role="article"
-      aria-label={`${item.itemName} — ${rarity.label}`}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={item.itemName}
     >
-      {/* Top badge row */}
-      <div className="flex items-center justify-between px-3 pt-3">
-        <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${rarity.badge}`}>
-          {rarity.label}
-        </span>
-        <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-          Lv. {item.itemLevel}
-        </span>
-      </div>
-
-      {/* Item icon + name */}
-      <div className="flex flex-col items-center px-3 pb-2 pt-3">
-        <div
-          className={`
-            mb-2 flex h-16 w-16 items-center justify-center rounded-xl border-2 
-            ${rarity.border} bg-slate-900/80 text-3xl transition-transform duration-300
-            ${hovered ? "scale-110 rotate-3" : ""}
-          `}
+      <div
+        className={`
+          relative mx-auto w-full max-w-sm overflow-hidden rounded-2xl border-2 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl
+          ${rarity.border} ${rarity.glow}
+        `}
+        style={{ animation: "scaleIn 0.2s ease-out" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close btn */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-300"
+          aria-label="Close"
+          tabIndex={0}
         >
-          {itemType.icon}
-        </div>
-        <p className={`text-center text-sm font-bold leading-tight ${rarity.text}`}>{item.itemName}</p>
-        <p className="mt-0.5 text-center text-[11px] text-slate-500">{itemType.label}</p>
-        {itemClass && (
-          <span className={`mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold ${CLASS_BADGE_STYLE[itemClass] ?? "bg-slate-800 text-slate-400 border-slate-700"}`}>
-            <span className="text-xs">{CLASS_ICON[itemClass] ?? "👤"}</span>
-            {CLASS_LABELS[itemClass] ?? itemClass}
-          </span>
-        )}
-        {isAffinityWeapon && (
-          <span className="mt-1 inline-block rounded-md bg-emerald-900/50 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
-            +{Math.round(WEAPON_AFFINITY_BONUS * 100)}% Affinity
-          </span>
-        )}
-      </div>
+          ✕
+        </button>
 
-      {/* Stats */}
-      {statEntries.length > 0 && (
-        <div className="mx-3 mb-2 space-y-1 rounded-lg border border-slate-700/30 bg-slate-900/40 px-2.5 py-2">
-          {statEntries.map(([key, value]) => {
-            const stat = STAT_LABELS[key] ?? { label: key, icon: "📊" };
+        {/* ── Header: name + icon on right ── */}
+        <div className={`flex items-start gap-4 border-b border-slate-700/40 px-5 pb-4 pt-4 ${rarity.bg}`}>
+          {/* Text info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${rarity.badge}`}>
+                {rarity.label}
+              </span>
+            </div>
+            <h2 className={`mt-1 font-display text-lg font-bold leading-tight ${rarity.text}`}>
+              {item.itemName}
+            </h2>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              {itemType.label} · Lv. {item.itemLevel}
+            </p>
+          </div>
+          {/* Item icon on right */}
+          <div className="flex h-44 w-44 shrink-0 items-center justify-center">
+            <ItemImage item={item} size={176} />
+          </div>
+        </div>
+
+        {/* ── Body ── */}
+        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+
+          {/* Primary stat (big number like D4) */}
+          {primaryStat && (
+            <div className="mb-4 text-center">
+              <p className="text-3xl font-black tabular-nums text-white">{primaryStat.value}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-400">{primaryStat.label}</p>
+            </div>
+          )}
+
+          {/* Class / Affinity / Weapon type badges */}
+          {(() => {
+            const catalogItem = item.catalogId ? getCatalogItemById(item.catalogId) : null;
+            const weaponCat = catalogItem?.weaponCategory;
+            const twoHanded = catalogItem?.twoHanded;
+            const showBadges = itemClass || isAffinityWeapon || weaponCat;
+            if (!showBadges) return null;
             return (
-              <div key={key} className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">
-                  {stat.icon} {stat.label}
-                </span>
-                <span className="font-bold text-emerald-400">+{value}</span>
+              <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+                {itemClass && (
+                  <span className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold ${CLASS_BADGE_STYLE[itemClass] ?? "bg-slate-800 text-slate-400 border-slate-700"}`}>
+                    {CLASS_ICON[itemClass] ? <GameIcon name={CLASS_ICON[itemClass]} size={16} /> : null}
+                    {CLASS_LABELS[itemClass] ?? itemClass}
+                  </span>
+                )}
+                {weaponCat && (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-slate-600/40 bg-slate-800/60 px-2.5 py-1 text-xs font-medium text-slate-300">
+                    <GameIcon name="weapon" size={14} />
+                    {weaponCat.charAt(0).toUpperCase() + weaponCat.slice(1)}
+                    {twoHanded ? " (2H)" : ""}
+                  </span>
+                )}
+                {isAffinityWeapon && (
+                  <span className="inline-block rounded-md bg-emerald-900/50 px-2.5 py-1 text-xs font-bold text-emerald-400">
+                    +{Math.round(WEAPON_AFFINITY_BONUS * 100)}% Affinity
+                  </span>
+                )}
               </div>
             );
-          })}
-        </div>
-      )}
+          })()}
 
-      {/* Set badge */}
-      {item.setName && (
-        <div className="mx-3 mb-2 rounded-lg border border-amber-600/30 bg-amber-950/30 px-2.5 py-1.5">
-          <p className="text-[10px] font-bold text-amber-400">
-            🏅 {SET_DISPLAY_NAMES[item.setName] ?? item.setName}
-          </p>
-        </div>
-      )}
+          {/* Stats list */}
+          {statEntries.length > 0 && (
+            <div className="mb-3 space-y-1.5 rounded-xl border border-slate-700/30 bg-slate-900/40 px-3 py-2.5">
+              {statEntries.map(([key, value]) => {
+                const stat = STAT_LABELS[key] ?? { label: key, icon: null, iconEmoji: "📊" };
+                return (
+                  <div key={key} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-slate-400">
+                      {stat.icon ? <GameIcon name={stat.icon} size={16} /> : <span className="text-sm">{stat.iconEmoji ?? "📊"}</span>} {stat.label}
+                    </span>
+                    <span className="font-bold text-emerald-400">+{value}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-      {/* Description */}
-      {item.description && (
-        <div className="mx-3 mb-2">
-          <p className="text-[10px] italic text-slate-500">{item.description}</p>
-        </div>
-      )}
+          {/* Set badge */}
+          {item.setName && (
+            <div className="mb-3 rounded-xl border border-amber-600/30 bg-amber-950/30 px-3 py-2">
+              <p className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                <GameIcon name="pvp-rating" size={16} /> Set: {SET_DISPLAY_NAMES[item.setName] ?? item.setName}
+              </p>
+            </div>
+          )}
 
-      {/* Special effect */}
-      {item.specialEffect && (
-        <div className="mx-3 mb-2 rounded-lg border border-amber-700/30 bg-amber-950/20 px-2.5 py-1.5">
-          <p className="text-[10px] font-medium text-amber-400/80">
-            ✦ {item.specialEffect}
-          </p>
-        </div>
-      )}
+          {/* Unique passive (from catalog) */}
+          {(() => {
+            const catalogItem = item.catalogId ? getCatalogItemById(item.catalogId) : null;
+            if (!catalogItem?.uniquePassive) return null;
+            return (
+              <div className="mb-3 rounded-xl border border-indigo-700/30 bg-indigo-950/20 px-3 py-2">
+                <p className="text-xs font-medium text-indigo-400">
+                  ✦ {catalogItem.uniquePassive}
+                </p>
+              </div>
+            );
+          })()}
 
-      {/* Price + Buy */}
-      <div className="mt-auto border-t border-slate-700/30 bg-slate-900/40 px-3 py-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg">🪙</span>
-            <span className={`text-sm font-bold ${canAfford ? "text-yellow-400" : "text-red-400"}`}>
+          {/* Special effect */}
+          {item.specialEffect && (
+            <div className="mb-3 rounded-xl border border-amber-700/30 bg-amber-950/20 px-3 py-2">
+              <p className="text-xs font-medium text-amber-400/90">
+                ✦ {item.specialEffect}
+              </p>
+            </div>
+          )}
+
+          {/* Description */}
+          {item.description && (
+            <p className="mb-3 text-xs italic leading-relaxed text-slate-500">
+              &ldquo;{item.description}&rdquo;
+            </p>
+          )}
+
+          {/* Sell value estimate */}
+          <div className="mb-1 flex items-center justify-between rounded-lg border border-slate-700/20 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-500">
+            <span>Sell value</span>
+            <span className="flex items-center gap-1 font-medium text-slate-400">
+              <GameIcon name="gold" size={12} />
+              {Math.round((item.buyPrice ?? 0) * 0.4).toLocaleString()}
+            </span>
+          </div>
+        </div>
+
+        {/* ── Footer: Price + Buy ── */}
+        <div className="border-t border-slate-700/40 bg-slate-900/60 px-5 py-4">
+          <div className="mb-3 flex items-center justify-center gap-2">
+            <GameIcon name="gold" size={22} />
+            <span className={`text-lg font-black ${canAfford ? "text-yellow-400" : "text-red-400"}`}>
               {(item.buyPrice ?? 0).toLocaleString()}
             </span>
           </div>
-          <button
-            type="button"
+          <GameButton
+            variant={canAfford ? "primary" : "secondary"}
             onClick={() => onBuy(item.id)}
             disabled={!canAfford || isBuying}
-            className={`
-              rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-200
-              ${canAfford
-                ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:from-indigo-500 hover:to-indigo-400 hover:shadow-indigo-500/30 active:scale-95"
-                : "cursor-not-allowed bg-slate-800 text-slate-600"
-              }
-              disabled:opacity-60
-            `}
             aria-label={`Buy ${item.itemName}`}
             tabIndex={0}
+            className="w-full justify-center"
           >
             {isBuying ? (
-              <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 animate-spin rounded-full border border-white/30 border-t-white" />
-                ...
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Buying...
               </span>
+            ) : !canAfford ? (
+              "Not enough gold"
             ) : (
               "Buy"
             )}
-          </button>
+          </GameButton>
         </div>
       </div>
     </div>
@@ -595,7 +802,7 @@ const ConsumableCard = ({
   const [hovered, setHovered] = useState(false);
   const isBuying = buying === consumable.type;
   const atMaxStack = ownedQty >= consumable.maxStack;
-  const currencyIcon = consumable.currency === "gold" ? "🪙" : "💎";
+  const currencyIconKey: GameIconKey = consumable.currency === "gold" ? "gold" : "gems";
 
   return (
     <div
@@ -615,8 +822,8 @@ const ConsumableCard = ({
         <span className="rounded-md bg-emerald-900/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
           Consumable
         </span>
-        <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-          +{consumable.staminaRestore} ⚡
+        <span className="flex items-center gap-0.5 rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+          +{consumable.staminaRestore} <GameIcon name="stamina" size={12} />
         </span>
       </div>
 
@@ -625,11 +832,17 @@ const ConsumableCard = ({
         <div
           className={`
             mb-2 flex h-16 w-16 items-center justify-center rounded-xl border-2 
-            border-emerald-700/50 bg-slate-900/80 text-3xl transition-transform duration-300
+            border-emerald-700/50 bg-slate-900/80 transition-transform duration-300
             ${hovered ? "scale-110 rotate-3" : ""}
           `}
         >
-          {consumable.icon}
+          <Image
+            src={getConsumableImagePath(consumable.type)}
+            alt={consumable.name}
+            width={64}
+            height={64}
+            className="object-contain"
+          />
         </div>
         <p className="text-center text-sm font-bold leading-tight text-emerald-400">{consumable.name}</p>
       </div>
@@ -642,7 +855,7 @@ const ConsumableCard = ({
       {/* Stats */}
       <div className="mx-3 mb-2 space-y-1.5 rounded-lg border border-slate-700/30 bg-slate-900/40 px-2.5 py-2">
         <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-400">⚡ Stamina restore</span>
+          <span className="flex items-center gap-1 text-slate-400"><GameIcon name="stamina" size={14} /> Stamina restore</span>
           <span className="font-bold text-emerald-400">+{consumable.staminaRestore}</span>
         </div>
         <div className="flex items-center justify-between text-[11px]">
@@ -664,25 +877,17 @@ const ConsumableCard = ({
       <div className="mt-auto border-t border-slate-700/30 bg-slate-900/40 px-3 py-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-lg">{currencyIcon}</span>
+            <GameIcon name={currencyIconKey} size={20} />
             <span className={`text-sm font-bold ${canAfford && !atMaxStack ? "text-yellow-400" : "text-red-400"}`}>
               {consumable.cost.toLocaleString()}
             </span>
           </div>
-          <button
-            type="button"
+          <GameButton
+            size="sm"
+            variant={canAfford && !atMaxStack ? "action" : "secondary"}
             onClick={() => onBuy(consumable.type)}
             disabled={!canAfford || isBuying || atMaxStack}
-            className={`
-              rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-200
-              ${canAfford && !atMaxStack
-                ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-500 hover:to-emerald-400 hover:shadow-emerald-500/30 active:scale-95"
-                : "cursor-not-allowed bg-slate-800 text-slate-600"
-              }
-              disabled:opacity-60
-            `}
             aria-label={`Buy ${consumable.name}`}
-            tabIndex={0}
           >
             {isBuying ? (
               <span className="flex items-center gap-1.5">
@@ -694,7 +899,7 @@ const ConsumableCard = ({
             ) : (
               "Buy"
             )}
-          </button>
+          </GameButton>
         </div>
       </div>
     </div>
@@ -706,8 +911,6 @@ const ConsumableCard = ({
 function ShopContent() {
   const searchParams = useSearchParams();
   const characterId = searchParams.get("characterId");
-  const avatarSrc = useCharacterAvatar(characterId);
-
   const [character, setCharacter] = useState<Character | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -724,6 +927,7 @@ function ShopContent() {
   const [buyingConsumable, setBuyingConsumable] = useState<string | null>(null);
   const [consumableInv, setConsumableInv] = useState<ConsumableInventoryItem[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
   /* ── Load data ── */
   useEffect(() => {
@@ -877,11 +1081,11 @@ function ShopContent() {
 
   /* ── Loading state ── */
   if (loading || !character) {
-    return <PageLoader emoji="🪙" text="Loading shop…" avatarSrc={avatarSrc} />;
+    return <PageLoader emoji="🪙" text="Loading shop…" />;
   }
 
   return (
-    <div className="flex min-h-full flex-col p-4 lg:p-6">
+    <PageContainer>
       {/* ── Header ── */}
       <PageHeader title="Shop" />
       <div className="mb-6">
@@ -894,7 +1098,7 @@ function ShopContent() {
               aria-label="View Potions"
               tabIndex={0}
             >
-              <span className="text-xl">⚡</span>
+              <GameIcon name="stamina" size={24} />
               <div className="text-left">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-600">Stamina</p>
                 <p className="text-lg font-black tabular-nums text-emerald-400">
@@ -909,7 +1113,7 @@ function ShopContent() {
               className="flex items-center gap-2 rounded-xl border border-purple-700/40 bg-gradient-to-r from-purple-900/30 to-purple-950/50 px-4 py-2 shadow-lg shadow-purple-500/5"
               aria-label="Gems"
             >
-              <span className="text-xl">💎</span>
+              <GameIcon name="gems" size={24} />
               <div className="text-left">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-purple-600">Gems</p>
                 <p className="text-lg font-black tabular-nums text-purple-400">{character.gems.toLocaleString()}</p>
@@ -924,7 +1128,7 @@ function ShopContent() {
               aria-label="Buy Gold"
               tabIndex={0}
             >
-              <span className="text-xl">🪙</span>
+              <GameIcon name="gold" size={24} />
               <div className="text-left">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-amber-600">Gold</p>
                 <p className="text-lg font-black tabular-nums text-yellow-400">{character.gold.toLocaleString()}</p>
@@ -965,7 +1169,7 @@ function ShopContent() {
             tabIndex={0}
           >
             <div className="flex items-center gap-2 text-sm">
-              <span>{TABS.find((t) => t.key === activeTab)?.icon ?? "🏪"}</span>
+              {(() => { const tab = TABS.find((t) => t.key === activeTab); return tab?.icon ? <GameIcon name={tab.icon} size={18} /> : <span>{tab?.iconEmoji ?? "🏪"}</span>; })()}
               <span className="font-medium text-white">
                 {TABS.find((t) => t.key === activeTab)?.label ?? "All"}
               </span>
@@ -1012,7 +1216,7 @@ function ShopContent() {
                       aria-pressed={active}
                       tabIndex={filtersOpen ? 0 : -1}
                     >
-                      <span className="text-sm">{tab.icon}</span>
+                      {tab.icon ? <GameIcon name={tab.icon} size={16} /> : <span className="text-sm">{tab.iconEmoji}</span>}
                       <span>{tab.label}</span>
                       <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active ? "bg-indigo-500/30 text-indigo-300" : "bg-slate-800 text-slate-500"}`}>
                         {count}
@@ -1063,24 +1267,22 @@ function ShopContent() {
             );
           })}
         </div>
-      ) : /* ── Item Grid ── */
+      ) : /* ── Item Grid (compact icon tiles) ── */
       filteredItems.length > 0 ? (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
           {filteredItems.map((item) => (
-            <ItemCard
+            <ShopItemTile
               key={item.id}
               item={item}
               canAfford={character.gold >= (item.buyPrice ?? 0)}
-              onBuy={handleBuy}
-              buying={buying}
-              characterClass={character.class}
+              onSelect={setSelectedItem}
             />
           ))}
         </div>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center py-16">
-          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-slate-700 text-4xl">
-            🏪
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-slate-700">
+            <GameIcon name="shop" size={48} />
           </div>
           <p className="text-sm font-medium text-slate-400">No items match current filters</p>
           <p className="mt-1 text-xs text-slate-600">Try changing category</p>
@@ -1107,6 +1309,21 @@ function ShopContent() {
         </div>
       </div>
 
+      {/* ── Item Detail Modal ── */}
+      {selectedItem && (
+        <ItemDetailModal
+          item={selectedItem}
+          canAfford={character.gold >= (selectedItem.buyPrice ?? 0)}
+          onBuy={(id) => {
+            handleBuy(id);
+            setSelectedItem(null);
+          }}
+          buying={buying}
+          characterClass={character.class}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
+
       {/* ── Gold Purchase Modal ── */}
       {goldModalOpen && characterId && (
         <GoldPurchaseModal
@@ -1118,7 +1335,7 @@ function ShopContent() {
 
       {/* ── Toast ── */}
       {toast && <BuyToast itemName={toast} onClose={() => setToast(null)} />}
-    </div>
+    </PageContainer>
   );
 }
 

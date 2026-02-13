@@ -4,6 +4,18 @@ import Link from "next/link";
 export default function HomePage() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-12">
+      {/* City background */}
+      <div className="pointer-events-none absolute inset-0">
+        <Image
+          src="/images/buildings/Stray City.png"
+          alt=""
+          fill
+          className="object-cover opacity-25"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950" />
+      </div>
+
       {/* Background decoration */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-32 -top-32 h-80 w-80 rounded-full bg-amber-500/8 blur-3xl" />
@@ -38,7 +50,7 @@ export default function HomePage() {
         <nav className="flex w-full max-w-xs flex-col gap-3">
           <Link
             href="/login"
-            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3.5 font-display text-lg tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-3 text-base font-bold uppercase tracking-wider text-white shadow-md shadow-amber-900/30 transition-all hover:from-amber-500 hover:to-orange-500 active:scale-[0.98]"
             aria-label="Log In"
             tabIndex={0}
           >
@@ -49,7 +61,7 @@ export default function HomePage() {
           </Link>
           <Link
             href="/register"
-            className="flex items-center justify-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 py-3.5 font-display text-lg tracking-wider text-slate-300 transition-all hover:border-slate-600 hover:bg-slate-800/80 hover:text-white"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-6 py-3 text-base font-bold uppercase tracking-wider text-slate-400 transition-all hover:bg-slate-700 hover:text-white"
             aria-label="Register"
             tabIndex={0}
           >

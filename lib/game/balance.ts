@@ -295,7 +295,7 @@ export const ARMOR_RANGE: Record<string, Record<Rarity, [number, number]>> = {
    ────────────────────────────────────────────────────────────────────── */
 
 /** Starting character resources */
-export const STARTING_GOLD = 100;
+export const STARTING_GOLD = 500;
 export const STARTING_STAMINA = 100;
 export const STARTING_MAX_STAMINA = 100;
 
@@ -410,10 +410,22 @@ export const ITEM_LEVEL_VARIANCE_RANGE = 6; // random(0..5) + MIN
    ────────────────────────────────────────────────────────────────────── */
 
 export const QUEST_POOL = [
+  // GDD §11.1 — Win 3 PvP
   { questType: "pvp_wins", target: 3, rewardGold: 200, rewardXp: 200, rewardGems: 20 },
+  // GDD §11.1 — Complete 2 Dungeons
   { questType: "dungeons_complete", target: 2, rewardGold: 300, rewardXp: 300, rewardGems: 25 },
-  { questType: "pvp_wins", target: 5, rewardGold: 500, rewardXp: 400, rewardGems: 50 },
-  { questType: "dungeons_complete", target: 1, rewardGold: 150, rewardXp: 150, rewardGems: 15 },
+  // GDD §11.1 — Deal 5,000 Damage
+  { questType: "damage_dealt", target: 5000, rewardGold: 150, rewardXp: 150, rewardGems: 0 },
+  // GDD §11.1 — Win 5 PvP Without Loss
+  { questType: "pvp_wins_no_loss", target: 5, rewardGold: 500, rewardXp: 400, rewardGems: 50 },
+  // GDD §11.1 — Clear 1 Hard Dungeon
+  { questType: "hard_dungeon_clear", target: 1, rewardGold: 600, rewardXp: 500, rewardGems: 40 },
+  // GDD §11.1 — Upgrade Item to +5
+  { questType: "upgrade_item", target: 1, rewardGold: 200, rewardXp: 0, rewardGems: 30 },
+  // GDD §11.1 — Salvage 10 Items
+  { questType: "salvage_items", target: 10, rewardGold: 100, rewardXp: 0, rewardGems: 15 },
+  // GDD §11.1 — Win PvP at 80%+ HP
+  { questType: "pvp_win_high_hp", target: 1, rewardGold: 250, rewardXp: 0, rewardGems: 35 },
 ] as const;
 
 export const DAILY_QUEST_COUNT = 3;

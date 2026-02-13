@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import GameIcon from "@/app/components/ui/GameIcon";
 
 /* ────────────────── Types ────────────────── */
 
@@ -127,7 +128,11 @@ const CombatResultModal = ({
       ? "border-amber-600/50"
       : "border-red-600/50";
 
-  const bannerIcon = isWin ? "⚔️" : isDraw ? "⚖️" : "💀";
+  const bannerIcon = isWin ? (
+    <GameIcon name="fights" size={36} />
+  ) : isDraw ? (
+    <GameIcon name="balance" size={36} />
+  ) : "💀";
 
   const titleColor = isWin
     ? "text-green-400"

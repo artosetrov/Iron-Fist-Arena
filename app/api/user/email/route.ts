@@ -15,7 +15,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json().catch(() => ({}));
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const newEmail = String(body.newEmail ?? "").trim().toLowerCase();
 
     if (!newEmail || !newEmail.includes("@")) {

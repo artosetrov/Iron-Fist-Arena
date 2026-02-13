@@ -18,6 +18,11 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true } });
+    if (dbUser?.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const [
       usersCount,
       charactersCount,

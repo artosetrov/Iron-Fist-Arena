@@ -6,8 +6,8 @@ import Link from "next/link";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatLootScreen from "@/app/components/CombatLootScreen";
 import PageLoader from "@/app/components/PageLoader";
-import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
-
+import GameIcon from "@/app/components/ui/GameIcon";
+import { GameButton, PageContainer } from "@/app/components/ui";
 /* ────────────────── Types ────────────────── */
 
 type Character = {
@@ -115,8 +115,6 @@ const DungeonRushContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const characterId = searchParams.get("characterId");
-  const avatarSrc = useCharacterAvatar(characterId);
-
   const [character, setCharacter] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -287,7 +285,7 @@ const DungeonRushContent = () => {
 
   /* ── Loading ── */
   if (loading || !character) {
-    return <PageLoader emoji="🏃" text="Preparing Dungeon Rush..." avatarSrc={avatarSrc} />;
+    return <PageLoader icon={<GameIcon name="dungeon-rush" size={32} />} text="Preparing Dungeon Rush..." />;
   }
 
   /* ══════════════════════════════════════════
@@ -335,13 +333,13 @@ const DungeonRushContent = () => {
 
           {/* Rewards */}
           <div className="mt-4 flex items-center justify-center gap-6 text-sm">
-            <div className="text-center">
-              <span className="text-lg">🪙</span>
+            <div className="flex flex-col items-center text-center">
+              <GameIcon name="gold" size={20} />
               <p className="font-bold text-yellow-400">+{screen.fightResult.goldEarned}</p>
               <p className="text-[10px] text-slate-500">Gold</p>
             </div>
-            <div className="text-center">
-              <span className="text-lg">✨</span>
+            <div className="flex flex-col items-center text-center">
+              <GameIcon name="xp" size={20} />
               <p className="font-bold text-blue-400">+{screen.fightResult.xpEarned}</p>
               <p className="text-[10px] text-slate-500">XP</p>
             </div>
@@ -373,14 +371,14 @@ const DungeonRushContent = () => {
             })}
           </div>
 
-          <button
-            type="button"
+          <GameButton
+            fullWidth
             onClick={handleNextWave}
             aria-label="Next Wave"
-            className="mt-5 w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-900/40 transition hover:from-amber-500 hover:to-orange-500"
+            className="mt-5"
           >
-            ⚔️ Next Wave ({(screen.fightResult.nextWave ?? 0)}/{TOTAL_WAVES})
-          </button>
+            <span className="inline-flex items-center gap-1.5"><GameIcon name="fights" size={16} /> Next Wave ({(screen.fightResult.nextWave ?? 0)}/{TOTAL_WAVES})</span>
+          </GameButton>
         </div>
       </div>
     );
@@ -393,7 +391,7 @@ const DungeonRushContent = () => {
     return (
       <div className="flex min-h-full flex-col items-center justify-center p-4 lg:p-6">
         <div className="w-full max-w-md rounded-2xl border border-amber-600/60 bg-gradient-to-b from-amber-900/30 to-slate-900/80 p-6 text-center">
-          <p className="mb-1 text-4xl">🏆</p>
+          <p className="mb-1"><GameIcon name="leaderboard" size={40} /></p>
           <p className="font-display text-2xl text-amber-400">
             Dungeon Rush Complete!
           </p>
@@ -403,15 +401,15 @@ const DungeonRushContent = () => {
 
           {/* Total rewards */}
           <div className="mt-5 flex items-center justify-center gap-8 text-sm">
-            <div className="text-center">
-              <span className="text-2xl">🪙</span>
+            <div className="flex flex-col items-center text-center">
+              <GameIcon name="gold" size={28} />
               <p className="font-display text-xl text-yellow-400">
                 +{screen.fightResult.accumulatedGold}
               </p>
               <p className="text-[10px] text-slate-500">Total Gold</p>
             </div>
-            <div className="text-center">
-              <span className="text-2xl">✨</span>
+            <div className="flex flex-col items-center text-center">
+              <GameIcon name="xp" size={28} />
               <p className="font-display text-xl text-blue-400">
                 +{screen.fightResult.accumulatedXp}
               </p>
@@ -437,14 +435,14 @@ const DungeonRushContent = () => {
             ))}
           </div>
 
-          <button
-            type="button"
+          <GameButton
+            fullWidth
             onClick={handleBackToTavern}
             aria-label="Back to Tavern"
-            className="mt-5 w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-900/40 transition hover:from-amber-500 hover:to-orange-500"
+            className="mt-5"
           >
             ← Back to Tavern
-          </button>
+          </GameButton>
         </div>
       </div>
     );
@@ -467,15 +465,15 @@ const DungeonRushContent = () => {
           {(screen.fightResult.accumulatedGold ?? 0) > 0 ||
           (screen.fightResult.accumulatedXp ?? 0) > 0 ? (
             <div className="mt-4 flex items-center justify-center gap-6 text-sm">
-              <div className="text-center">
-                <span className="text-lg">🪙</span>
+              <div className="flex flex-col items-center text-center">
+                <GameIcon name="gold" size={20} />
                 <p className="font-bold text-yellow-400">
                   {screen.fightResult.accumulatedGold}
                 </p>
                 <p className="text-[10px] text-slate-500">Gold earned</p>
               </div>
-              <div className="text-center">
-                <span className="text-lg">✨</span>
+              <div className="flex flex-col items-center text-center">
+                <GameIcon name="xp" size={20} />
                 <p className="font-bold text-blue-400">
                   {screen.fightResult.accumulatedXp}
                 </p>
@@ -512,14 +510,15 @@ const DungeonRushContent = () => {
             })}
           </div>
 
-          <button
-            type="button"
+          <GameButton
+            variant="secondary"
+            fullWidth
             onClick={handleBackToTavern}
             aria-label="Back to Tavern"
-            className="mt-5 w-full rounded-xl border border-slate-700 bg-slate-800 px-6 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-700"
+            className="mt-5"
           >
             ← Back to Tavern
-          </button>
+          </GameButton>
         </div>
       </div>
     );
@@ -538,19 +537,22 @@ const DungeonRushContent = () => {
     <div className="flex min-h-full flex-col items-center justify-center p-4 lg:p-6">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="relative mb-6 flex items-center">
           <button
             type="button"
             onClick={handleBackToTavern}
             aria-label="Back to Tavern"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-sm text-slate-400 transition hover:bg-slate-700 hover:text-white"
+            className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
           >
-            ←
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
           </button>
-          <h1 className="font-display text-2xl font-bold uppercase text-white">Dungeon Rush</h1>
-          <div className="flex items-center gap-2">
-            <span className="rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300">
-              ⚡{" "}
+          <h1 className="absolute inset-x-0 text-center font-display text-2xl font-bold uppercase text-white">Dungeon Rush</h1>
+          <div className="flex-1" />
+          <div className="relative z-10 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300">
+              <GameIcon name="stamina" size={14} />
               <span className="font-bold text-amber-400">
                 {character.currentStamina}/{character.maxStamina}
               </span>
@@ -602,20 +604,20 @@ const DungeonRushContent = () => {
             </>
           ) : (
             <>
-              <p className="mb-2 text-4xl">🏃</p>
+              <p className="mb-2"><GameIcon name="dungeon-rush" size={40} /></p>
               <p className="font-display text-2xl text-white">Dungeon Rush</p>
               <p className="mt-1 text-xs text-slate-400">
                 5 waves of PvE combat. Earn XP and Gold!
               </p>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-500">
-                <span className="rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1">
-                  ⚡ {STAMINA_COST} Energy
+                <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1">
+                  <GameIcon name="stamina" size={14} /> {STAMINA_COST} Energy
                 </span>
-                <span className="rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1">
-                  🪙 Up to 800 Gold
+                <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1">
+                  <GameIcon name="gold" size={14} /> Up to 800 Gold
                 </span>
-                <span className="rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1">
-                  ✨ Up to 300 XP
+                <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1">
+                  <GameIcon name="xp" size={14} /> Up to 300 XP
                 </span>
               </div>
             </>
@@ -631,43 +633,40 @@ const DungeonRushContent = () => {
           <div className="mt-6 space-y-3">
             {hasRun ? (
               <>
-                <button
-                  type="button"
+                <GameButton
+                  size="lg"
+                  fullWidth
                   onClick={() => handleFight(screen.runId!, currentWave)}
                   disabled={isFighting || abandoning}
                   aria-label={`Fight Wave ${currentWave}`}
-                  className="w-full rounded-xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 px-6 py-4 text-base font-bold text-white shadow-lg shadow-red-900/40 transition hover:from-red-500 hover:via-orange-500 hover:to-amber-500 disabled:opacity-50"
                 >
-                  {isFighting ? "Fighting..." : `⚔️ Fight Wave ${currentWave}`}
-                </button>
-                <button
-                  type="button"
+                  {isFighting ? "Fighting..." : <span className="inline-flex items-center gap-1.5"><GameIcon name="fights" size={16} /> Fight Wave {currentWave}</span>}
+                </GameButton>
+                <GameButton
+                  variant="secondary"
+                  fullWidth
                   onClick={handleAbandon}
                   disabled={abandoning || isFighting}
                   aria-label="Abandon Run"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-6 py-3 text-sm font-medium text-slate-400 transition hover:bg-slate-700 hover:text-white disabled:opacity-50"
                 >
                   {abandoning ? "Abandoning..." : "🚪 Abandon Run"}
-                </button>
+                </GameButton>
               </>
             ) : (
-              <button
-                type="button"
+              <GameButton
+                size="lg"
+                fullWidth
                 onClick={handleStart}
                 disabled={isStarting || !canAfford}
                 aria-label="Start Dungeon Rush"
-                className={`w-full rounded-xl px-6 py-4 text-base font-bold text-white shadow-lg transition ${
-                  canAfford
-                    ? "bg-gradient-to-r from-amber-600 to-orange-600 shadow-amber-900/40 hover:from-amber-500 hover:to-orange-500"
-                    : "bg-slate-800 text-slate-500"
-                } disabled:opacity-50`}
+                className={!canAfford ? "bg-slate-800 text-slate-500" : ""}
               >
                 {isStarting
                   ? "Preparing..."
                   : !canAfford
                     ? `Not enough stamina (need ${STAMINA_COST})`
-                    : `🏃 Start Rush (⚡${STAMINA_COST})`}
-              </button>
+                    : <span className="inline-flex items-center gap-1.5"><GameIcon name="dungeon-rush" size={16} /> Start Rush (<GameIcon name="stamina" size={14} />{STAMINA_COST})</span>}
+              </GameButton>
             )}
           </div>
         </div>
@@ -705,7 +704,7 @@ const DungeonRushContent = () => {
 /* ────────────────── Page wrapper ────────────────── */
 
 const DungeonRushPage = () => (
-  <Suspense fallback={<PageLoader emoji="🏃" text="Preparing Dungeon Rush..." />}>
+  <Suspense fallback={<PageLoader icon={<GameIcon name="dungeon-rush" size={32} />} text="Preparing Dungeon Rush..." />}>
     <DungeonRushContent />
   </Suspense>
 );

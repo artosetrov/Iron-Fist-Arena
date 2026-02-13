@@ -54,6 +54,12 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { prisma } = await import("@/lib/db");
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true } });
+    if (dbUser?.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const startMs = Date.now();
     const cwd = process.cwd();
 

@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
-import { CLASS_ICON, ORIGIN_IMAGE, BOSS_IMAGES } from "@/app/components/HeroCard";
+import GameIcon from "@/app/components/ui/GameIcon";
+import type { GameIconKey } from "@/app/components/ui/GameIcon";
+import { ORIGIN_IMAGE, BOSS_IMAGES } from "@/app/components/HeroCard";
 
 /* ────────────────── Types ────────────────── */
 
@@ -23,6 +25,7 @@ type CombatLootScreenProps = {
   enemy: EnemyInfo;
   rewards: LootReward;
   onContinue: () => void;
+  loading?: boolean;
 };
 
 const RARITY_COLOR: Record<string, string> = {
@@ -47,6 +50,7 @@ const CombatLootScreen = ({
   enemy,
   rewards,
   onContinue,
+  loading = false,
 }: CombatLootScreenProps) => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -69,7 +73,13 @@ const CombatLootScreen = ({
   };
 
   const cls = enemy.class?.toLowerCase() ?? "";
-  const icon = CLASS_ICON[cls] ?? "💀";
+  const CLASS_ICON_KEY: Record<string, GameIconKey> = {
+    warrior: "warrior",
+    rogue: "rogue",
+    mage: "mage",
+    tank: "tank",
+  };
+  const iconKey = CLASS_ICON_KEY[cls];
 
   return (
     <div
@@ -109,9 +119,13 @@ const CombatLootScreen = ({
                 className="h-full w-full object-cover"
                 sizes="80px"
               />
+            ) : iconKey ? (
+              <span aria-hidden="true">
+                <GameIcon name={iconKey} size={40} />
+              </span>
             ) : (
               <span className="text-4xl" aria-hidden="true">
-                {icon}
+                💀
               </span>
             )}
           </div>
@@ -124,8 +138,8 @@ const CombatLootScreen = ({
         <div className="flex flex-wrap items-center justify-center gap-4 px-6 py-5">
           {rewards.gold !== undefined && rewards.gold > 0 && (
             <div className="flex flex-col items-center gap-1 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3">
-              <span className="text-2xl" aria-hidden="true">
-                🪙
+              <span aria-hidden="true">
+                <GameIcon name="gold" size={28} />
               </span>
               <span className="text-sm font-bold text-yellow-400">
                 {rewards.gold.toLocaleString()}
@@ -134,8 +148,8 @@ const CombatLootScreen = ({
           )}
           {rewards.xp !== undefined && rewards.xp > 0 && (
             <div className="flex flex-col items-center gap-1 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3">
-              <span className="text-2xl" aria-hidden="true">
-                ✨
+              <span aria-hidden="true">
+                <GameIcon name="xp" size={28} />
               </span>
               <span className="text-sm font-bold text-blue-400">
                 +{rewards.xp} XP
@@ -144,8 +158,8 @@ const CombatLootScreen = ({
           )}
           {rewards.rating !== undefined && rewards.rating > 0 && (
             <div className="flex flex-col items-center gap-1 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3">
-              <span className="text-2xl" aria-hidden="true">
-                ⚔️
+              <span aria-hidden="true">
+                <GameIcon name="pvp-rating" size={28} />
               </span>
               <span className="text-sm font-bold text-cyan-400">
                 +{rewards.rating} Rating
@@ -172,10 +186,11 @@ const CombatLootScreen = ({
             ref={btnRef}
             type="button"
             onClick={onContinue}
+            disabled={loading}
             aria-label="Continue"
-            className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 text-sm font-bold text-white transition hover:from-amber-500 hover:to-orange-500"
+            className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 text-sm font-bold text-white transition hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
           >
-            Continue
+            {loading ? "Loading…" : "Continue"}
           </button>
         </div>
       </div>

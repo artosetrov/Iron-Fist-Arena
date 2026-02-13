@@ -65,3 +65,7 @@ export const getConsumableDef = (type: ConsumableType): ConsumableDef | undefine
   CONSUMABLE_CATALOG.find((c) => c.type === type);
 
 export const CONSUMABLE_TYPES = CONSUMABLE_CATALOG.map((c) => c.type);
+
+/** Get image path for a consumable */
+export const getConsumableImagePath = (type: ConsumableType): string =>
+  `/images/items/consumables/${type}.png`;

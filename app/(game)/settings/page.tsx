@@ -6,6 +6,8 @@ import PageHeader from "@/app/components/PageHeader";
 import { useDisplaySettings, useSoundSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/client";
 import PageLoader from "@/app/components/PageLoader";
+import { GameButton, PageContainer } from "@/app/components/ui";
+import GameIcon from "@/app/components/ui/GameIcon";
 import {
   ALL_ORIGINS,
   ORIGIN_DEFS,
@@ -189,14 +191,15 @@ const DisplayTab = () => {
         />
       </div>
 
-      <button
-        type="button"
+      <GameButton
+        variant="secondary"
+        size="sm"
         onClick={reset}
-        className="mt-2 rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-xs text-slate-400 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+        className="mt-2"
         aria-label="Reset display settings to defaults"
       >
         Reset to Defaults
-      </button>
+      </GameButton>
     </div>
   );
 };
@@ -229,14 +232,15 @@ const SoundTab = () => {
         </div>
       </div>
 
-      <button
-        type="button"
+      <GameButton
+        variant="secondary"
+        size="sm"
         onClick={reset}
-        className="mt-2 rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2 text-xs text-slate-400 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+        className="mt-2"
         aria-label="Reset sound settings to defaults"
       >
         Reset to Defaults
-      </button>
+      </GameButton>
     </div>
   );
 };
@@ -421,11 +425,11 @@ const CharacterTab = () => {
       )}
 
       {/* Confirm button */}
-      <button
-        type="button"
+      <GameButton
+        fullWidth
+        size="lg"
         onClick={handleChangeOrigin}
         disabled={saving || !selectedOrigin || selectedOrigin === currentOrigin || gold < ORIGIN_CHANGE_COST}
-        className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30 disabled:opacity-50 disabled:hover:from-amber-600 disabled:hover:to-orange-600"
         aria-label="Confirm origin change"
       >
         {saving ? (
@@ -440,7 +444,7 @@ const CharacterTab = () => {
         ) : (
           `Change Origin (${ORIGIN_CHANGE_COST} Gold)`
         )}
-      </button>
+      </GameButton>
     </div>
   );
 };
@@ -601,35 +605,35 @@ const AccountTab = () => {
       <div>
         <h3 className="mb-3 font-display text-sm tracking-wider text-slate-500">Security</h3>
         <div className="space-y-2">
-          <button
-            type="button"
+          <GameButton
+            variant="secondary"
+            fullWidth
             onClick={() => setModal("password")}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
             aria-label="Change Password"
           >
             Change Password
-          </button>
-          <button
-            type="button"
+          </GameButton>
+          <GameButton
+            variant="secondary"
+            fullWidth
             onClick={() => setModal("email")}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
             aria-label="Change Email"
           >
             Change Email Address
-          </button>
+          </GameButton>
         </div>
       </div>
 
       {/* Logout */}
       <div className="pt-2">
-        <button
-          type="button"
+        <GameButton
+          variant="danger"
+          fullWidth
           onClick={handleLogout}
-          className="w-full rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-2.5 text-sm font-medium text-red-400 transition hover:border-red-800 hover:bg-red-950/50 hover:text-red-300"
           aria-label="Log Out"
         >
           Log Out
-        </button>
+        </GameButton>
       </div>
 
       {/* ── Modal overlay ── */}
@@ -651,16 +655,17 @@ const AccountTab = () => {
             tabIndex={0}
           >
             {/* Close button */}
-            <button
-              type="button"
+            <GameButton
+              variant="ghost"
+              size="sm"
               onClick={handleResetModal}
-              className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white"
+              className="absolute right-3 top-3 h-7 w-7 !p-0"
               aria-label="Close modal"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </GameButton>
 
             <h3 className="mb-4 font-display text-xl text-white">
               {modal === "password" ? "Change Password" : "Change Email"}
@@ -723,13 +728,14 @@ const AccountTab = () => {
                     placeholder="Repeat new password"
                   />
                 </div>
-                <button
+                <GameButton
                   type="submit"
+                  fullWidth
                   disabled={formLoading}
-                  className="mt-2 w-full rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-2.5 text-sm font-bold text-white transition hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
+                  className="mt-2"
                 >
                   {formLoading ? "Saving…" : "Change Password"}
-                </button>
+                </GameButton>
               </form>
             ) : (
               <form onSubmit={handleChangeEmail} className="space-y-3">
@@ -747,13 +753,14 @@ const AccountTab = () => {
                     placeholder="your@email.com"
                   />
                 </div>
-                <button
+                <GameButton
                   type="submit"
+                  fullWidth
                   disabled={formLoading}
-                  className="mt-2 w-full rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-2.5 text-sm font-bold text-white transition hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
+                  className="mt-2"
                 >
                   {formLoading ? "Sending…" : "Change Email"}
-                </button>
+                </GameButton>
               </form>
             )}
           </div>
@@ -769,7 +776,7 @@ const SettingsContent = () => {
   const [activeTab, setActiveTab] = useState<TabId>("display");
 
   return (
-    <div className="relative p-4 lg:p-6">
+    <PageContainer>
       <PageHeader title="Settings" />
 
       {/* Settings card */}
@@ -814,7 +821,7 @@ const SettingsContent = () => {
           {activeTab === "account" && <AccountTab />}
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 };
 
@@ -822,7 +829,7 @@ const SettingsContent = () => {
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<PageLoader emoji="⚙️" text="Loading settings…" />}>
+    <Suspense fallback={<PageLoader icon={<GameIcon name="settings" size={32} />} text="Loading settings…" />}>
       <SettingsContent />
     </Suspense>
   );

@@ -15,8 +15,20 @@ const GlobalError = ({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
-      <div className="text-center space-y-6 p-8">
+    <div className="relative min-h-screen flex items-center justify-center bg-slate-900 text-white overflow-hidden">
+      {/* City background */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/ui/hub-bg.png"
+        alt=""
+        draggable={false}
+        className="absolute inset-0 h-full w-full object-cover pointer-events-none opacity-30"
+      />
+
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/70 to-slate-900/50 pointer-events-none" />
+
+      <div className="relative z-10 text-center space-y-6 p-8">
         <Image
           src="/images/ui/wrong.png"
           alt="Something went wrong"

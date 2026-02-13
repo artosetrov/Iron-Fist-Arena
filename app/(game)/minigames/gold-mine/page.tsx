@@ -4,7 +4,8 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PageLoader from "@/app/components/PageLoader";
-import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
+import GameIcon from "@/app/components/ui/GameIcon";
+import { GameButton, PageContainer } from "@/app/components/ui";
 import {
   GOLD_MINE_BOOST_COST_GEMS,
   GOLD_MINE_SLOT_COST_GEMS,
@@ -78,8 +79,6 @@ const INITIAL_STATE: MineState = {
 const GoldMineContent = () => {
   const searchParams = useSearchParams();
   const characterId = searchParams.get("characterId");
-  const avatarSrc = useCharacterAvatar(characterId);
-
   const [state, setState] = useState<MineState>(INITIAL_STATE);
   const [, setTick] = useState(0); // force re-render for countdown
   const tickRef = useRef<NodeJS.Timeout | null>(null);
@@ -267,7 +266,7 @@ const GoldMineContent = () => {
 
   /* ── Render ── */
   if (state.loading) {
-    return <PageLoader emoji="⛏️" text="Loading Gold Mine..." avatarSrc={avatarSrc} />;
+    return <PageLoader icon={<GameIcon name="gold-mine" size={32} />} text="Loading Gold Mine..." />;
   }
 
   const sessionsBySlot = new Map<number, MineSession>();
@@ -279,36 +278,37 @@ const GoldMineContent = () => {
   const hasEmptySlot = state.sessions.length < state.maxSlots;
 
   return (
-    <div className="relative flex min-h-full flex-col items-center px-4 py-8">
-      <Link
-        href="/hub"
-        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-        aria-label="Back to Hub"
-        tabIndex={0}
-      >
-        ✕
-      </Link>
+    <div className="flex min-h-full flex-col items-center px-4 py-4">
       {/* Header */}
-      <div className="mb-2 flex items-center gap-3">
+      <div className="relative mb-4 flex w-full items-center">
         <Link
           href={`/minigames${characterId ? `?characterId=${characterId}` : ""}`}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-400 transition hover:border-slate-600 hover:text-white"
+          className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
           aria-label="Back to Minigames"
           tabIndex={0}
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-white sm:text-4xl">
+        <h1 className="absolute inset-x-0 text-center font-display text-3xl font-bold uppercase tracking-tight text-white sm:text-4xl">
           Gold Mine
         </h1>
+        <div className="flex-1" />
+        <Link
+          href="/hub"
+          className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
       </div>
 
       {/* Resources */}
       <div className="mb-6 flex items-center gap-4 text-sm font-medium">
-        <span className="text-yellow-400">🪙 {state.gold.toLocaleString()}</span>
-        <span className="text-purple-400">💎 {state.gems.toLocaleString()}</span>
+        <span className="inline-flex items-center gap-1 text-yellow-400"><GameIcon name="gold" size={16} /> {state.gold.toLocaleString()}</span>
+        <span className="inline-flex items-center gap-1 text-purple-400"><GameIcon name="gems" size={16} /> {state.gems.toLocaleString()}</span>
         <span className="text-slate-400">Lv.{state.level}</span>
         {state.isVip && (
           <span className="rounded-full border border-amber-500/40 bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-300">
@@ -343,15 +343,16 @@ const GoldMineContent = () => {
               {!session ? (
                 /* ── Empty slot ── */
                 <div className="flex flex-col items-center gap-3">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-slate-700 text-3xl text-slate-600">
-                    ⛏️
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-slate-700">
+                    <GameIcon name="gold-mine" size={36} className="opacity-50" />
                   </div>
                   <p className="text-xs text-slate-500">Ready to mine</p>
-                  <button
-                    type="button"
+                  <GameButton
+                    variant="action"
+                    size="sm"
+                    fullWidth
                     onClick={handleStartMining}
                     disabled={state.actionLoading !== null}
-                    className="w-full rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-900/30 transition hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={`Start mining in slot ${i + 1}`}
                     tabIndex={0}
                   >
@@ -363,22 +364,22 @@ const GoldMineContent = () => {
                     ) : (
                       "Start Mining"
                     )}
-                  </button>
+                  </GameButton>
                 </div>
               ) : session.ready ? (
                 /* ── Ready to collect ── */
                 <div className="flex flex-col items-center gap-3">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-amber-500/50 bg-amber-900/20 text-3xl animate-bounce">
-                    🪙
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-amber-500/50 bg-amber-900/20 animate-bounce">
+                    <GameIcon name="gold" size={36} />
                   </div>
                   <p className="text-sm font-bold text-amber-300">
                     +{session.reward.toLocaleString()} gold
                   </p>
-                  <button
-                    type="button"
+                  <GameButton
+                    size="sm"
+                    fullWidth
                     onClick={() => handleCollect(session.id, i)}
                     disabled={state.actionLoading !== null}
-                    className="w-full rounded-xl border border-amber-500/40 bg-gradient-to-b from-amber-600 to-amber-700 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-900/30 transition hover:from-amber-500 hover:to-amber-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={`Collect reward from slot ${i + 1}`}
                     tabIndex={0}
                   >
@@ -390,13 +391,13 @@ const GoldMineContent = () => {
                     ) : (
                       "Collect"
                     )}
-                  </button>
+                  </GameButton>
                 </div>
               ) : (
                 /* ── Mining in progress ── */
                 <div className="flex w-full flex-col items-center gap-3">
-                  <div className="relative flex h-20 w-20 items-center justify-center rounded-full border-2 border-slate-600 bg-slate-800/50 text-3xl">
-                    <span className="animate-pulse">⛏️</span>
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-full border-2 border-slate-600 bg-slate-800/50">
+                    <span className="animate-pulse"><GameIcon name="gold-mine" size={36} /></span>
                   </div>
 
                   {/* Progress bar */}
@@ -420,11 +421,13 @@ const GoldMineContent = () => {
                   </p>
 
                   {/* Boost button */}
-                  <button
-                    type="button"
+                  <GameButton
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
                     onClick={() => handleBoost(session.id, i)}
                     disabled={state.actionLoading !== null || state.gems < GOLD_MINE_BOOST_COST_GEMS}
-                    className="w-full rounded-xl border border-purple-500/40 bg-gradient-to-b from-purple-600 to-purple-700 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-purple-900/30 transition hover:from-purple-500 hover:to-purple-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="border-purple-500/40 bg-gradient-to-b from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-900/30 hover:from-purple-500 hover:to-purple-600 hover:text-white"
                     aria-label={`Boost mining in slot ${i + 1} for ${GOLD_MINE_BOOST_COST_GEMS} gems`}
                     tabIndex={0}
                   >
@@ -435,11 +438,11 @@ const GoldMineContent = () => {
                       </span>
                     ) : (
                       <span className="flex items-center justify-center gap-1">
-                        ⚡ Instant Complete
-                        <span className="ml-1 text-purple-300">({GOLD_MINE_BOOST_COST_GEMS} 💎)</span>
+                        <GameIcon name="stamina" size={14} /> Instant Complete
+                        <span className="ml-1 inline-flex items-center gap-0.5 text-purple-300">({GOLD_MINE_BOOST_COST_GEMS} <GameIcon name="gems" size={14} />)</span>
                       </span>
                     )}
-                  </button>
+                  </GameButton>
                 </div>
               )}
             </div>
@@ -455,11 +458,12 @@ const GoldMineContent = () => {
             <p className="text-center text-xs text-slate-500">
               Unlock extra slot
             </p>
-            <button
-              type="button"
+            <GameButton
+              variant="secondary"
+              size="sm"
+              fullWidth
               onClick={handleBuySlot}
               disabled={state.actionLoading !== null || state.gems < GOLD_MINE_SLOT_COST_GEMS}
-              className="w-full rounded-xl border border-purple-500/40 bg-gradient-to-b from-purple-600/80 to-purple-700/80 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-purple-900/30 transition hover:from-purple-500 hover:to-purple-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               aria-label={`Buy extra mining slot for ${GOLD_MINE_SLOT_COST_GEMS} gems`}
               tabIndex={0}
             >
@@ -471,10 +475,10 @@ const GoldMineContent = () => {
               ) : (
                 <span className="flex items-center justify-center gap-1">
                   Buy Slot
-                  <span className="ml-1 text-purple-300">({GOLD_MINE_SLOT_COST_GEMS} 💎)</span>
+                  <span className="ml-1 inline-flex items-center gap-0.5 text-purple-300">({GOLD_MINE_SLOT_COST_GEMS} <GameIcon name="gems" size={14} />)</span>
                 </span>
               )}
-            </button>
+            </GameButton>
           </div>
         )}
       </div>
@@ -483,16 +487,16 @@ const GoldMineContent = () => {
       <div className="w-full max-w-2xl rounded-2xl border border-slate-700/40 bg-slate-800/30 p-4">
         <h3 className="mb-2 font-display text-sm tracking-wider text-slate-400">How it works</h3>
         <ul className="space-y-1 text-xs leading-relaxed text-slate-500">
-          <li>
-            <span className="text-slate-300">⛏️</span> Start mining in a free slot — wait 30 min{" "}
+          <li className="flex items-start gap-1.5">
+            <GameIcon name="gold-mine" size={14} className="mt-0.5 shrink-0" /> Start mining in a free slot — wait 30 min{" "}
             <span className="text-amber-400">(VIP: 15 min)</span>
           </li>
-          <li>
-            <span className="text-slate-300">🪙</span> Collect your reward:{" "}
+          <li className="flex items-start gap-1.5">
+            <GameIcon name="gold" size={14} className="mt-0.5 shrink-0" /> Collect your reward:{" "}
             <span className="font-mono text-amber-300">100 + Level × 3</span> gold
           </li>
-          <li>
-            <span className="text-slate-300">⚡</span> Boost to finish instantly for{" "}
+          <li className="flex items-start gap-1.5">
+            <GameIcon name="stamina" size={14} className="mt-0.5 shrink-0" /> Boost to finish instantly for{" "}
             <span className="text-purple-400">{GOLD_MINE_BOOST_COST_GEMS} gems</span>
           </li>
           <li>
@@ -506,11 +510,12 @@ const GoldMineContent = () => {
       {/* Start mining CTA if all slots empty and none shown */}
       {hasEmptySlot && state.sessions.length === 0 && !state.loading && (
         <div className="mt-6">
-          <button
-            type="button"
+          <GameButton
+            variant="action"
+            size="sm"
+            fullWidth
             onClick={handleStartMining}
             disabled={state.actionLoading !== null}
-            className="rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-700 px-8 py-3 text-sm font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-900/30 transition hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Start your first mining session"
             tabIndex={0}
           >
@@ -522,7 +527,7 @@ const GoldMineContent = () => {
             ) : (
               "Start Mining!"
             )}
-          </button>
+          </GameButton>
         </div>
       )}
     </div>
@@ -530,7 +535,7 @@ const GoldMineContent = () => {
 };
 
 const GoldMinePage = () => (
-  <Suspense fallback={<PageLoader emoji="⛏️" text="Loading Gold Mine..." />}>
+  <Suspense fallback={<PageLoader icon={<GameIcon name="gold-mine" size={32} />} text="Loading Gold Mine..." />}>
     <GoldMineContent />
   </Suspense>
 );

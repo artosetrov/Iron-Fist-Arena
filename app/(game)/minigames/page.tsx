@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
+import GameIcon from "@/app/components/ui/GameIcon";
+import { PageContainer } from "@/app/components/ui";
 
 /* ── Types ── */
 
@@ -86,7 +88,7 @@ const MinigamesContent = () => {
   };
 
   return (
-    <div className="relative flex min-h-full flex-col items-center px-4 py-10">
+    <PageContainer className="items-center">
       <PageHeader title="Tavern" />
       {/* Background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -158,12 +160,12 @@ const MinigamesContent = () => {
           </button>
         ))}
       </div>
-    </div>
+    </PageContainer>
   );
 };
 
 const MinigamesPage = () => (
-  <Suspense fallback={<PageLoader emoji="🍺" text="Entering the Tavern..." />}>
+  <Suspense fallback={<PageLoader icon={<GameIcon name="tavern" size={32} />} text="Entering the Tavern..." />}>
     <MinigamesContent />
   </Suspense>
 );

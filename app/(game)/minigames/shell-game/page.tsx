@@ -1,10 +1,12 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import PageLoader from "@/app/components/PageLoader";
+import GameIcon from "@/app/components/ui/GameIcon";
+import { GameButton, PageContainer } from "@/app/components/ui";
 import {
   SHELL_GAME_MIN_BET,
   SHELL_GAME_MAX_BET,
@@ -61,6 +63,7 @@ const INITIAL_STATE: GameState = {
 
 const ShellGameContent = () => {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const characterId = searchParams.get("characterId");
 
   const [state, setState] = useState<GameState>(INITIAL_STATE);
@@ -296,36 +299,37 @@ const ShellGameContent = () => {
   const isCupClickable = state.phase === "picking" && !state.loading;
 
   return (
-    <div className="relative flex min-h-full flex-col items-center px-4 py-8">
-      <Link
-        href="/hub"
-        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-        aria-label="Back to Hub"
-        tabIndex={0}
-      >
-        ✕
-      </Link>
+    <div className="flex min-h-full flex-col items-center px-4 py-4">
       {/* Header */}
-      <div className="mb-2 flex items-center gap-3">
+      <div className="relative mb-4 flex w-full items-center">
         <Link
           href={`/minigames${characterId ? `?characterId=${characterId}` : ""}`}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-400 transition hover:border-slate-600 hover:text-white"
+          className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
           aria-label="Back to Minigames"
           tabIndex={0}
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-white sm:text-4xl">
+        <h1 className="absolute inset-x-0 text-center font-display text-3xl font-bold uppercase tracking-tight text-white sm:text-4xl">
           Shell Game
         </h1>
+        <div className="flex-1" />
+        <Link
+          href="/hub"
+          className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
       </div>
 
       {/* Gold display */}
       {state.gold !== null && (
-        <p className="mb-6 text-sm font-medium text-yellow-400">
-          🪙 {state.gold.toLocaleString()} gold
+        <p className="mb-6 inline-flex items-center gap-1.5 font-display text-base font-bold text-yellow-400">
+          <GameIcon name="gold" size={18} /> {state.gold.toLocaleString()} gold
         </p>
       )}
 
@@ -486,11 +490,13 @@ const ShellGameContent = () => {
           </div>
 
           {/* Start button */}
-          <button
-            type="button"
+          <GameButton
+            variant="action"
+            size="lg"
+            fullWidth
             onClick={handleStartGame}
             disabled={state.loading || state.gold === null || state.betAmount < SHELL_GAME_MIN_BET}
-            className="w-full max-w-xs rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-700 px-6 py-3 text-sm font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-900/30 transition hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            className="max-w-xs"
             aria-label="Start game"
             tabIndex={0}
           >
@@ -504,7 +510,7 @@ const ShellGameContent = () => {
             ) : (
               `Bet ${state.betAmount.toLocaleString()} Gold`
             )}
-          </button>
+          </GameButton>
 
           {state.betAmount > 0 && state.betAmount < SHELL_GAME_MIN_BET && (
             <p className="text-xs text-amber-500/70">
@@ -517,23 +523,22 @@ const ShellGameContent = () => {
       {/* ── Play again / Back ── */}
       {state.phase === "reveal" && (
         <div className="flex gap-3">
-          <button
-            type="button"
+          <GameButton
+            size="lg"
             onClick={handlePlayAgain}
-            className="rounded-xl border border-amber-500/40 bg-gradient-to-b from-amber-600 to-amber-700 px-6 py-3 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-900/30 transition hover:from-amber-500 hover:to-amber-600 active:scale-[0.98]"
             aria-label="Play again"
             tabIndex={0}
           >
             Play Again
-          </button>
-          <Link
-            href={`/minigames${characterId ? `?characterId=${characterId}` : ""}`}
-            className="flex items-center rounded-xl border border-slate-700 bg-slate-800 px-6 py-3 text-sm font-bold text-slate-300 transition hover:border-slate-600 hover:text-white"
+          </GameButton>
+          <GameButton
+            variant="secondary"
+            onClick={() => router.push(`/minigames${characterId ? `?characterId=${characterId}` : ""}`)}
             aria-label="Back to minigames"
             tabIndex={0}
           >
             Back
-          </Link>
+          </GameButton>
         </div>
       )}
 
@@ -549,7 +554,7 @@ const ShellGameContent = () => {
 };
 
 const ShellGamePage = () => (
-  <Suspense fallback={<PageLoader emoji="🥤" text="Loading Shell Game..." />}>
+  <Suspense fallback={<PageLoader icon={<GameIcon name="shell-game" size={32} />} text="Loading Shell Game..." />}>
     <ShellGameContent />
   </Suspense>
 );

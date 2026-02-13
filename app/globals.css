@@ -24,16 +24,50 @@
   --ds-text: #ffffff;
   --ds-text-muted: #94a3b8;
 
+  /* Page layout */
+  --ds-page-padding: 1rem;
+  --ds-page-padding-lg: 1.5rem;
+  --ds-page-bg: #020617;
+
   /* Button */
-  --ds-btn-radius: 1rem;
-  --ds-btn-px: 1.5rem;
-  --ds-btn-py: 0.75rem;
+  --ds-btn-radius: 0.75rem;
+  --ds-btn-px: 1rem;
+  --ds-btn-py: 0.625rem;
   --ds-btn-font-size: 0.875rem;
   --ds-btn-font-weight: 700;
+  --ds-btn-secondary-bg: rgba(30,41,59,0.8);
+  --ds-btn-secondary-border: #334155;
+  --ds-btn-secondary-text: #94a3b8;
+  --ds-btn-danger-from: #dc2626;
+  --ds-btn-danger-to: #b91c1c;
+  --ds-btn-action-from: #059669;
+  --ds-btn-action-to: #047857;
 
   /* Card */
   --ds-card-radius: 1rem;
   --ds-card-border-width: 2px;
+  --ds-card-bg: rgba(2,6,23,0.95);
+  --ds-card-border-color: rgba(51,65,85,0.8);
+
+  /* Section */
+  --ds-section-bg: rgba(15,23,42,0.8);
+  --ds-section-border: rgba(51,65,85,0.5);
+  --ds-section-radius: 0.75rem;
+  --ds-section-title-color: #e2e8f0;
+
+  /* Modal */
+  --ds-modal-overlay: rgba(0,0,0,0.7);
+  --ds-modal-bg: rgba(15,23,42,0.95);
+  --ds-modal-border: rgba(51,65,85,0.6);
+  --ds-modal-radius: 1rem;
+
+  /* Badge */
+  --ds-badge-radius: 0.375rem;
+
+  /* Progress bar */
+  --ds-progress-bg: rgba(15,23,42,0.8);
+  --ds-progress-radius: 9999px;
+  --ds-progress-height: 0.5rem;
 
   /* Input */
   --ds-input-radius: 0.75rem;
@@ -99,6 +133,107 @@ body {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* ── Hub map: pin float animation ── */
+@keyframes hub-pin-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-hub-pin-float {
+  animation: hub-pin-float 3s ease-in-out infinite;
+}
+
+/* ── Hub map: fire/torch flicker animations ── */
+@keyframes fire-flicker {
+  0%, 100% { opacity: 0.55; transform: scale(1) translateY(0); }
+  15% { opacity: 0.9; transform: scale(1.08) translateY(-6%); }
+  30% { opacity: 0.65; transform: scale(0.95) translateY(2%); }
+  50% { opacity: 1; transform: scale(1.05) translateY(-4%); }
+  70% { opacity: 0.7; transform: scale(0.98) translateY(1%); }
+  85% { opacity: 0.95; transform: scale(1.03) translateY(-3%); }
+}
+
+@keyframes fire-flicker-alt {
+  0%, 100% { opacity: 0.6; transform: scale(1) translateY(0); }
+  20% { opacity: 0.85; transform: scale(1.06) translateY(-5%); }
+  40% { opacity: 0.5; transform: scale(0.94) translateY(3%); }
+  60% { opacity: 0.95; transform: scale(1.04) translateY(-2%); }
+  80% { opacity: 0.7; transform: scale(1.02) translateY(-1%); }
+}
+
+.animate-fire-flicker {
+  animation: fire-flicker 1.8s ease-in-out infinite;
+}
+
+.animate-fire-flicker-alt {
+  animation: fire-flicker-alt 2.1s ease-in-out infinite;
+}
+
+.animate-fire-flicker-slow {
+  animation: fire-flicker 2.6s ease-in-out infinite;
+}
+
+.animate-fire-flicker-fast {
+  animation: fire-flicker-alt 1.3s ease-in-out infinite;
+}
+
+/* ── Hub map: weather particle animations ── */
+
+/* Leaf blowing across screen (left to right, with wobble) */
+@keyframes weather-leaf {
+  0% {
+    transform: translate(-10%, 0) rotate(0deg) scale(0.8);
+    opacity: 0;
+  }
+  5% { opacity: 0.7; }
+  25% { transform: translate(25vw, -3vh) rotate(90deg) scale(1); }
+  50% { transform: translate(55vw, 2vh) rotate(200deg) scale(0.9); }
+  75% { transform: translate(80vw, -1vh) rotate(310deg) scale(1.05); }
+  95% { opacity: 0.6; }
+  100% {
+    transform: translate(110vw, 1vh) rotate(400deg) scale(0.85);
+    opacity: 0;
+  }
+}
+
+/* Sun ray — soft diagonal beam fade in/out */
+@keyframes weather-sunray {
+  0% { opacity: 0; transform: translateY(4%) scaleY(0.95); }
+  20% { opacity: 0.5; }
+  50% { opacity: 0.35; transform: translateY(0) scaleY(1); }
+  80% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-2%) scaleY(1.02); }
+}
+
+/* Firefly / ember floating upward */
+@keyframes weather-firefly {
+  0% {
+    transform: translate(0, 0) scale(0.5);
+    opacity: 0;
+  }
+  15% { opacity: 0.9; transform: translate(5px, -8px) scale(1); }
+  40% { opacity: 0.5; transform: translate(-8px, -25px) scale(0.8); }
+  65% { opacity: 0.85; transform: translate(6px, -45px) scale(1.1); }
+  85% { opacity: 0.4; }
+  100% {
+    transform: translate(-3px, -70px) scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* Dust / mist drifting slowly */
+@keyframes weather-mist {
+  0% { opacity: 0; transform: translateX(-5%) scaleX(1); }
+  30% { opacity: 0.25; }
+  50% { opacity: 0.2; transform: translateX(2%) scaleX(1.05); }
+  70% { opacity: 0.25; }
+  100% { opacity: 0; transform: translateX(8%) scaleX(1.1); }
 }
 
 /* ── Combat animations ── */
@@ -200,6 +335,192 @@ body {
   animation: dodge-slide 0.5s ease-in-out;
 }
 
+/* ── Combat VFX: Projectile fly ── */
+@keyframes projectile-fly-right {
+  0% {
+    transform: translateX(-120px) translateY(0) scale(0.4) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(-60px) scale(1) rotate(20deg);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(220px) translateY(0) scale(0.7) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes projectile-fly-left {
+  0% {
+    transform: translateX(120px) translateY(0) scale(0.4) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(60px) scale(1) rotate(-20deg);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-220px) translateY(0) scale(0.7) rotate(-360deg);
+    opacity: 0;
+  }
+}
+
+.animate-projectile-right {
+  animation: projectile-fly-right 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-projectile-left {
+  animation: projectile-fly-left 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  will-change: transform, opacity;
+}
+
+/* ── Combat VFX: Impact burst ── */
+@keyframes impact-burst {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.animate-impact-burst {
+  animation: impact-burst 0.5s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+/* ── Combat VFX: Pop-up text ── */
+@keyframes pop-text {
+  0% {
+    transform: scale(0) rotate(-10deg);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1.4) rotate(5deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1) rotate(-3deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1.15) rotate(2deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.8) translateY(-35px);
+    opacity: 0;
+  }
+}
+
+.animate-pop-text {
+  animation: pop-text 0.9s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+/* ── Combat VFX: Screen shake ── */
+@keyframes screen-shake {
+  0%, 100% {
+    transform: translate(0);
+  }
+  10% {
+    transform: translate(-8px, 4px);
+  }
+  30% {
+    transform: translate(6px, -3px);
+  }
+  50% {
+    transform: translate(-5px, 2px);
+  }
+  70% {
+    transform: translate(4px, -2px);
+  }
+  90% {
+    transform: translate(-2px, 1px);
+  }
+}
+
+.animate-screen-shake {
+  animation: screen-shake 0.4s ease-in-out;
+}
+
+/* ── Combat VFX: Pop-text color variants ── */
+.combat-pop-normal {
+  color: #fbbf24; /* amber-400 */
+}
+.combat-pop-crit {
+  color: #f87171; /* red-400 */
+  font-size: 2rem;
+}
+.combat-pop-dodge {
+  color: #67e8f9; /* cyan-300 */
+}
+.combat-pop-heal {
+  color: #4ade80; /* green-400 */
+}
+.combat-pop-buff {
+  color: #fcd34d; /* amber-300 */
+}
+.combat-impact-crit {
+  filter: hue-rotate(-20deg) saturate(1.5);
+}
+
+/* ── Combat VFX: Status tick overlay ── */
+@keyframes status-tick-pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(1.1);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+
+.animate-status-tick {
+  animation: status-tick-pulse 0.7s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+/* ── Combat Loading Screen: sliding bar ── */
+@keyframes loading-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(200%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
 /* ── Modal animation ── */
 @keyframes scaleIn {
   0% {
@@ -287,8 +608,8 @@ body {
 /* ── Dungeon card ── */
 .dungeon-card {
   scroll-snap-align: center;
-  flex: 0 0 min(320px, 80vw);
-  min-height: 480px;
+  flex: 0 0 min(640px, 85vw);
+  min-height: 700px;
   transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
     box-shadow 0.35s ease;
 }

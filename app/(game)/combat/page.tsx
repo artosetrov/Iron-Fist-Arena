@@ -1,13 +1,20 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PageHeader from "@/app/components/PageHeader";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatResultModal from "@/app/components/CombatResultModal";
+import CombatLoadingScreen from "@/app/components/CombatLoadingScreen";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
-import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
+import { GameButton, PageContainer } from "@/app/components/ui";
+import GameIcon from "@/app/components/ui/GameIcon";
+import type { GameIconKey } from "@/app/components/ui/GameIcon";
+import {
+  collectBattleAssets,
+  preloadImages,
+} from "@/lib/game/preload-combat-assets";
 
 /* ────────────────── Types ────────────────── */
 
@@ -89,7 +96,7 @@ type TrainingStatus = {
 type PresetCard = {
   id: string;
   label: string;
-  icon: string;
+  icon: GameIconKey;
   description: string;
   /** Weight applied to player VIT when computing dummy HP */
   vitW: number;
@@ -99,28 +106,28 @@ const PRESETS: PresetCard[] = [
   {
     id: "warrior",
     label: "Warrior Dummy",
-    icon: "⚔️",
+    icon: "warrior",
     description: "High STR, moderate VIT. Hits hard but predictable.",
     vitW: 1.0,
   },
   {
     id: "rogue",
     label: "Rogue Dummy",
-    icon: "🗡️",
+    icon: "rogue",
     description: "High AGI & LCK. Fast and evasive, but fragile.",
     vitW: 0.6,
   },
   {
     id: "mage",
     label: "Mage Dummy",
-    icon: "🔮",
+    icon: "mage",
     description: "High INT & WIS. Devastating spells, low HP.",
     vitW: 0.7,
   },
   {
     id: "tank",
     label: "Tank Dummy",
-    icon: "🛡️",
+    icon: "tank",
     description: "High VIT & END. Extremely tanky but slow.",
     vitW: 1.3,
   },
@@ -143,6 +150,7 @@ const getDummyHp = (playerVitality: number, vitW: number) => {
 
 type ScreenState =
   | { kind: "select" }
+  | { kind: "loading"; preset: string }
   | { kind: "battle"; result: CombatResult }
   | { kind: "result"; result: CombatResult };
 
@@ -197,7 +205,7 @@ const TrainingCardBack = ({
 
       {/* Icon + Name */}
       <div className="mb-3 flex flex-col items-center gap-1">
-        <span className="text-4xl">{card.icon}</span>
+        <GameIcon name={card.icon} size={40} />
         <p className="font-display text-lg font-bold text-white">{card.label}</p>
         <p className="text-xs text-slate-500">Level {dummyLvl} · HP {dummyHp}</p>
       </div>
@@ -220,23 +228,20 @@ const TrainingCardBack = ({
       )}
 
       {/* Train button */}
-      <button
-        type="button"
+      <GameButton
         onClick={handleTrain}
         disabled={limitReached || fighting}
         aria-label={limitReached ? "Daily limit reached" : `Train vs ${card.label}`}
-        className={`mt-auto w-full rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-md transition ${
-          limitReached
-            ? "cursor-not-allowed bg-slate-700 text-slate-400 shadow-none"
-            : "bg-gradient-to-r from-amber-600 to-orange-600 shadow-amber-900/30 hover:from-amber-500 hover:to-orange-500"
-        } disabled:opacity-50`}
+        variant={limitReached ? "secondary" : "primary"}
+        fullWidth
+        className="mt-auto"
       >
         {limitReached
           ? "Daily Limit Reached"
           : fighting
             ? "Fighting…"
-            : `${card.icon} Train`}
-      </button>
+            : <><GameIcon name={card.icon} size={16} className="-mt-0.5" /> Train</>}
+      </GameButton>
     </div>
   );
 };
@@ -246,7 +251,6 @@ const TrainingCardBack = ({
 function CombatContent() {
   const searchParams = useSearchParams();
   const characterId = searchParams.get("characterId");
-  const avatarSrc = useCharacterAvatar(characterId);
   const [character, setCharacter] = useState<Character | null>(null);
   const [preset, setPreset] = useState("warrior");
   const [flippedCard, setFlippedCard] = useState<string | null>(null);
@@ -292,13 +296,22 @@ function CombatContent() {
     }
   }, [characterId]);
 
+  /* Ref to prevent double-fire during loading */
+  const loadingRef = useRef(false);
+
   const handleTrain = async (overridePreset?: string) => {
-    if (!character) return;
+    if (!character || loadingRef.current) return;
     const selectedPreset = overridePreset ?? preset;
     setPreset(selectedPreset);
     setError(null);
     setFighting(true);
+    loadingRef.current = true;
+
+    /* Immediately show loading screen */
+    setScreen({ kind: "loading", preset: selectedPreset });
+
     try {
+      /* Fire API call */
       const res = await fetch("/api/combat/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -312,11 +325,23 @@ function CombatContent() {
         throw new Error(err.error ?? "Battle error");
       }
       const data = (await res.json()) as CombatResult;
+
+      /* Preload all VFX assets needed for this specific battle */
+      const assets = collectBattleAssets(
+        data.log,
+        data.playerSnapshot,
+        data.enemySnapshot,
+      );
+      await preloadImages(assets);
+
+      /* All ready — transition to battle */
       setScreen({ kind: "battle", result: data });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
+      setScreen({ kind: "select" });
     } finally {
       setFighting(false);
+      loadingRef.current = false;
     }
   };
 
@@ -331,15 +356,21 @@ function CombatContent() {
     refreshStatus();
     // Reload character to reflect XP/level changes
     if (characterId) {
-      fetch(`/api/characters/${characterId}`)
-        .then((r) => r.json())
-        .then(setCharacter)
+      const controller = new AbortController();
+      fetch(`/api/characters/${characterId}`, { signal: controller.signal })
+        .then((r) => { if (!r.ok) throw new Error("Failed"); return r.json(); })
+        .then((data) => { if (!controller.signal.aborted) setCharacter(data); })
         .catch(() => {});
     }
   };
 
   if (loading || !character) {
-    return <PageLoader emoji="🎯" text="Loading Training Arena…" avatarSrc={avatarSrc} />;
+    return <PageLoader icon={<GameIcon name="training" size={32} />} text="Loading Training Arena…" />;
+  }
+
+  /* ── Loading screen (preloading VFX assets + waiting for API) ── */
+  if (screen.kind === "loading") {
+    return <CombatLoadingScreen preset={screen.preset} />;
   }
 
   /* ── Battle screen ── */
@@ -358,7 +389,7 @@ function CombatContent() {
   const limitReached = status !== null && status.remaining <= 0;
 
   return (
-    <div className="flex min-h-full flex-col p-4 lg:p-6">
+    <PageContainer>
       <PageHeader title="Training Arena" />
 
       <p className="mb-2 text-xs text-slate-500 text-center">
@@ -404,16 +435,15 @@ function CombatContent() {
 
           return (
             <div key={card.id} className="w-[280px] flex-shrink-0 snap-center">
-              <HeroCard
-                name={card.label}
-                className={card.id}
-                icon={card.icon}
-                level={dummyLvl}
-                hp={{ current: dummyHp, max: dummyHp }}
-                onClick={() => setFlippedCard(card.id)}
-                ariaLabel={`View ${card.label}`}
-                description={card.description}
-              />
+                <HeroCard
+                    name={card.label}
+                    className={card.id}
+                    level={dummyLvl}
+                    hp={{ current: dummyHp, max: dummyHp }}
+                    onClick={() => setFlippedCard(card.id)}
+                    ariaLabel={`View ${card.label}`}
+                    description={card.description}
+                  />
             </div>
           );
         })}
@@ -424,7 +454,7 @@ function CombatContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:hidden">
           <div className="w-full max-w-sm">
             <TrainingCardBack
-              card={PRESETS.find((p) => p.id === flippedCard)!}
+              card={PRESETS.find((p) => p.id === flippedCard) ?? PRESETS[0]}
               character={character}
               limitReached={limitReached}
               fighting={fighting}
@@ -451,7 +481,6 @@ function CombatContent() {
                   <HeroCard
                     name={card.label}
                     className={card.id}
-                    icon={card.icon}
                     level={dummyLvl}
                     hp={{ current: dummyHp, max: dummyHp }}
                     onClick={() => setFlippedCard(card.id)}
@@ -511,7 +540,7 @@ function CombatContent() {
           trainingRewards={screen.result.rewards}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -519,7 +548,7 @@ function CombatContent() {
 
 export default function CombatPage() {
   return (
-    <Suspense fallback={<PageLoader emoji="🎯" text="Loading Training Arena…" />}>
+    <Suspense fallback={<PageLoader icon={<GameIcon name="training" size={32} />} text="Loading Training Arena…" />}>
       <CombatContent />
     </Suspense>
   );

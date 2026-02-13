@@ -28,7 +28,12 @@ export async function PATCH(
     }
 
     const { id: characterId } = await params;
-    const body = await request.json().catch(() => ({}));
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const originRaw = body?.origin as string;
 
     if (!VALID_ORIGINS.includes(originRaw as CharacterOrigin)) {

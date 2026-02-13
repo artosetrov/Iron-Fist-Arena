@@ -7,7 +7,11 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
-  const redirect = searchParams.get("redirect") ?? "/hub";
+  const rawRedirect = searchParams.get("redirect") ?? "/hub";
+  // Sanitize redirect: only allow relative paths starting with /
+  const redirect = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+    ? rawRedirect
+    : "/hub";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);
@@ -49,5 +53,23 @@ export async function GET(request: NextRequest) {
     console.error("[auth/callback] sync-user error:", syncErr);
   }
 
-  return NextResponse.redirect(`${origin}${redirect}`);
+  // Check if user has characters — if not, send to onboarding
+  let destination = redirect;
+  try {
+    const charUrl = new URL("/api/characters", origin);
+    const charRes = await fetch(charUrl.toString(), {
+      headers: { cookie: cookieStore.toString() },
+    });
+    if (charRes.ok) {
+      const charData = await charRes.json();
+      const hasCharacters = (charData.characters?.length ?? 0) > 0;
+      if (!hasCharacters) {
+        destination = "/onboarding";
+      }
+    }
+  } catch (charErr) {
+    console.error("[auth/callback] character check error:", charErr);
+  }
+
+  return NextResponse.redirect(`${origin}${destination}`);
 }

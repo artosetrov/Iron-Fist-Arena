@@ -3,14 +3,16 @@
 import { memo, useState } from "react";
 import Image from "next/image";
 import { getRankFromRating } from "@/lib/game/elo";
+import GameIcon from "@/app/components/ui/GameIcon";
+import type { GameIconKey } from "@/app/components/ui/GameIcon";
 
 /* ────────────────── Shared Constants ────────────────── */
 
-export const CLASS_ICON: Record<string, string> = {
-  warrior: "⚔️",
-  rogue: "🗡️",
-  mage: "🔮",
-  tank: "🛡️",
+export const CLASS_ICON: Record<string, GameIconKey> = {
+  warrior: "warrior",
+  rogue: "rogue",
+  mage: "mage",
+  tank: "tank",
 };
 
 export const CLASS_GRADIENT: Record<string, string> = {
@@ -106,7 +108,7 @@ const DEFAULT_FRAME_VARS: FrameStyle = {
 
 type StatCircleProps = {
   value: number;
-  icon: string;
+  icon: GameIconKey;
   color: string;
   /** Hex color for the fill ring */
   fillColor: string;
@@ -213,7 +215,7 @@ const RatingBadge = ({ rating, classKey }: { rating: number; classKey: string })
   const [hovered, setHovered] = useState(false);
   const rank = getRankFromRating(rating);
   const badgeColor = CLASS_BADGE_COLOR[classKey] ?? DEFAULT_BADGE_COLOR;
-  const classIcon = CLASS_ICON[classKey] ?? "👤";
+  const classIconKey = CLASS_ICON[classKey];
 
   return (
     <div
@@ -221,8 +223,8 @@ const RatingBadge = ({ rating, classKey }: { rating: number; classKey: string })
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 ${badgeColor.border} bg-slate-900/90 text-lg shadow-lg`}>
-        {classIcon}
+      <div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 ${badgeColor.border} bg-slate-900/90 shadow-lg`}>
+        {classIconKey ? <GameIcon name={classIconKey} size={22} /> : "👤"}
       </div>
       {hovered && (
         <div className="pointer-events-none absolute -bottom-7 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[10px] font-medium text-slate-300 shadow-lg">
@@ -323,7 +325,8 @@ const HeroCard = memo(({
 }: HeroCardProps) => {
   const classKey = cls?.toLowerCase() ?? "";
   const frame = CLASS_FRAME_VARS[classKey] ?? DEFAULT_FRAME_VARS;
-  const classIcon = icon ?? CLASS_ICON[classKey] ?? "👤";
+  const classIconKey = CLASS_ICON[classKey];
+  const customIcon = icon; // custom emoji string passed via prop
 
   // Determine which image to show
   const resolvedImage = imageSrc ?? BOSS_IMAGES[name] ?? (origin ? ORIGIN_IMAGE[origin] : undefined);
@@ -341,14 +344,14 @@ const HeroCard = memo(({
 
   // Stat config
   const statConfig = [
-    { key: "strength", icon: "⚔️", color: "border-red-500", fillColor: "#ef4444", label: "Strength" },
-    { key: "agility", icon: "🏃", color: "border-emerald-500", fillColor: "#10b981", label: "Agility" },
-    { key: "intelligence", icon: "🧠", color: "border-blue-500", fillColor: "#3b82f6", label: "Intelligence" },
-    { key: "vitality", icon: "❤️", color: "border-pink-500", fillColor: "#ec4899", label: "Vitality" },
-    { key: "luck", icon: "🍀", color: "border-amber-500", fillColor: "#f59e0b", label: "Luck" },
-    { key: "endurance", icon: "🛡️", color: "border-orange-500", fillColor: "#f97316", label: "Endurance" },
-    { key: "wisdom", icon: "📖", color: "border-indigo-500", fillColor: "#6366f1", label: "Wisdom" },
-    { key: "charisma", icon: "✨", color: "border-purple-500", fillColor: "#a855f7", label: "Charisma" },
+    { key: "strength", icon: "strength" as GameIconKey, color: "border-red-500", fillColor: "#ef4444", label: "Strength" },
+    { key: "agility", icon: "agility" as GameIconKey, color: "border-emerald-500", fillColor: "#10b981", label: "Agility" },
+    { key: "intelligence", icon: "intelligence" as GameIconKey, color: "border-blue-500", fillColor: "#3b82f6", label: "Intelligence" },
+    { key: "vitality", icon: "vitality" as GameIconKey, color: "border-pink-500", fillColor: "#ec4899", label: "Vitality" },
+    { key: "luck", icon: "luck" as GameIconKey, color: "border-amber-500", fillColor: "#f59e0b", label: "Luck" },
+    { key: "endurance", icon: "endurance" as GameIconKey, color: "border-orange-500", fillColor: "#f97316", label: "Endurance" },
+    { key: "wisdom", icon: "wisdom" as GameIconKey, color: "border-indigo-500", fillColor: "#6366f1", label: "Wisdom" },
+    { key: "charisma", icon: "charisma" as GameIconKey, color: "border-purple-500", fillColor: "#a855f7", label: "Charisma" },
   ] as const;
 
   const visibleStats = stats
@@ -454,8 +457,14 @@ const HeroCard = memo(({
 
         {/* Class icon badge — top-left (only when no rating) */}
         {rating === undefined && classKey && (
-          <div className="absolute left-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-slate-500/80 bg-slate-900/90 text-lg shadow-lg">
-            {classIcon}
+          <div className="absolute left-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-slate-500/80 bg-slate-900/90 shadow-lg">
+            {customIcon ? (
+              <span className="text-lg">{customIcon}</span>
+            ) : classIconKey ? (
+              <GameIcon name={classIconKey} size={22} />
+            ) : (
+              <span className="text-lg">👤</span>
+            )}
           </div>
         )}
       </div>

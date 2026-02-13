@@ -1,20 +1,22 @@
 "use client";
 
 import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
 import { xpForLevel } from "@/lib/game/progression";
 import { goldCostForStatTraining } from "@/lib/game/stat-training";
-import { isWeaponTwoHanded } from "@/lib/game/item-catalog";
+import { isWeaponTwoHanded, getItemImagePath, getCatalogItemById } from "@/lib/game/item-catalog";
 import { MAX_STAT_VALUE } from "@/lib/game/balance";
 import {
   WEAPON_AFFINITY_BONUS,
   getWeaponCategory,
   hasWeaponAffinity,
 } from "@/lib/game/weapon-affinity";
-import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
+import { GameButton } from "@/app/components/ui";
+import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
 
 /* ────────────────── Types ────────────────── */
 
@@ -91,11 +93,18 @@ type ApiResponse = {
 
 /* ────────────────── Constants ────────────────── */
 
-const CLASS_ICON: Record<string, string> = {
-  warrior: "⚔️",
-  rogue: "🗡️",
-  mage: "🔮",
-  tank: "🛡️",
+const CLASS_ICON: Record<string, GameIconKey> = {
+  warrior: "warrior",
+  rogue: "rogue",
+  mage: "mage",
+  tank: "tank",
+};
+
+const CLASS_BG_IMAGE: Record<string, string> = {
+  warrior: "/images/classes/class-warrior-bg.png",
+  rogue: "/images/classes/class-rogue-bg.png",
+  mage: "/images/classes/class-mage-bg.png",
+  tank: "/images/classes/class-tank-bg.png",
 };
 
 const ORIGIN_IMAGE: Record<string, string> = {
@@ -124,19 +133,34 @@ const SLOT_LABELS: Record<SlotKey, string> = {
   relic: "Relic",
 };
 
-const SLOT_ICONS: Record<SlotKey, string> = {
-  helmet: "👑",
-  weapon: "⚔️",
-  weapon_offhand: "🗡️",
-  chest: "🛡️",
-  gloves: "🧤",
-  legs: "👖",
-  boots: "👢",
-  ring: "💍",
-  accessory: "💍",
-  amulet: "🧿",
-  belt: "🪢",
-  relic: "🔮",
+const SLOT_ICONS: Record<SlotKey, GameIconKey> = {
+  helmet: "helmet",
+  weapon: "weapon",
+  weapon_offhand: "weapon-offhand",
+  chest: "chest",
+  gloves: "gloves",
+  legs: "legs",
+  boots: "boots",
+  ring: "ring",
+  accessory: "accessory",
+  amulet: "amulet",
+  belt: "belt",
+  relic: "relic",
+};
+
+const SLOT_IMAGES: Record<SlotKey, string> = {
+  helmet: "/images/ui/slots/slot-helmet.png",
+  weapon: "/images/ui/slots/slot-weapon.png",
+  weapon_offhand: "/images/ui/slots/slot-weapon-offhand.png",
+  chest: "/images/ui/slots/slot-chest.png",
+  gloves: "/images/ui/slots/slot-gloves.png",
+  legs: "/images/ui/slots/slot-legs.png",
+  boots: "/images/ui/slots/slot-boots.png",
+  ring: "/images/ui/slots/slot-ring.png",
+  accessory: "/images/ui/slots/slot-accessory.png",
+  amulet: "/images/ui/slots/slot-amulet.png",
+  belt: "/images/ui/slots/slot-belt.png",
+  relic: "/images/ui/slots/slot-relic.png",
 };
 
 const RARITY_BORDER: Record<string, string> = {
@@ -171,6 +195,40 @@ const RARITY_LABEL: Record<string, string> = {
   legendary: "Legendary",
 };
 
+/** Full rarity config for detail modal (matches shop style) */
+const RARITY_CONFIG: Record<string, { label: string; text: string; border: string; bg: string; glow: string; badge: string }> = {
+  common: { label: "Common", text: "text-slate-300", border: "border-slate-600", bg: "bg-slate-800/60", glow: "", badge: "bg-slate-700 text-slate-300" },
+  uncommon: { label: "Uncommon", text: "text-green-400", border: "border-green-700/60", bg: "bg-green-950/30", glow: "shadow-[0_0_12px_rgba(34,197,94,0.08)]", badge: "bg-green-900/60 text-green-400" },
+  rare: { label: "Rare", text: "text-blue-400", border: "border-blue-700/60", bg: "bg-blue-950/30", glow: "shadow-[0_0_16px_rgba(59,130,246,0.1)]", badge: "bg-blue-900/60 text-blue-400" },
+  epic: { label: "Epic", text: "text-purple-400", border: "border-purple-700/60", bg: "bg-purple-950/30", glow: "shadow-[0_0_20px_rgba(168,85,247,0.12)]", badge: "bg-purple-900/60 text-purple-400" },
+  legendary: { label: "Legendary", text: "text-amber-400", border: "border-amber-600/60", bg: "bg-amber-950/30", glow: "shadow-[0_0_24px_rgba(245,158,11,0.15)]", badge: "bg-amber-900/60 text-amber-400" },
+};
+
+/** Stat icon/label mapping for detail modal (matches shop style) */
+const STAT_CONFIG: Record<string, { label: string; icon: GameIconKey | null; iconEmoji?: string }> = {
+  strength: { label: "Strength", icon: "strength" },
+  agility: { label: "Agility", icon: "agility" },
+  vitality: { label: "Vitality", icon: "vitality" },
+  intelligence: { label: "Intelligence", icon: "intelligence" },
+  wisdom: { label: "Wisdom", icon: "wisdom" },
+  luck: { label: "Luck", icon: "luck" },
+  charisma: { label: "Charisma", icon: "charisma" },
+  crit_chance: { label: "Crit", icon: null, iconEmoji: "💥" },
+  crit_damage: { label: "Crit Damage", icon: null, iconEmoji: "🔥" },
+  armor: { label: "Armor", icon: "endurance" },
+  magic_resist: { label: "Magic Resist", icon: "relic" },
+  dodge: { label: "Dodge", icon: "agility" },
+  attack: { label: "Attack", icon: "weapon" },
+  defense: { label: "Defense", icon: "chest" },
+  hp: { label: "HP", icon: "vitality" },
+  ATK: { label: "Attack", icon: "weapon" },
+  DEF: { label: "Defense", icon: "chest" },
+  HP: { label: "Health", icon: "vitality" },
+  CRIT: { label: "Crit", icon: null, iconEmoji: "💥" },
+  SPEED: { label: "Speed", icon: "stamina" },
+  ARMOR: { label: "Armor", icon: "endurance" },
+};
+
 const CLASS_LABEL: Record<string, string> = {
   warrior: "Warrior",
   rogue: "Rogue",
@@ -178,11 +236,11 @@ const CLASS_LABEL: Record<string, string> = {
   tank: "Tank",
 };
 
-const CLASS_BADGE_ICON: Record<string, string> = {
-  warrior: "⚔️",
-  rogue: "🗡️",
-  mage: "🔮",
-  tank: "🛡️",
+const CLASS_BADGE_ICON: Record<string, GameIconKey> = {
+  warrior: "warrior",
+  rogue: "rogue",
+  mage: "mage",
+  tank: "tank",
 };
 
 const CLASS_BADGE_STYLE: Record<string, string> = {
@@ -209,6 +267,31 @@ const getInvItemClass = (inv: InventoryItem): string | null => {
 };
 
 const INVENTORY_SLOTS_TOTAL = 50;
+
+/** Map itemType to the correct image filename (weapons use their category). */
+const resolveItemFilename = (item: ItemDef): string => {
+  if (item.itemType === "weapon") {
+    return getWeaponCategory(item) ?? "sword";
+  }
+  if (item.itemType === "accessory") return "amulet";
+  return item.itemType;
+};
+
+/** Resolve the item image path from an InventoryItem using the catalog.
+ *  Falls back to generic rarity/slot image for procedural items without catalogId. */
+const getInvItemImagePath = (inv: InventoryItem): string | undefined => {
+  const { catalogId, rarity } = inv.item;
+  // Catalog item — unique image
+  if (catalogId) {
+    const catalogItem = getCatalogItemById(catalogId);
+    if (catalogItem) return getItemImagePath(catalogItem);
+  }
+  // Generic item — use rarity + resolved filename
+  if (rarity === "common" || rarity === "rare") {
+    return `/images/items/${rarity}/${resolveItemFilename(inv.item)}.png`;
+  }
+  return undefined;
+};
 
 /* ────────────────── Helpers ────────────────── */
 
@@ -289,7 +372,7 @@ const ItemTooltip = ({ inv, equippedItem, style, characterClass }: TooltipProps)
       </p>
       {itemClass && (
         <span className={`mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold ${CLASS_BADGE_STYLE[itemClass] ?? "bg-slate-800 text-slate-400 border-slate-700"}`}>
-          <span className="text-xs">{CLASS_BADGE_ICON[itemClass] ?? "👤"}</span>
+          <GameIcon name={CLASS_BADGE_ICON[itemClass] ?? "warrior"} size={14} />
           {CLASS_LABEL[itemClass] ?? itemClass}
         </span>
       )}
@@ -321,11 +404,11 @@ const ItemTooltip = ({ inv, equippedItem, style, characterClass }: TooltipProps)
       )}
 
       {inv.item.specialEffect && (
-        <p className="mt-2 text-xs text-yellow-300">✨ {inv.item.specialEffect}</p>
+        <p className="mt-2 flex items-center gap-1 text-xs text-yellow-300"><GameIcon name="xp" size={14} /> {inv.item.specialEffect}</p>
       )}
 
       {inv.item.uniquePassive && (
-        <p className="mt-2 text-xs text-cyan-300">🔮 {inv.item.uniquePassive}</p>
+        <p className="mt-2 flex items-center gap-1 text-xs text-cyan-300"><GameIcon name="relic" size={14} /> {inv.item.uniquePassive}</p>
       )}
 
       {inv.item.description && (
@@ -446,11 +529,31 @@ const EquipmentSlot = ({
       {locked ? (
         <span className="text-xl opacity-20">🔒</span>
       ) : item ? (
-        <span className="text-2xl" title={item.item.itemName}>
-          {SLOT_ICONS[slotKey === "weapon_offhand" ? "weapon_offhand" : (item.item.itemType as SlotKey)] ?? "📦"}
+        <span title={item.item.itemName}>
+          {(() => {
+            const imgPath = getInvItemImagePath(item);
+            if (imgPath) {
+              return (
+                <Image
+                  src={imgPath}
+                  alt={item.item.itemName}
+                  width={48}
+                  height={48}
+                  className="object-contain"
+                />
+              );
+            }
+            return <GameIcon name={SLOT_ICONS[slotKey === "weapon_offhand" ? "weapon_offhand" : (item.item.itemType as SlotKey)] ?? "chest"} size={32} />;
+          })()}
         </span>
       ) : (
-        <span className="text-xl opacity-20">{SLOT_ICONS[slotKey]}</span>
+        <Image
+          src={SLOT_IMAGES[slotKey]}
+          alt={SLOT_LABELS[slotKey]}
+          width={40}
+          height={40}
+          className="pointer-events-none opacity-60 brightness-150"
+        />
       )}
 
       {!locked && item && item.upgradeLevel > 0 && (
@@ -553,7 +656,21 @@ const InventoryCell = memo(({
       onMouseEnter={(e) => onHoverItem(inv, e)}
       onMouseLeave={() => onHoverItem(null)}
     >
-      <span className="text-lg">{SLOT_ICONS[inv.item.itemType as SlotKey] ?? "📦"}</span>
+      {(() => {
+        const imgPath = getInvItemImagePath(inv);
+        if (imgPath) {
+          return (
+            <Image
+              src={imgPath}
+              alt={inv.item.itemName}
+              width={40}
+              height={40}
+              className="object-contain"
+            />
+          );
+        }
+        return <GameIcon name={SLOT_ICONS[inv.item.itemType as SlotKey] ?? "chest"} size={24} />;
+      })()}
       {inv.upgradeLevel > 0 && (
         <span className="absolute -right-0.5 -top-0.5 rounded bg-yellow-600 px-0.5 text-[9px] font-bold text-white">
           +{inv.upgradeLevel}
@@ -567,10 +684,10 @@ const InventoryCell = memo(({
         if (!cls) return null;
         return (
           <span
-            className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[8px] shadow ring-1 ring-slate-700"
+            className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 shadow ring-1 ring-slate-700"
             title={CLASS_LABEL[cls] ?? cls}
           >
-            {CLASS_BADGE_ICON[cls] ?? "👤"}
+            <GameIcon name={CLASS_BADGE_ICON[cls] ?? "warrior"} size={12} />
           </span>
         );
       })()}
@@ -627,7 +744,7 @@ const AttributesTab = ({
             onClick={onToggleMode}
             className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${
               upgradeMode === "points"
-                ? "bg-indigo-600 text-white"
+                ? "bg-amber-600 text-white"
                 : "bg-slate-700 text-slate-400 hover:text-white"
             }`}
             aria-label="Switch to stat points mode"
@@ -685,7 +802,7 @@ const AttributesTab = ({
                       className={`flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold transition
                         ${canUpgrade && !isAllocating
                           ? upgradeMode === "points"
-                            ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                            ? "bg-amber-600 text-white hover:bg-amber-500"
                             : "bg-yellow-600 text-white hover:bg-yellow-500"
                           : "cursor-not-allowed bg-slate-700/50 text-slate-600"
                         }
@@ -729,7 +846,7 @@ type DescTabProps = {
 const DescriptionTab = ({ character }: DescTabProps) => (
   <div className="space-y-3 text-sm text-slate-300">
     <div className="flex items-center gap-3">
-      <span className="text-xl">⚔️</span>
+      <GameIcon name="warrior" size={24} />
       <div>
         <p className="font-bold text-white">{character.characterName}</p>
         <p className="text-xs text-slate-400">{CLASS_LABEL[character.class] ?? character.class}</p>
@@ -763,7 +880,7 @@ const DescriptionTab = ({ character }: DescTabProps) => (
     </div>
     {character.statPointsAvailable > 0 && (
       <p className="rounded bg-amber-900/30 px-2 py-1.5 text-xs text-amber-300">
-        🔔 Stat points available: {character.statPointsAvailable}
+        <GameIcon name="xp" size={14} /> Stat points available: {character.statPointsAvailable}
       </p>
     )}
   </div>
@@ -846,6 +963,36 @@ const getSellPrice = (inv: InventoryItem): number => {
   return inv.item.itemLevel * rarityMult * 10 + statBonusValue;
 };
 
+/* ────────────────── Detail Modal Helpers ────────────────── */
+
+/** Determine the "primary stat" label for the modal header (like D4 "1150 Defense") */
+const getInvPrimaryStat = (inv: InventoryItem): { label: string; value: number } | null => {
+  const stats = getItemStats(inv);
+  const isArmor = ["helmet", "chest", "gloves", "legs", "boots"].includes(inv.item.itemType);
+  if (isArmor && stats.DEF) return { label: "Defense", value: stats.DEF };
+  if (stats.ATK) return { label: "Attack", value: stats.ATK };
+  if (stats.DEF) return { label: "Defense", value: stats.DEF };
+  if (stats.HP) return { label: "Health", value: stats.HP };
+  return null;
+};
+
+/** Large item image for detail modal */
+const DetailItemImage = ({ inv, size = 176 }: { inv: InventoryItem; size?: number }) => {
+  const imgPath = getInvItemImagePath(inv);
+  if (imgPath) {
+    return (
+      <Image
+        src={imgPath}
+        alt={inv.item.itemName}
+        width={size}
+        height={size}
+        className="object-contain"
+      />
+    );
+  }
+  return <GameIcon name={SLOT_ICONS[inv.item.itemType as SlotKey] ?? "chest"} size={Math.round(size * 0.5)} />;
+};
+
 /* ────────────────── Selected Item Detail Panel ────────────────── */
 
 type ItemDetailProps = {
@@ -862,140 +1009,240 @@ type ItemDetailProps = {
 };
 
 const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose, mainHandTwoHanded, characterClass }: ItemDetailProps) => {
-  const rarity = inv.item.rarity;
   const stats = getItemStats(inv);
+  const statEntries = Object.entries(stats).filter(([, v]) => v !== 0);
   const isWeapon = inv.item.itemType.toLowerCase() === "weapon";
   const isTwoHanded = isWeapon && !!inv.item.catalogId && isWeaponTwoHanded(inv.item.catalogId);
   const showAffinity = characterClass ? checkWeaponAffinity(inv, characterClass) : false;
   const itemClass = getInvItemClass(inv);
+  const rarity = RARITY_CONFIG[inv.item.rarity] ?? RARITY_CONFIG.common;
+  const primaryStat = getInvPrimaryStat(inv);
+  const catalogItem = inv.item.catalogId ? getCatalogItemById(inv.item.catalogId) : null;
+  const weaponCat = catalogItem?.weaponCategory;
+  const twoHandedLabel = catalogItem?.twoHanded;
 
-  return (
-    <div className={`rounded-xl border-2 p-4 ${RARITY_BORDER[rarity]} bg-slate-900/90`}>
-      <div className="mb-3 flex items-start justify-between">
-        <div>
-          <p className={`text-lg font-bold ${RARITY_TEXT[rarity]}`}>
-            {inv.item.itemName}
-            {inv.upgradeLevel > 0 && <span className="text-yellow-400"> +{inv.upgradeLevel}</span>}
-          </p>
-          <p className="text-xs text-slate-400">
-            {RARITY_LABEL[rarity]} · {SLOT_LABELS[inv.item.itemType as SlotKey]} · Lv. {inv.item.itemLevel}
-            {isTwoHanded && <span className="ml-1 text-amber-400">(Two-Handed)</span>}
-          </p>
-          {itemClass && (
-            <span className={`mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold ${CLASS_BADGE_STYLE[itemClass] ?? "bg-slate-800 text-slate-400 border-slate-700"}`}>
-              <span className="text-xs">{CLASS_BADGE_ICON[itemClass] ?? "👤"}</span>
-              {CLASS_LABEL[itemClass] ?? itemClass}
-            </span>
-          )}
-          {showAffinity && (
-            <p className="mt-1 text-xs font-semibold text-emerald-400">
-              +{Math.round(WEAPON_AFFINITY_BONUS * 100)}% Affinity Bonus
-            </p>
-          )}
-        </div>
+  /* Close on Escape */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  /* Lock body scroll while modal is open */
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Item details: ${inv.item.itemName}`}
+    >
+      <div
+        className={`relative mx-auto w-full max-w-sm overflow-hidden rounded-2xl border-2 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl ${rarity.border} ${rarity.glow}`}
+        style={{ animation: "scaleIn 0.2s ease-out" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close btn */}
         <button
           type="button"
           onClick={onClose}
-          className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-white"
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-300"
           aria-label="Close"
+          tabIndex={0}
         >
           ✕
         </button>
-      </div>
 
-      {Object.keys(stats).length > 0 && (
-        <div className="mb-3 space-y-1">
-          {Object.entries(stats).map(([k, v]) => (
-            <p key={k} className="text-sm text-green-400">
-              +{v} {statLabel[k] ?? k}
+        {/* ── Header: name + image on right ── */}
+        <div className={`flex items-start gap-4 border-b border-slate-700/40 px-5 pb-4 pt-4 ${rarity.bg}`}>
+          {/* Text info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${rarity.badge}`}>
+                {rarity.label}
+              </span>
+            </div>
+            <h2 className={`mt-1 font-display text-lg font-bold leading-tight ${rarity.text}`}>
+              {inv.item.itemName}
+              {inv.upgradeLevel > 0 && <span className="text-yellow-400"> +{inv.upgradeLevel}</span>}
+            </h2>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              {SLOT_LABELS[inv.item.itemType as SlotKey] ?? inv.item.itemType} · Lv. {inv.item.itemLevel}
+              {isTwoHanded && <span className="ml-1 text-amber-400">(Two-Handed)</span>}
             </p>
-          ))}
+          </div>
+          {/* Item icon on right */}
+          <div className="flex h-44 w-44 shrink-0 items-center justify-center">
+            <DetailItemImage inv={inv} size={176} />
+          </div>
         </div>
-      )}
 
-      {inv.item.specialEffect && (
-        <p className="mb-2 text-xs text-yellow-300">✨ {inv.item.specialEffect}</p>
-      )}
+        {/* ── Body ── */}
+        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
 
-      {inv.item.uniquePassive && (
-        <p className="mb-2 text-xs text-cyan-300">🔮 {inv.item.uniquePassive}</p>
-      )}
+          {/* Primary stat (big number) */}
+          {primaryStat && (
+            <div className="mb-4 text-center">
+              <p className="text-3xl font-black tabular-nums text-white">{primaryStat.value}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-400">{primaryStat.label}</p>
+            </div>
+          )}
 
-      {inv.item.description && (
-        <p className="mb-3 text-xs italic text-slate-400">{inv.item.description}</p>
-      )}
+          {/* Class / Affinity / Weapon type badges */}
+          {(itemClass || showAffinity || weaponCat) && (
+            <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+              {itemClass && (
+                <span className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold ${CLASS_BADGE_STYLE[itemClass] ?? "bg-slate-800 text-slate-400 border-slate-700"}`}>
+                  <GameIcon name={CLASS_BADGE_ICON[itemClass] ?? "warrior"} size={16} />
+                  {CLASS_LABEL[itemClass] ?? itemClass}
+                </span>
+              )}
+              {weaponCat && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-slate-600/40 bg-slate-800/60 px-2.5 py-1 text-xs font-medium text-slate-300">
+                  <GameIcon name="weapon" size={14} />
+                  {weaponCat.charAt(0).toUpperCase() + weaponCat.slice(1)}
+                  {twoHandedLabel ? " (2H)" : ""}
+                </span>
+              )}
+              {showAffinity && (
+                <span className="inline-block rounded-md bg-emerald-900/50 px-2.5 py-1 text-xs font-bold text-emerald-400">
+                  +{Math.round(WEAPON_AFFINITY_BONUS * 100)}% Affinity
+                </span>
+              )}
+            </div>
+          )}
 
-      <div className="mb-3 text-xs text-slate-500">
-        Durability: {inv.durability}/{inv.maxDurability}
-        <div className="mt-1 h-1.5 w-full rounded-full bg-slate-700">
-          <div
-            className={`h-full rounded-full ${inv.durability / inv.maxDurability > 0.5 ? "bg-green-500" : inv.durability / inv.maxDurability > 0.2 ? "bg-yellow-500" : "bg-red-500"}`}
-            style={{ width: `${(inv.durability / inv.maxDurability) * 100}%` }}
-          />
+          {/* Stats list */}
+          {statEntries.length > 0 && (
+            <div className="mb-3 space-y-1.5 rounded-xl border border-slate-700/30 bg-slate-900/40 px-3 py-2.5">
+              {statEntries.map(([key, value]) => {
+                const stat = STAT_CONFIG[key] ?? { label: statLabel[key] ?? key, icon: null, iconEmoji: "📊" };
+                return (
+                  <div key={key} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-slate-400">
+                      {stat.icon ? <GameIcon name={stat.icon} size={16} /> : <span className="text-sm">{stat.iconEmoji ?? "📊"}</span>} {stat.label}
+                    </span>
+                    <span className="font-bold text-emerald-400">+{value}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Unique passive (from catalog) */}
+          {(() => {
+            if (!catalogItem?.uniquePassive && !inv.item.uniquePassive) return null;
+            const passive = catalogItem?.uniquePassive ?? inv.item.uniquePassive;
+            return (
+              <div className="mb-3 rounded-xl border border-indigo-700/30 bg-indigo-950/20 px-3 py-2">
+                <p className="text-xs font-medium text-indigo-400">
+                  ✦ {passive}
+                </p>
+              </div>
+            );
+          })()}
+
+          {/* Special effect */}
+          {inv.item.specialEffect && (
+            <div className="mb-3 rounded-xl border border-amber-700/30 bg-amber-950/20 px-3 py-2">
+              <p className="text-xs font-medium text-amber-400/90">
+                ✦ {inv.item.specialEffect}
+              </p>
+            </div>
+          )}
+
+          {/* Description */}
+          {inv.item.description && (
+            <p className="mb-3 text-xs italic leading-relaxed text-slate-500">
+              &ldquo;{inv.item.description}&rdquo;
+            </p>
+          )}
+
+          {/* Durability bar */}
+          <div className="mb-3 rounded-lg border border-slate-700/20 bg-slate-900/30 px-3 py-2">
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <span>Durability</span>
+              <span className="font-medium text-slate-400">{inv.durability}/{inv.maxDurability}</span>
+            </div>
+            <div className="mt-1 h-1.5 w-full rounded-full bg-slate-700">
+              <div
+                className={`h-full rounded-full ${inv.durability / inv.maxDurability > 0.5 ? "bg-green-500" : inv.durability / inv.maxDurability > 0.2 ? "bg-yellow-500" : "bg-red-500"}`}
+                style={{ width: `${(inv.durability / inv.maxDurability) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Sell value estimate */}
+          <div className="mb-1 flex items-center justify-between rounded-lg border border-slate-700/20 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-500">
+            <span>Sell value</span>
+            <span className="flex items-center gap-1 font-medium text-slate-400">
+              <GameIcon name="gold" size={12} />
+              {getSellPrice(inv).toLocaleString()}
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div className="flex gap-2">
-        {inv.isEquipped ? (
-          <button
-            type="button"
-            onClick={() => onUnequip(inv.id)}
-            className="flex-1 rounded-lg bg-slate-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-500"
-          >
-            Unequip
-          </button>
-        ) : isWeapon ? (
-          <>
-            <button
-              type="button"
-              onClick={() => onEquip(inv.id, "weapon")}
-              className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
-            >
-              {isTwoHanded ? "Equip (2H)" : "Main Hand"}
-            </button>
-            {!isTwoHanded && (
-              <button
-                type="button"
-                onClick={() => onEquip(inv.id, "weapon_offhand")}
-                disabled={mainHandTwoHanded}
-                className="flex-1 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
-                title={mainHandTwoHanded ? "Main hand is two-handed" : undefined}
-              >
-                Off Hand
-              </button>
+        {/* ── Footer: Action buttons ── */}
+        <div className="border-t border-slate-700/40 bg-slate-900/60 px-5 py-4">
+          <div className="flex gap-2">
+            {inv.isEquipped ? (
+              <GameButton variant="secondary" onClick={() => onUnequip(inv.id)} className="w-full justify-center">
+                Unequip
+              </GameButton>
+            ) : isWeapon ? (
+              <>
+                <GameButton onClick={() => onEquip(inv.id, "weapon")} className="flex-1 justify-center">
+                  {isTwoHanded ? "Equip (2H)" : "Main Hand"}
+                </GameButton>
+                {!isTwoHanded && (
+                  <GameButton
+                    variant="secondary"
+                    onClick={() => onEquip(inv.id, "weapon_offhand")}
+                    disabled={mainHandTwoHanded}
+                    className="flex-1 justify-center"
+                    title={mainHandTwoHanded ? "Main hand is two-handed" : undefined}
+                  >
+                    Off Hand
+                  </GameButton>
+                )}
+                <GameButton
+                  variant="danger"
+                  disabled={isSelling}
+                  onClick={() => onSell(inv.id)}
+                  aria-label={`Sell for ${getSellPrice(inv)} gold`}
+                  className="justify-center"
+                >
+                  <GameIcon name="gold" size={16} /> {getSellPrice(inv)}
+                </GameButton>
+              </>
+            ) : (
+              <>
+                <GameButton onClick={() => onEquip(inv.id, inv.item.itemType)} className="flex-1 justify-center">
+                  Equip
+                </GameButton>
+                <GameButton
+                  variant="danger"
+                  disabled={isSelling}
+                  onClick={() => onSell(inv.id)}
+                  aria-label={`Sell for ${getSellPrice(inv)} gold`}
+                  className="flex-1 justify-center"
+                >
+                  Sell <GameIcon name="gold" size={16} /> {getSellPrice(inv)}
+                </GameButton>
+              </>
             )}
-            <button
-              type="button"
-              disabled={isSelling}
-              onClick={() => onSell(inv.id)}
-              className="rounded-lg bg-yellow-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-yellow-600 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label={`Sell for ${getSellPrice(inv)} gold`}
-            >
-              🪙
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => onEquip(inv.id, inv.item.itemType)}
-              className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
-            >
-              Equip
-            </button>
-            <button
-              type="button"
-              disabled={isSelling}
-              onClick={() => onSell(inv.id)}
-              className="flex-1 rounded-lg bg-yellow-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-yellow-600 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label={`Sell for ${getSellPrice(inv)} gold`}
-            >
-              Sell 🪙{getSellPrice(inv)}
-            </button>
-          </>
-        )}
+          </div>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -1008,7 +1255,6 @@ function InventoryContent() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const avatarSrc = useCharacterAvatar(characterId);
   const [activeTab, setActiveTab] = useState<"attributes" | "description" | "info">("attributes");
   const [hoveredItem, setHoveredItem] = useState<{ inv: InventoryItem; x: number; y: number } | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -1339,7 +1585,7 @@ function InventoryContent() {
   if (loading || !characterId || !data) {
     const loaderText = !characterId ? "Loading…" : error ? "Retrying…" : "Loading inventory…";
 
-    return <PageLoader emoji="🎒" text={loaderText} avatarSrc={avatarSrc} />;
+    return <PageLoader emoji="🎒" text={loaderText} />;
   }
 
   const { character } = data;
@@ -1365,9 +1611,23 @@ function InventoryContent() {
         {/* ──── Left Panel: Character + Equipment + Tabs ──── */}
         <section className="flex w-full flex-col rounded-xl border border-slate-800 bg-slate-900/50 lg:w-[420px]">
           {/* Character portrait + equipment grid */}
-          <div className="p-4">
+          <div className="relative overflow-hidden p-4">
+            {/* Class-themed background */}
+            {CLASS_BG_IMAGE[character.class] && (
+              <Image
+                src={CLASS_BG_IMAGE[character.class]}
+                alt=""
+                fill
+                className="pointer-events-none object-cover opacity-15"
+                sizes="420px"
+                aria-hidden="true"
+              />
+            )}
+            {/* Dark overlay for readability */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/60" />
+
             {/* Equipment paper-doll layout */}
-            <div className="flex gap-4">
+            <div className="relative z-10 flex gap-4">
               {/* Left column: helmet, chest, gloves, legs, ring */}
               <div className="flex flex-col items-center gap-2">
                 {(["helmet", "chest", "gloves", "legs", "ring"] as const).map((slot) => (
@@ -1398,9 +1658,7 @@ function InventoryContent() {
                       sizes="208px"
                     />
                   ) : (
-                    <span className="text-5xl">
-                      {character.class === "warrior" ? "⚔️" : character.class === "rogue" ? "🗡️" : character.class === "mage" ? "🧙" : "🛡️"}
-                    </span>
+                    <GameIcon name={CLASS_ICON[character.class] ?? "warrior"} size={64} />
                   )}
 
                   {/* Level badge — top-right */}
@@ -1409,8 +1667,8 @@ function InventoryContent() {
                   </div>
 
                   {/* Class icon badge — top-left */}
-                  <div className="absolute left-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-slate-500/80 bg-slate-900/90 text-lg shadow-lg">
-                    {CLASS_ICON[character.class] ?? "👤"}
+                  <div className="absolute left-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-slate-500/80 bg-slate-900/90 shadow-lg">
+                    {CLASS_ICON[character.class] ? <GameIcon name={CLASS_ICON[character.class]} size={24} /> : <GameIcon name="warrior" size={24} />}
                   </div>
 
                   <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-6">
@@ -1434,7 +1692,7 @@ function InventoryContent() {
                     style={{ width: `${staminaPercent}%` }}
                   />
                   <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                    ⚡ {character.currentStamina} / {character.maxStamina}
+                    <GameIcon name="stamina" size={16} /> {character.currentStamina} / {character.maxStamina}
                   </span>
                 </div>
                 {/* Weapon slots under avatar: Main Hand + Off Hand */}
@@ -1524,25 +1782,12 @@ function InventoryContent() {
           </div>
         </section>
 
-        {/* ──── Right Panel: Bag inventory grid + selected item detail ──── */}
+        {/* ──── Right Panel: Bag inventory grid ──── */}
         <section className="flex flex-1 flex-col gap-4">
-          {/* Selected item detail */}
-          {selectedItem && (
-            <ItemDetailPanel
-              inv={selectedItem}
-              onEquip={handleEquip}
-              onUnequip={handleUnequip}
-              onSell={handleSell}
-              isSelling={isSelling}
-              onClose={() => setSelectedItem(null)}
-              mainHandTwoHanded={mainHandIsTwoHanded}
-              characterClass={character.class}
-            />
-          )}
 
           {/* Bag grid */}
           <div
-            className={`rounded-xl border p-4 transition-all ${
+            className={`relative flex flex-1 flex-col overflow-hidden rounded-xl border p-4 transition-all ${
               dragOverTarget?.type === "bag" && dragRef.current?.source === "equip"
                 ? "border-indigo-400 bg-indigo-950/20"
                 : "border-slate-800 bg-slate-900/50"
@@ -1562,7 +1807,28 @@ function InventoryContent() {
               }
             }}
           >
-            <div className="mb-3 flex items-center justify-between">
+            {/* Inventory bag background — desktop */}
+            <Image
+              src="/images/ui/inventory-bag-bg-desktop.png"
+              alt=""
+              fill
+              className="pointer-events-none hidden object-cover opacity-10 lg:block"
+              sizes="(min-width: 1024px) 60vw"
+              aria-hidden="true"
+            />
+            {/* Inventory bag background — mobile */}
+            <Image
+              src="/images/ui/inventory-bag-bg-mobile.png"
+              alt=""
+              fill
+              className="pointer-events-none object-cover opacity-10 lg:hidden"
+              sizes="100vw"
+              aria-hidden="true"
+            />
+            {/* Dark overlay for readability */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/60" />
+
+            <div className="relative z-10 mb-3 flex items-center justify-between">
               <h2 className="font-display text-base text-slate-300">
                 Backpack
                 <span className="ml-2 text-xs font-normal text-slate-500">
@@ -1572,7 +1838,7 @@ function InventoryContent() {
               <p className="text-xs text-slate-500">Drag to equip · Double-click · Right-click slot to unequip</p>
             </div>
 
-            <div className="grid grid-cols-5 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-8">
+            <div className="relative z-10 grid grid-cols-5 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-8">
               {Array.from({ length: INVENTORY_SLOTS_TOTAL }).map((_, i) => (
                 <InventoryCell
                   key={i}
@@ -1608,6 +1874,20 @@ function InventoryContent() {
             left: Math.min(hoveredItem.x, window.innerWidth - 280),
             top: Math.min(hoveredItem.y, window.innerHeight - 300),
           }}
+          characterClass={character.class}
+        />
+      )}
+
+      {/* Item detail modal */}
+      {selectedItem && (
+        <ItemDetailPanel
+          inv={selectedItem}
+          onEquip={handleEquip}
+          onUnequip={handleUnequip}
+          onSell={handleSell}
+          isSelling={isSelling}
+          onClose={() => setSelectedItem(null)}
+          mainHandTwoHanded={mainHandIsTwoHanded}
           characterClass={character.class}
         />
       )}

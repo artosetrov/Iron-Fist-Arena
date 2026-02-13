@@ -29,7 +29,12 @@ export const POST = async (request: Request) => {
       );
     }
 
-    const body = await request.json().catch(() => ({}));
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const characterId = body.characterId as string;
     const sessionId = body.sessionId as string;
 

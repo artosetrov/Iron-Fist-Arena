@@ -19,16 +19,50 @@ export type DesignTokens = {
   "--ds-text": string;
   "--ds-text-muted": string;
 
+  /* ── Page layout ── */
+  "--ds-page-padding": string;
+  "--ds-page-padding-lg": string;
+  "--ds-page-bg": string;
+
   /* ── Button ── */
   "--ds-btn-radius": string;
   "--ds-btn-px": string;
   "--ds-btn-py": string;
   "--ds-btn-font-size": string;
   "--ds-btn-font-weight": string;
+  "--ds-btn-secondary-bg": string;
+  "--ds-btn-secondary-border": string;
+  "--ds-btn-secondary-text": string;
+  "--ds-btn-danger-from": string;
+  "--ds-btn-danger-to": string;
+  "--ds-btn-action-from": string;
+  "--ds-btn-action-to": string;
 
   /* ── Card ── */
   "--ds-card-radius": string;
   "--ds-card-border-width": string;
+  "--ds-card-bg": string;
+  "--ds-card-border-color": string;
+
+  /* ── Section ── */
+  "--ds-section-bg": string;
+  "--ds-section-border": string;
+  "--ds-section-radius": string;
+  "--ds-section-title-color": string;
+
+  /* ── Modal ── */
+  "--ds-modal-overlay": string;
+  "--ds-modal-bg": string;
+  "--ds-modal-border": string;
+  "--ds-modal-radius": string;
+
+  /* ── Badge ── */
+  "--ds-badge-radius": string;
+
+  /* ── Progress bar ── */
+  "--ds-progress-bg": string;
+  "--ds-progress-radius": string;
+  "--ds-progress-height": string;
 
   /* ── Input ── */
   "--ds-input-radius": string;
@@ -97,16 +131,50 @@ export const DEFAULT_TOKENS: DesignTokens = {
   "--ds-text": "#ffffff",
   "--ds-text-muted": "#94a3b8", // slate-400
 
+  /* ── Page layout ── */
+  "--ds-page-padding": "1rem", // p-4
+  "--ds-page-padding-lg": "1.5rem", // lg:p-6
+  "--ds-page-bg": "#020617", // slate-950
+
   /* ── Button ── */
-  "--ds-btn-radius": "1rem", // rounded-2xl ≈ 16px
-  "--ds-btn-px": "1.5rem",
-  "--ds-btn-py": "0.75rem",
+  "--ds-btn-radius": "0.75rem", // rounded-xl
+  "--ds-btn-px": "1rem",
+  "--ds-btn-py": "0.625rem",
   "--ds-btn-font-size": "0.875rem",
   "--ds-btn-font-weight": "700",
+  "--ds-btn-secondary-bg": "rgba(30,41,59,0.8)", // slate-800/80
+  "--ds-btn-secondary-border": "#334155", // slate-700
+  "--ds-btn-secondary-text": "#94a3b8", // slate-400
+  "--ds-btn-danger-from": "#dc2626", // red-600
+  "--ds-btn-danger-to": "#b91c1c", // red-700
+  "--ds-btn-action-from": "#059669", // emerald-600
+  "--ds-btn-action-to": "#047857", // emerald-700
 
   /* ── Card ── */
-  "--ds-card-radius": "1rem",
+  "--ds-card-radius": "1rem", // rounded-2xl
   "--ds-card-border-width": "2px",
+  "--ds-card-bg": "rgba(2,6,23,0.95)", // slate-950/95
+  "--ds-card-border-color": "rgba(51,65,85,0.8)", // slate-700/80
+
+  /* ── Section ── */
+  "--ds-section-bg": "rgba(15,23,42,0.8)", // slate-900/80
+  "--ds-section-border": "rgba(51,65,85,0.5)", // slate-700/50
+  "--ds-section-radius": "0.75rem", // rounded-xl
+  "--ds-section-title-color": "#e2e8f0", // slate-200
+
+  /* ── Modal ── */
+  "--ds-modal-overlay": "rgba(0,0,0,0.7)", // black/70
+  "--ds-modal-bg": "rgba(15,23,42,0.95)", // slate-900/95
+  "--ds-modal-border": "rgba(51,65,85,0.6)", // slate-700/60
+  "--ds-modal-radius": "1rem", // rounded-2xl
+
+  /* ── Badge ── */
+  "--ds-badge-radius": "0.375rem", // rounded-md
+
+  /* ── Progress bar ── */
+  "--ds-progress-bg": "rgba(15,23,42,0.8)", // slate-900/80
+  "--ds-progress-radius": "9999px", // rounded-full
+  "--ds-progress-height": "0.5rem", // h-2
 
   /* ── Input ── */
   "--ds-input-radius": "0.75rem", // rounded-xl
@@ -182,16 +250,50 @@ export const TOKEN_META: TokenMeta[] = [
   { key: "--ds-text", label: "Text", group: "Colors", type: "color" },
   { key: "--ds-text-muted", label: "Muted text", group: "Colors", type: "color" },
 
+  /* ── Page layout ── */
+  { key: "--ds-page-padding", label: "Page padding", group: "Layout", type: "size" },
+  { key: "--ds-page-padding-lg", label: "Page padding (lg)", group: "Layout", type: "size" },
+  { key: "--ds-page-bg", label: "Page background", group: "Layout", type: "color" },
+
   /* ── Button ── */
   { key: "--ds-btn-radius", label: "Border radius", group: "Button", type: "size" },
   { key: "--ds-btn-px", label: "Padding X", group: "Button", type: "size" },
   { key: "--ds-btn-py", label: "Padding Y", group: "Button", type: "size" },
   { key: "--ds-btn-font-size", label: "Font size", group: "Button", type: "size" },
   { key: "--ds-btn-font-weight", label: "Font weight", group: "Button", type: "number" },
+  { key: "--ds-btn-secondary-bg", label: "Secondary bg", group: "Button", type: "color" },
+  { key: "--ds-btn-secondary-border", label: "Secondary border", group: "Button", type: "color" },
+  { key: "--ds-btn-secondary-text", label: "Secondary text", group: "Button", type: "color" },
+  { key: "--ds-btn-danger-from", label: "Danger gradient start", group: "Button", type: "color" },
+  { key: "--ds-btn-danger-to", label: "Danger gradient end", group: "Button", type: "color" },
+  { key: "--ds-btn-action-from", label: "Action gradient start", group: "Button", type: "color" },
+  { key: "--ds-btn-action-to", label: "Action gradient end", group: "Button", type: "color" },
 
   /* ── Card ── */
   { key: "--ds-card-radius", label: "Border radius", group: "Card", type: "size" },
   { key: "--ds-card-border-width", label: "Border width", group: "Card", type: "size" },
+  { key: "--ds-card-bg", label: "Card background", group: "Card", type: "color" },
+  { key: "--ds-card-border-color", label: "Card border color", group: "Card", type: "color" },
+
+  /* ── Section ── */
+  { key: "--ds-section-bg", label: "Section background", group: "Section", type: "color" },
+  { key: "--ds-section-border", label: "Section border", group: "Section", type: "color" },
+  { key: "--ds-section-radius", label: "Section radius", group: "Section", type: "size" },
+  { key: "--ds-section-title-color", label: "Section title color", group: "Section", type: "color" },
+
+  /* ── Modal ── */
+  { key: "--ds-modal-overlay", label: "Overlay color", group: "Modal", type: "color" },
+  { key: "--ds-modal-bg", label: "Modal background", group: "Modal", type: "color" },
+  { key: "--ds-modal-border", label: "Modal border", group: "Modal", type: "color" },
+  { key: "--ds-modal-radius", label: "Modal radius", group: "Modal", type: "size" },
+
+  /* ── Badge ── */
+  { key: "--ds-badge-radius", label: "Badge radius", group: "Badge", type: "size" },
+
+  /* ── Progress bar ── */
+  { key: "--ds-progress-bg", label: "Track background", group: "Progress", type: "color" },
+  { key: "--ds-progress-radius", label: "Track radius", group: "Progress", type: "size" },
+  { key: "--ds-progress-height", label: "Track height", group: "Progress", type: "size" },
 
   /* ── Input ── */
   { key: "--ds-input-radius", label: "Border radius", group: "Input", type: "size" },
