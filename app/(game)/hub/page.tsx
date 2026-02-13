@@ -184,10 +184,8 @@ function HubContent() {
                 width={512}
                 height={512}
                 draggable={false}
-                className={`h-full w-auto drop-shadow-2xl transition-transform duration-300 pointer-events-none ${
-                  isHovered && !isDragging
-                    ? "scale-105 brightness-110"
-                    : "scale-100"
+                className={`h-full w-auto drop-shadow-2xl pointer-events-none transition-[filter] duration-300 ${
+                  isHovered && !isDragging ? "brightness-125" : ""
                 }`}
               />
               {/* Label tooltip */}

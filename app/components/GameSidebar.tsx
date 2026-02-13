@@ -147,6 +147,9 @@ const GameSidebar = () => {
   }, []);
 
   const loadCharacter = useCallback(async (signal: AbortSignal) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:loadCharacter',message:'loadCharacter called',data:{pathname,characterId},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+    // #endregion
     try {
       setFetchError(false);
       if (characterId) {
@@ -157,6 +160,9 @@ const GameSidebar = () => {
           return;
         }
         if (res.status === 401) {
+          // #region agent log
+          fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:loadCharacter:401redirect',message:'redirecting to /login from loadCharacter',data:{pathname,characterId},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+          // #endregion
           router.push("/login");
           return;
         }
@@ -164,6 +170,9 @@ const GameSidebar = () => {
       // Fallback: load first character
       const listRes = await fetch("/api/characters", { signal });
       if (listRes.status === 401) {
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:loadCharacter:listRes401',message:'list 401 redirecting to /login',data:{pathname},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+        // #endregion
         router.push("/login");
         return;
       }
@@ -171,12 +180,18 @@ const GameSidebar = () => {
       const list = await listRes.json();
       const chars = list.characters ?? [];
       if (chars.length === 0) {
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:loadCharacter:noChars',message:'no chars redirecting to /character',data:{pathname},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+        // #endregion
         router.push("/character");
         return;
       }
       setCharacter(chars[0]);
       loadConsumables(chars[0].id, signal);
       if (!characterId) {
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:loadCharacter:replaceUrl',message:'replacing URL to add characterId',data:{pathname,newCharId:chars[0].id},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+        // #endregion
         router.replace(`${pathname}?characterId=${chars[0].id}`);
       }
     } catch (err) {
@@ -231,11 +246,17 @@ const GameSidebar = () => {
 
   const buildHref = (base: string) => {
     if (!characterId) return base;
-    if (base === "/leaderboard" || base === "/dev-dashboard" || base === "/balance-editor") return base;
     return `${base}?characterId=${characterId}`;
   };
 
   const isActive = (href: string) => pathname === href;
+
+  // #region agent log
+  // Debug: track pathname changes
+  useEffect(() => {
+    fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:pathChange',message:'pathname changed',data:{pathname,characterId},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+  }, [pathname]);
+  // #endregion
 
   /* ── Available potions for quick use ── */
   const availablePotions = consumables

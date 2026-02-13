@@ -21,13 +21,15 @@ export const useAdminGuard = (): AdminGuardState => {
     fetch("/api/me", { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
+        if (controller.signal.aborted) return;
         if (!data || data.role !== "admin") {
           router.replace("/hub");
           return;
         }
         setState({ isAdmin: true, loading: false });
       })
-      .catch(() => {
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         router.replace("/hub");
       });
 

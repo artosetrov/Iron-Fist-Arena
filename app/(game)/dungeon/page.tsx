@@ -1187,27 +1187,28 @@ function DungeonContent() {
       )}
 
       {/* Dungeon carousel */}
-      <div className="relative flex flex-1 items-center">
-        {/* Navigation arrows */}
-        <button
-          type="button"
-          onClick={() => handleScrollCarousel("left")}
-          aria-label="Previous dungeon"
-          className="carousel-nav-btn left-2"
-        >
-          ‹
-        </button>
-        <button
-          type="button"
-          onClick={() => handleScrollCarousel("right")}
-          aria-label="Next dungeon"
-          className="carousel-nav-btn right-2"
-        >
-          ›
-        </button>
+      <div className="flex flex-1 items-center">
+        <div className="relative w-full">
+          {/* Navigation arrows */}
+          <button
+            type="button"
+            onClick={() => handleScrollCarousel("left")}
+            aria-label="Previous dungeon"
+            className="carousel-nav-btn left-2"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScrollCarousel("right")}
+            aria-label="Next dungeon"
+            className="carousel-nav-btn right-2"
+          >
+            ›
+          </button>
 
-        {/* Cards scroll container */}
-        <div ref={carouselRef} className="dungeon-carousel px-8 py-4">
+          {/* Cards scroll container */}
+          <div ref={carouselRef} className="dungeon-carousel px-8 py-4">
           {dungeons.map((dungeon) => {
             const progressPercent = Math.round(
               (dungeon.bossIndex / dungeon.bosses.length) * 100
@@ -1342,6 +1343,7 @@ function DungeonContent() {
               </button>
             );
           })}
+        </div>
         </div>
       </div>
     </div>
