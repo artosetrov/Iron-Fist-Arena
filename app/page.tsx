@@ -22,7 +22,7 @@ export default function HomePage() {
             priority
             className="mix-blend-lighten drop-shadow-[0_0_40px_rgba(217,119,6,0.3)]"
           />
-          <p className="mt-4 max-w-xs text-sm text-slate-500">
+          <p className="mt-4 max-w-xs font-display text-base text-slate-500">
             Battle, loot, and conquer in the ultimate browser PvP RPG
           </p>
         </div>
@@ -38,7 +38,7 @@ export default function HomePage() {
         <nav className="flex w-full max-w-xs flex-col gap-3">
           <Link
             href="/login"
-            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3.5 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30"
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3.5 font-display text-lg tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30"
             aria-label="Log In"
             tabIndex={0}
           >
@@ -49,7 +49,7 @@ export default function HomePage() {
           </Link>
           <Link
             href="/register"
-            className="flex items-center justify-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 py-3.5 text-sm font-bold uppercase tracking-wider text-slate-300 transition-all hover:border-slate-600 hover:bg-slate-800/80 hover:text-white"
+            className="flex items-center justify-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/60 py-3.5 font-display text-lg tracking-wider text-slate-300 transition-all hover:border-slate-600 hover:bg-slate-800/80 hover:text-white"
             aria-label="Register"
             tabIndex={0}
           >

@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import PageLoader from "@/app/components/PageLoader";
 
 /* ── Types ── */
@@ -86,6 +87,14 @@ const MinigamesContent = () => {
 
   return (
     <div className="relative flex min-h-full flex-col items-center px-4 py-10">
+      <Link
+        href="/hub"
+        className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+        aria-label="Back to Hub"
+        tabIndex={0}
+      >
+        ✕
+      </Link>
       {/* Background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <Image
@@ -101,8 +110,8 @@ const MinigamesContent = () => {
 
       {/* Header */}
       <div className="relative z-10 mb-10 text-center">
-        <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-          <span className="mr-2">🍺</span>Tavern
+        <h1 className="font-display text-4xl font-bold uppercase tracking-tight text-white sm:text-5xl">
+          Tavern
         </h1>
         <p className="mt-2 text-sm text-slate-400">
           Welcome to the Tavern! Bet your gold, test your luck.
@@ -156,7 +165,7 @@ const MinigamesContent = () => {
 
             {/* Text content */}
             <div className="relative z-10 w-full px-4 pb-4">
-              <h2 className="text-lg font-bold text-white drop-shadow-lg">
+              <h2 className="font-display text-xl text-white drop-shadow-lg">
                 {game.title}
               </h2>
               <p className="mt-1 text-xs leading-relaxed text-slate-300 drop-shadow-md">

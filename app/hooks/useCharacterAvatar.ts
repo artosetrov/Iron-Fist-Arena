@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 
 const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/origins/origin-human.png",
-  orc: "/images/origins/origin-orc.png",
-  skeleton: "/images/origins/origin-skeleton.png",
-  demon: "/images/origins/origin-demon.png",
-  dogfolk: "/images/origins/origin-dogfolk.png",
+  human: "/images/origins/Avatar/origin-human_avatar_1.png",
+  orc: "/images/origins/Avatar/origin-orc_avatar_1.png",
+  skeleton: "/images/origins/Avatar/origin-skeleton_avatar_1.png",
+  demon: "/images/origins/Avatar/origin-demon_avatar_1.png",
+  dogfolk: "/images/origins/Avatar/origin-dogfolk_avatar_1.png",
 };
 
 /**

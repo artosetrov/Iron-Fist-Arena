@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import PageLoader from "@/app/components/PageLoader";
 import { useAdminGuard } from "@/lib/hooks/useAdminGuard";
 
@@ -121,7 +122,7 @@ const HealthSection = ({
 }) => (
   <section className="rounded-xl border border-slate-700/50 bg-slate-900/80">
     <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-3">
-      <h2 className="text-sm font-bold text-white">System Health</h2>
+      <h2 className="font-display text-base text-white">System Health</h2>
       <button
         type="button"
         onClick={onRefresh}
@@ -213,7 +214,7 @@ const TestRunnerSection = ({
 }) => (
   <section className="rounded-xl border border-slate-700/50 bg-slate-900/80">
     <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-3">
-      <h2 className="text-sm font-bold text-white">Test Runner</h2>
+      <h2 className="font-display text-base text-white">Test Runner</h2>
       <button
         type="button"
         onClick={onRun}
@@ -366,7 +367,7 @@ const GameStatsSection = ({
 }) => (
   <section className="rounded-xl border border-slate-700/50 bg-slate-900/80">
     <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-3">
-      <h2 className="text-sm font-bold text-white">Game Statistics</h2>
+      <h2 className="font-display text-base text-white">Game Statistics</h2>
       <button
         type="button"
         onClick={onRefresh}
@@ -436,7 +437,7 @@ const AUDIT_ITEMS = [
 const AuditSection = () => (
   <section className="rounded-xl border border-slate-700/50 bg-slate-900/80">
     <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-3">
-      <h2 className="text-sm font-bold text-white">Audit Log (v3.0)</h2>
+      <h2 className="font-display text-base text-white">Audit Log (v3.0)</h2>
       <div className="flex items-center gap-2 text-[10px]">
         <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-400">
           {AUDIT_ITEMS.filter((i) => i.status === "fixed").length} fixed
@@ -493,7 +494,7 @@ const ApiPingSection = ({
 }) => (
   <section className="rounded-xl border border-slate-700/50 bg-slate-900/80">
     <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-3">
-      <h2 className="text-sm font-bold text-white">API Endpoints ({API_ENDPOINTS.length})</h2>
+      <h2 className="font-display text-base text-white">API Endpoints ({API_ENDPOINTS.length})</h2>
       <button
         type="button"
         onClick={onPing}
@@ -672,14 +673,17 @@ const DevDashboardContent = () => {
   return (
     <div className="min-h-full bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
-      <div className="border-b border-slate-800 bg-slate-950/80 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🛠</span>
-          <div>
-            <h1 className="text-lg font-black tracking-tight text-white">Dev Dashboard</h1>
-            <p className="text-xs text-slate-500">System monitoring, tests & game analytics</p>
-          </div>
-        </div>
+      <div className="relative border-b border-slate-800 bg-slate-950/80 px-6 py-4 text-center">
+        <Link
+          href="/hub"
+          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
+        <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-white">Dev Dashboard</h1>
+        <p className="text-xs text-slate-500">System monitoring, tests & game analytics</p>
       </div>
 
       {/* Content */}

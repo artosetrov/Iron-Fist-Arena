@@ -279,7 +279,15 @@ const GoldMineContent = () => {
   const hasEmptySlot = state.sessions.length < state.maxSlots;
 
   return (
-    <div className="flex min-h-full flex-col items-center px-4 py-8">
+    <div className="relative flex min-h-full flex-col items-center px-4 py-8">
+      <Link
+        href="/hub"
+        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+        aria-label="Back to Hub"
+        tabIndex={0}
+      >
+        ✕
+      </Link>
       {/* Header */}
       <div className="mb-2 flex items-center gap-3">
         <Link
@@ -292,8 +300,8 @@ const GoldMineContent = () => {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-          <span className="mr-2">⛏️</span>Gold Mine
+        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-white sm:text-4xl">
+          Gold Mine
         </h1>
       </div>
 
@@ -473,7 +481,7 @@ const GoldMineContent = () => {
 
       {/* Info panel */}
       <div className="w-full max-w-2xl rounded-2xl border border-slate-700/40 bg-slate-800/30 p-4">
-        <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">How it works</h3>
+        <h3 className="mb-2 font-display text-sm tracking-wider text-slate-400">How it works</h3>
         <ul className="space-y-1 text-xs leading-relaxed text-slate-500">
           <li>
             <span className="text-slate-300">⛏️</span> Start mining in a free slot — wait 30 min{" "}

@@ -1249,7 +1249,55 @@ F2P Monthly Income: ~700-900 Gems
 
 ## 7.4 Equipment Economy
 
+### NPC Shop Inventory — Sliding Window
+
+Магазин показывает предметы на основе уровня персонажа через скользящее окно:
+
+```
+Visible_Item_Levels = [max(1, Character_Level - 1), Character_Level + 2]
+
+Окно: 4 уровня предметов (от -1 до +2 относительно уровня персонажа)
+Legendary предметы НЕ продаются в магазине (drop-only)
+```
+
+**Примеры:**
+
+| Уровень персонажа | Видимые itemLevel | Примерное кол-во предметов |
+|-------------------|-------------------|----------------------------|
+| 1                 | 1–3               | ~30–40                     |
+| 10                | 9–12              | ~40–50                     |
+| 25                | 24–27             | ~40–50                     |
+| 50                | 49–50             | ~20–30                     |
+
+Ассортимент **автоматически обновляется** при каждом повышении уровня.
+
+### Два источника предметов в магазине
+
+**1. Generic Items (процедурные)**
+- Генерируются при seed для каждого уровня 1–50
+- 7 типов (weapon, helmet, chest, gloves, legs, boots, accessory) × 5 рарностей × 50 уровней = 1750 предметов в БД
+- Формула цены: `Equipment_Price = 100 × (1 + Item_Level/10)^1.5 × Rarity_Mult`
+- Sell price: 50% от buy price
+
+**2. Catalog Items (уникальные)**
+- 232 предмета с авторскими названиями, статами, описаниями
+- Распределены по уровням на основе рарности:
+
+```
+Catalog Item Levels:
+- Common:    itemLevel = 5
+- Rare:      itemLevel = 15
+- Epic:      itemLevel = 25
+- Legendary: itemLevel = 35 (не продаются — drop-only)
+```
+
+- Появляются в магазине когда уровень персонажа попадает в окно
+- Персонаж level 4–7 видит common catalog items
+- Персонаж level 14–17 видит rare catalog items
+- Персонаж level 24–27 видит epic catalog items
+
 ### NPC Shop Pricing
+
 ```
 Equipment_Price = Base_Cost × (1 + Item_Level/10)^1.5 × Rarity_Mult
 

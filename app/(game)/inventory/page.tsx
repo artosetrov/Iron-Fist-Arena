@@ -1,8 +1,9 @@
 "use client";
 
-import { memo, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import PageLoader from "@/app/components/PageLoader";
 import { xpForLevel } from "@/lib/game/progression";
 import { goldCostForStatTraining } from "@/lib/game/stat-training";
@@ -93,14 +94,14 @@ const CLASS_ICON: Record<string, string> = {
 };
 
 const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/origins/origin-human.png",
-  orc: "/images/origins/origin-orc.png",
-  skeleton: "/images/origins/origin-skeleton.png",
-  demon: "/images/origins/origin-demon.png",
-  dogfolk: "/images/origins/origin-dogfolk.png",
+  human: "/images/origins/Avatar/origin-human_avatar_1.png",
+  orc: "/images/origins/Avatar/origin-orc_avatar_1.png",
+  skeleton: "/images/origins/Avatar/origin-skeleton_avatar_1.png",
+  demon: "/images/origins/Avatar/origin-demon_avatar_1.png",
+  dogfolk: "/images/origins/Avatar/origin-dogfolk_avatar_1.png",
 };
 
-const SLOT_ORDER = ["helmet", "weapon", "weapon_offhand", "chest", "gloves", "legs", "boots", "necklace", "ring", "accessory", "amulet", "belt", "relic"] as const;
+const SLOT_ORDER = ["helmet", "weapon", "weapon_offhand", "chest", "gloves", "legs", "boots", "ring", "accessory", "amulet", "belt", "relic"] as const;
 type SlotKey = (typeof SLOT_ORDER)[number];
 
 const SLOT_LABELS: Record<SlotKey, string> = {
@@ -111,7 +112,6 @@ const SLOT_LABELS: Record<SlotKey, string> = {
   gloves: "Gloves",
   legs: "Pants",
   boots: "Boots",
-  necklace: "Necklace",
   ring: "Ring",
   accessory: "Accessory",
   amulet: "Amulet",
@@ -127,7 +127,6 @@ const SLOT_ICONS: Record<SlotKey, string> = {
   gloves: "🧤",
   legs: "👖",
   boots: "👢",
-  necklace: "📿",
   ring: "💍",
   accessory: "💍",
   amulet: "🧿",
@@ -302,20 +301,72 @@ type EquipSlotProps = {
   /** Visually lock the slot (e.g. offhand blocked by two-handed weapon) */
   locked?: boolean;
   lockReason?: string;
+  /* ── Drag & Drop ── */
+  onDragStart?: (inv: InventoryItem, source: "equip", slot: SlotKey) => void;
+  onDragEnd?: () => void;
+  onDropItem?: (targetSlot: SlotKey) => void;
+  isDragOver?: boolean;
+  onDragOverSlot?: (slot: SlotKey) => void;
+  onDragLeaveSlot?: () => void;
+  /** This slot is a valid drop target for the currently dragged item */
+  isValidTarget?: boolean;
 };
 
-const EquipmentSlot = ({ slotKey, item, onUnequip, onHoverItem, onSelectItem, locked, lockReason }: EquipSlotProps) => {
+const EquipmentSlot = ({
+  slotKey, item, onUnequip, onHoverItem, onSelectItem,
+  locked, lockReason,
+  onDragStart, onDragEnd, onDropItem,
+  isDragOver, onDragOverSlot, onDragLeaveSlot,
+  isValidTarget,
+}: EquipSlotProps) => {
   const rarity = item?.item.rarity ?? "";
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (locked || !item || !onDragStart) return;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", item.id);
+    onDragStart(item, "equip", slotKey);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (locked) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    onDragOverSlot?.(slotKey);
+  };
+
+  const handleDragLeave = () => {
+    onDragLeaveSlot?.();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    onDragLeaveSlot?.();
+    if (locked) return;
+    onDropItem?.(slotKey);
+  };
 
   return (
     <button
       type="button"
+      draggable={!locked && !!item}
+      onDragStart={handleDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       className={`group relative flex h-16 w-16 items-center justify-center rounded-lg border-2 transition-all
+        ${isDragOver && !locked
+          ? "ring-2 ring-indigo-400 border-indigo-400 scale-110 bg-indigo-900/30"
+          : isValidTarget && !locked
+            ? "ring-2 ring-emerald-400/60 border-emerald-400 bg-emerald-900/20 animate-pulse"
+            : ""
+        }
         ${locked
           ? "border-slate-700/30 bg-slate-900/60 opacity-40 cursor-not-allowed"
           : item
-            ? `${RARITY_BORDER[rarity]} ${RARITY_BG[rarity]} hover:brightness-125`
-            : "border-slate-600/50 bg-slate-800/40 hover:border-slate-500"
+            ? `${!isDragOver && !isValidTarget ? RARITY_BORDER[rarity] : ""} ${RARITY_BG[rarity]} hover:brightness-125`
+            : `${!isDragOver && !isValidTarget ? "border-slate-600/50" : ""} bg-slate-800/40 hover:border-slate-500`
         }
       `}
       aria-label={locked ? `${SLOT_LABELS[slotKey]} (${lockReason ?? "locked"})` : `${SLOT_LABELS[slotKey]}${item ? `: ${item.item.itemName}` : " (empty)"}`}
@@ -358,12 +409,55 @@ type InvCellProps = {
   onEquip: (inventoryId: string, itemType: string) => void;
   onHoverItem: (inv: InventoryItem | null, e?: React.MouseEvent) => void;
   onSelectItem: (inv: InventoryItem | null) => void;
+  /* ── Drag & Drop ── */
+  onDragStart?: (inv: InventoryItem, source: "bag") => void;
+  onDragEnd?: () => void;
+  /** Drop of an equipped item onto the bag area → unequip */
+  onDropToBag?: () => void;
+  isDragOver?: boolean;
+  onDragOverBag?: () => void;
+  onDragLeaveBag?: () => void;
 };
 
-const InventoryCell = memo(({ inv, onEquip, onHoverItem, onSelectItem }: InvCellProps) => {
+const InventoryCell = memo(({
+  inv, onEquip, onHoverItem, onSelectItem,
+  onDragStart, onDragEnd,
+  onDropToBag, isDragOver, onDragOverBag, onDragLeaveBag,
+}: InvCellProps) => {
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (!inv || !onDragStart) return;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", inv.id);
+    onDragStart(inv, "bag");
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    onDragOverBag?.();
+  };
+
+  const handleDragLeave = () => {
+    onDragLeaveBag?.();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    onDragLeaveBag?.();
+    onDropToBag?.();
+  };
+
   if (!inv) {
     return (
-      <div className="flex h-14 w-14 items-center justify-center rounded-md border border-slate-700/40 bg-slate-800/30" />
+      <div
+        className={`flex h-14 w-14 items-center justify-center rounded-md border transition-all
+          ${isDragOver ? "border-indigo-400 bg-indigo-900/30 ring-2 ring-indigo-400 scale-105" : "border-slate-700/40 bg-slate-800/30"}
+        `}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      />
     );
   }
 
@@ -372,10 +466,17 @@ const InventoryCell = memo(({ inv, onEquip, onHoverItem, onSelectItem }: InvCell
   return (
     <button
       type="button"
-      className={`relative flex h-14 w-14 items-center justify-center rounded-md border-2 transition-all hover:brightness-125
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`relative flex h-14 w-14 items-center justify-center rounded-md border-2 transition-all hover:brightness-125 cursor-grab active:cursor-grabbing
+        ${isDragOver ? "ring-2 ring-indigo-400 scale-105" : ""}
         ${RARITY_BORDER[rarity] ?? "border-slate-600"} ${RARITY_BG[rarity] ?? "bg-slate-800/60"}
       `}
-      aria-label={`${inv.item.itemName} — click to equip`}
+      aria-label={`${inv.item.itemName} — drag to equip or click to select`}
       tabIndex={0}
       onClick={() => onSelectItem(inv)}
       onDoubleClick={() => onEquip(inv.id, inv.item.itemType)}
@@ -492,7 +593,7 @@ const AttributesTab = ({
                 </p>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-lg font-bold text-white">{r.value}</span>
+                <span className="font-display text-xl text-white">{r.value}</span>
                 {isUpgradeable && (
                   <div className="group/btn relative">
                     <button
@@ -818,6 +919,16 @@ function InventoryContent() {
   const [isAllocating, setIsAllocating] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
 
+  /* ── Drag & Drop state ── */
+  const dragRef = useRef<{
+    inv: InventoryItem;
+    source: "bag" | "equip";
+    sourceSlot?: SlotKey;
+  } | null>(null);
+  const [dragOverTarget, setDragOverTarget] = useState<{ type: "slot"; slot: SlotKey } | { type: "bag"; idx?: number } | null>(null);
+  /** Which slots light up as valid targets during drag */
+  const [dragValidSlots, setDragValidSlots] = useState<Set<SlotKey>>(new Set());
+
   const load = useCallback(async (signal?: AbortSignal) => {
     if (!characterId) return;
     setError(null);
@@ -854,26 +965,80 @@ function InventoryContent() {
     return () => clearTimeout(timer);
   }, [loading, data, error, characterId, load]);
 
-  const handleEquip = useCallback(async (inventoryId: string, itemType: string) => {
+  /** Optimistically move item from bag → equipped slot, then sync with server */
+  const handleEquip = useCallback(async (inventoryId: string, slot: string) => {
+    // Optimistic update
+    setData((prev) => {
+      if (!prev) return prev;
+      const item = prev.unequipped.find((i) => i.id === inventoryId)
+        ?? prev.equipped.find((i) => i.id === inventoryId);
+      if (!item) return prev;
+
+      // Remove previously equipped item in the same slot (goes back to bag)
+      const displaced = prev.equipped.find((i) => i.equippedSlot === slot);
+
+      const newEquipped = [
+        ...prev.equipped.filter((i) => i.equippedSlot !== slot && i.id !== inventoryId),
+        { ...item, isEquipped: true, equippedSlot: slot },
+      ];
+      const newUnequipped = [
+        ...prev.unequipped.filter((i) => i.id !== inventoryId),
+        ...(displaced ? [{ ...displaced, isEquipped: false, equippedSlot: null }] : []),
+      ];
+
+      return {
+        ...prev,
+        equipped: newEquipped,
+        unequipped: newUnequipped,
+        items: [...newEquipped, ...newUnequipped],
+      };
+    });
+    setSelectedItem(null);
+
+    // Server sync
     try {
       const res = await fetch("/api/inventory/equip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId, inventoryId, slot: itemType }),
+        body: JSON.stringify({ characterId, inventoryId, slot }),
       });
       if (res.ok) {
-        setSelectedItem(null);
-        await load();
+        await load(); // re-sync with server truth
       } else {
         const body = await res.json().catch(() => ({}));
         setError(body.error ?? "Equipment error");
+        await load(); // rollback on error
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
+      await load();
     }
   }, [characterId, load]);
 
+  /** Optimistically move item from equipped → bag, then sync with server */
   const handleUnequip = useCallback(async (inventoryId: string) => {
+    // Optimistic update
+    setData((prev) => {
+      if (!prev) return prev;
+      const item = prev.equipped.find((i) => i.id === inventoryId);
+      if (!item) return prev;
+
+      const newEquipped = prev.equipped.filter((i) => i.id !== inventoryId);
+      const newUnequipped = [
+        ...prev.unequipped,
+        { ...item, isEquipped: false, equippedSlot: null },
+      ];
+
+      return {
+        ...prev,
+        equipped: newEquipped,
+        unequipped: newUnequipped,
+        items: [...newEquipped, ...newUnequipped],
+      };
+    });
+    setSelectedItem(null);
+
+    // Server sync
     try {
       const res = await fetch("/api/inventory/unequip", {
         method: "POST",
@@ -881,14 +1046,15 @@ function InventoryContent() {
         body: JSON.stringify({ characterId, inventoryId }),
       });
       if (res.ok) {
-        setSelectedItem(null);
         await load();
       } else {
         const body = await res.json().catch(() => ({}));
         setError(body.error ?? "Unequip error");
+        await load();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
+      await load();
     }
   }, [characterId, load]);
 
@@ -960,6 +1126,80 @@ function InventoryContent() {
     [characterId, isSelling, load]
   );
 
+  /* ── Drag & Drop handlers ── */
+
+  /** Given an item type, return the set of equipment slots it can go into */
+  const getValidSlotsForItem = useCallback((itemType: string): Set<SlotKey> => {
+    const type = itemType.toLowerCase();
+    if (type === "weapon") return new Set(["weapon", "weapon_offhand"] as SlotKey[]);
+    // All other types map 1:1 to their slot
+    if (SLOT_ORDER.includes(type as SlotKey)) return new Set([type as SlotKey]);
+    return new Set();
+  }, []);
+
+  const handleDragStartBag = useCallback((inv: InventoryItem, source: "bag") => {
+    dragRef.current = { inv, source };
+    setHoveredItem(null);
+    setDragValidSlots(getValidSlotsForItem(inv.item.itemType));
+  }, [getValidSlotsForItem]);
+
+  const handleDragStartEquip = useCallback((inv: InventoryItem, source: "equip", slot: SlotKey) => {
+    dragRef.current = { inv, source, sourceSlot: slot };
+    setHoveredItem(null);
+    setDragValidSlots(new Set()); // equip→bag doesn't highlight slots
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    dragRef.current = null;
+    setDragOverTarget(null);
+    setDragValidSlots(new Set());
+  }, []);
+
+  const handleDragOverSlot = useCallback((slot: SlotKey) => {
+    setDragOverTarget((prev) => (prev?.type === "slot" && (prev as { slot: SlotKey }).slot === slot) ? prev : { type: "slot", slot });
+  }, []);
+
+  const handleDragLeaveSlot = useCallback(() => {
+    setDragOverTarget(null);
+  }, []);
+
+  const handleDragOverBag = useCallback(() => {
+    setDragOverTarget((prev) => prev?.type === "bag" ? prev : { type: "bag" });
+  }, []);
+
+  const handleDragLeaveBag = useCallback(() => {
+    setDragOverTarget(null);
+  }, []);
+
+  /** Drop a bag item onto an equipment slot → equip */
+  const handleDropOnSlot = useCallback((targetSlot: SlotKey) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+
+    if (drag.source === "bag") {
+      const itemType = drag.inv.item.itemType;
+      const isWeapon = itemType.toLowerCase() === "weapon";
+      const slot = isWeapon ? targetSlot : itemType;
+      handleEquip(drag.inv.id, slot);
+    }
+    dragRef.current = null;
+    setDragOverTarget(null);
+    setDragValidSlots(new Set());
+  }, [handleEquip]);
+
+  /** Drop an equipped item onto the bag area → unequip */
+  const handleDropOnBag = useCallback(() => {
+    const drag = dragRef.current;
+    if (!drag) return;
+
+    if (drag.source === "equip") {
+      handleUnequip(drag.inv.id);
+    }
+    dragRef.current = null;
+    setDragOverTarget(null);
+    setDragValidSlots(new Set());
+  }, [handleUnequip]);
+
   /* Build equipped map */
   const equippedMap = useMemo(() => {
     const map: Partial<Record<SlotKey, InventoryItem>> = {};
@@ -971,6 +1211,23 @@ function InventoryContent() {
     }
     return map;
   }, [data]);
+
+  /** Common drag props for EquipmentSlot */
+  const equipDragProps = useMemo(() => ({
+    onDragStart: handleDragStartEquip,
+    onDragEnd: handleDragEnd,
+    onDropItem: handleDropOnSlot,
+    onDragOverSlot: handleDragOverSlot,
+    onDragLeaveSlot: handleDragLeaveSlot,
+  }), [handleDragStartEquip, handleDragEnd, handleDropOnSlot, handleDragOverSlot, handleDragLeaveSlot]);
+
+  const isSlotDragOver = useCallback((slot: SlotKey) =>
+    dragOverTarget?.type === "slot" && (dragOverTarget as { slot: SlotKey }).slot === slot
+  , [dragOverTarget]);
+
+  const isSlotValidTarget = useCallback((slot: SlotKey) =>
+    dragValidSlots.has(slot)
+  , [dragValidSlots]);
 
   /* Check if main hand weapon is two-handed (blocks off-hand slot) */
   const mainHandIsTwoHanded = useMemo(() => {
@@ -1001,6 +1258,16 @@ function InventoryContent() {
 
   return (
     <div className="relative min-h-full text-white">
+      {/* Close button */}
+      <Link
+        href="/hub"
+        className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+        aria-label="Back to Hub"
+        tabIndex={0}
+      >
+        ✕
+      </Link>
+
       {error && (
         <div className="border-b border-red-900/50 bg-red-950/30 px-4 py-2 text-xs text-red-400">{error}</div>
       )}
@@ -1012,14 +1279,21 @@ function InventoryContent() {
           <div className="p-4">
             {/* Equipment paper-doll layout */}
             <div className="flex gap-4">
-              {/* Left column: helmet, chest, gloves, legs, necklace, ring */}
+              {/* Left column: helmet, chest, gloves, legs, ring */}
               <div className="flex flex-col items-center gap-2">
-                <EquipmentSlot slotKey="helmet" item={equippedMap.helmet} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="chest" item={equippedMap.chest} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="gloves" item={equippedMap.gloves} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="legs" item={equippedMap.legs} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="necklace" item={equippedMap.necklace} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="ring" item={equippedMap.ring} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                {(["helmet", "chest", "gloves", "legs", "ring"] as const).map((slot) => (
+                  <EquipmentSlot
+                    key={slot}
+                    slotKey={slot}
+                    item={equippedMap[slot]}
+                    onUnequip={handleUnequip}
+                    onHoverItem={handleHoverItem}
+                    onSelectItem={handleSelectItem}
+                    isDragOver={isSlotDragOver(slot)}
+                    isValidTarget={isSlotValidTarget(slot)}
+                    {...equipDragProps}
+                  />
+                ))}
               </div>
 
               {/* Center: avatar + name + level */}
@@ -1031,8 +1305,8 @@ function InventoryContent() {
                       alt={character.origin}
                       width={1024}
                       height={1024}
-                      className="absolute left-1/2 -top-1 w-[200%] max-w-none -translate-x-1/2"
-                      sizes="384px"
+                      className="h-full w-full object-cover"
+                      sizes="208px"
                     />
                   ) : (
                     <span className="text-5xl">
@@ -1041,7 +1315,7 @@ function InventoryContent() {
                   )}
 
                   {/* Level badge — top-right */}
-                  <div className="absolute right-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-amber-500/80 bg-slate-900/90 text-base font-bold text-amber-400 shadow-lg">
+                  <div className="absolute right-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-amber-500/80 bg-slate-900/90 text-base font-black text-amber-400 shadow-lg">
                     {character.level}
                   </div>
 
@@ -1055,7 +1329,7 @@ function InventoryContent() {
                   </div>
                 </div>
                 {/* Level bar */}
-                <div className="relative mt-1 h-4 w-[208px] overflow-hidden rounded-full bg-slate-800">
+                <div className="relative mt-1 h-6 w-[208px] overflow-hidden rounded-full bg-slate-800">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-green-600 to-green-400 transition-all"
                     style={{ width: `${xpPercent}%` }}
@@ -1065,7 +1339,7 @@ function InventoryContent() {
                   </span>
                 </div>
                 {/* Stamina bar */}
-                <div className="relative mt-1 h-4 w-[208px] overflow-hidden rounded-full bg-slate-800">
+                <div className="relative mt-1 h-6 w-[208px] overflow-hidden rounded-full bg-slate-800">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all"
                     style={{ width: `${staminaPercent}%` }}
@@ -1076,7 +1350,16 @@ function InventoryContent() {
                 </div>
                 {/* Weapon slots under avatar: Main Hand + Off Hand */}
                 <div className="mt-2 flex items-center gap-2">
-                  <EquipmentSlot slotKey="weapon" item={equippedMap.weapon} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                  <EquipmentSlot
+                    slotKey="weapon"
+                    item={equippedMap.weapon}
+                    onUnequip={handleUnequip}
+                    onHoverItem={handleHoverItem}
+                    onSelectItem={handleSelectItem}
+                    isDragOver={isSlotDragOver("weapon")}
+                    isValidTarget={isSlotValidTarget("weapon")}
+                    {...equipDragProps}
+                  />
                   <EquipmentSlot
                     slotKey="weapon_offhand"
                     item={equippedMap.weapon_offhand}
@@ -1085,17 +1368,28 @@ function InventoryContent() {
                     onSelectItem={handleSelectItem}
                     locked={mainHandIsTwoHanded}
                     lockReason="Two-handed weapon equipped"
+                    isDragOver={isSlotDragOver("weapon_offhand")}
+                    isValidTarget={isSlotValidTarget("weapon_offhand")}
+                    {...equipDragProps}
                   />
                 </div>
               </div>
 
               {/* Right column: relic, amulet, accessory, belt, boots */}
               <div className="flex flex-col items-center gap-2">
-                <EquipmentSlot slotKey="relic" item={equippedMap.relic} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="amulet" item={equippedMap.amulet} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="accessory" item={equippedMap.accessory} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="belt" item={equippedMap.belt} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
-                <EquipmentSlot slotKey="boots" item={equippedMap.boots} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                {(["relic", "amulet", "accessory", "belt", "boots"] as const).map((slot) => (
+                  <EquipmentSlot
+                    key={slot}
+                    slotKey={slot}
+                    item={equippedMap[slot]}
+                    onUnequip={handleUnequip}
+                    onHoverItem={handleHoverItem}
+                    onSelectItem={handleSelectItem}
+                    isDragOver={isSlotDragOver(slot)}
+                    isValidTarget={isSlotValidTarget(slot)}
+                    {...equipDragProps}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -1155,15 +1449,35 @@ function InventoryContent() {
           )}
 
           {/* Bag grid */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+          <div
+            className={`rounded-xl border p-4 transition-all ${
+              dragOverTarget?.type === "bag" && dragRef.current?.source === "equip"
+                ? "border-indigo-400 bg-indigo-950/20"
+                : "border-slate-800 bg-slate-900/50"
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              if (dragRef.current?.source === "equip") {
+                handleDragOverBag();
+              }
+            }}
+            onDragLeave={handleDragLeaveBag}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragRef.current?.source === "equip") {
+                handleDropOnBag();
+              }
+            }}
+          >
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-300">
+              <h2 className="font-display text-base text-slate-300">
                 Backpack
                 <span className="ml-2 text-xs font-normal text-slate-500">
                   {bagItems.length}/{INVENTORY_SLOTS_TOTAL}
                 </span>
               </h2>
-              <p className="text-xs text-slate-500">Double-click to equip · Right-click slot to unequip</p>
+              <p className="text-xs text-slate-500">Drag to equip · Double-click · Right-click slot to unequip</p>
             </div>
 
             <div className="grid grid-cols-5 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-8">
@@ -1174,6 +1488,12 @@ function InventoryContent() {
                   onEquip={handleEquip}
                   onHoverItem={handleHoverItem}
                   onSelectItem={handleSelectItem}
+                  onDragStart={handleDragStartBag}
+                  onDragEnd={handleDragEnd}
+                  onDropToBag={handleDropOnBag}
+                  isDragOver={dragOverTarget?.type === "bag" && dragRef.current?.source === "equip" && !bagItems[i]}
+                  onDragOverBag={dragRef.current?.source === "equip" ? handleDragOverBag : undefined}
+                  onDragLeaveBag={handleDragLeaveBag}
                 />
               ))}
             </div>

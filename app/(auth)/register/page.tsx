@@ -21,7 +21,7 @@ const EmailVerificationNotice = ({ email }: { email: string }) => (
         <span className="inline-block text-5xl" role="img" aria-label="Email">
           📧
         </span>
-        <h1 className="mt-4 text-2xl font-bold uppercase tracking-wider text-white">
+        <h1 className="mt-4 font-display text-3xl font-bold uppercase tracking-wider text-white">
           Verify Your Email
         </h1>
         <p className="mt-2 text-sm text-slate-400">
@@ -36,7 +36,7 @@ const EmailVerificationNotice = ({ email }: { email: string }) => (
             <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10">
               <span className="text-sm">✅</span>
             </div>
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">
+            <h2 className="font-display text-base tracking-widest text-slate-300">
               Almost There!
             </h2>
           </div>
@@ -202,7 +202,7 @@ export default function RegisterPage() {
                 priority
               />
             </Link>
-            <h1 className="text-xl font-bold uppercase tracking-wider text-white">
+            <h1 className="font-display text-2xl font-bold uppercase tracking-wider text-white">
               Join the Arena
             </h1>
             <p className="text-xs text-slate-500">Create your account and start fighting</p>

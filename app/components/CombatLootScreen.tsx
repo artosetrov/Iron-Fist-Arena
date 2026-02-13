@@ -83,7 +83,7 @@ const CombatLootScreen = ({
       <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-amber-700/40 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl">
         {/* Header */}
         <div className="border-b border-slate-800 bg-gradient-to-r from-amber-900/40 to-orange-900/40 px-6 py-4 text-center">
-          <h2 className="text-lg font-bold uppercase tracking-wider text-amber-400">
+          <h2 className="font-display text-xl tracking-wider text-amber-400">
             What a Fight!
           </h2>
         </div>
@@ -106,8 +106,8 @@ const CombatLootScreen = ({
                 alt={enemy.origin}
                 width={1024}
                 height={1024}
-                className="absolute left-1/2 -top-3 w-[300%] max-w-none -translate-x-1/2"
-                sizes="240px"
+                className="h-full w-full object-cover"
+                sizes="80px"
               />
             ) : (
               <span className="text-4xl" aria-hidden="true">

@@ -25,7 +25,7 @@ const GlobalError = ({
           className="mx-auto"
           priority
         />
-        <h1 className="text-3xl font-bold">Something went wrong</h1>
+        <h1 className="font-display text-4xl font-bold uppercase text-amber-400">Something went wrong</h1>
         <p className="text-slate-400 max-w-md">
           An unexpected error occurred. Please try refreshing the page.
         </p>

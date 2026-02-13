@@ -263,12 +263,20 @@ function CombatContent() {
   return (
     <div className="flex min-h-full flex-col p-4 lg:p-6">
       {/* Header */}
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold uppercase tracking-wider text-amber-400">
+      <div className="relative mb-2 flex flex-col items-center gap-2">
+        <Link
+          href="/hub"
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
+        <h1 className="font-display text-2xl font-bold uppercase tracking-wider text-amber-400">
           Training Arena
         </h1>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           {status && (
             <>
               <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5">
@@ -302,14 +310,6 @@ function CombatContent() {
             </>
           )}
 
-          <Link
-            href="/hub"
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-            aria-label="Back to Hub"
-            tabIndex={0}
-          >
-            ✕
-          </Link>
         </div>
       </div>
 
@@ -318,33 +318,37 @@ function CombatContent() {
       </p>
 
       {/* Choose an opponent */}
-      <h2 className="mb-4 text-center text-sm font-semibold text-slate-300">
+      <h2 className="mb-4 text-center font-display text-base text-slate-300">
         Choose your opponent:
       </h2>
 
       {/* Opponent cards grid */}
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="scrollbar-hide mx-auto mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4" style={{ maxWidth: 4 * 320 + 3 * 16 }}>
         {PRESETS.map((card) => {
           const dummyLvl = getDummyLevel(character.level);
           const dummyHp = getDummyHp(character.vitality, card.vitW);
 
           return (
-            <HeroCard
+            <div
               key={card.id}
-              name={card.label}
-              className={card.id}
-              icon={card.icon}
-              level={dummyLvl}
-              hp={{ current: dummyHp, max: dummyHp }}
-              selected={preset === card.id}
-              onClick={() => setPreset(card.id)}
-              ariaLabel={`Select ${card.label}`}
-              description={card.description}
+              className="w-[75vw] min-w-[220px] max-w-[320px] flex-shrink-0 snap-center sm:w-auto sm:min-w-0 sm:max-w-none sm:flex-shrink"
             >
-              <p className="pb-1 text-center text-[10px] text-slate-600">
-                Stats scale to your level
-              </p>
-            </HeroCard>
+              <HeroCard
+                name={card.label}
+                className={card.id}
+                icon={card.icon}
+                level={dummyLvl}
+                hp={{ current: dummyHp, max: dummyHp }}
+                selected={preset === card.id}
+                onClick={() => setPreset(card.id)}
+                ariaLabel={`Select ${card.label}`}
+                description={card.description}
+              >
+                <p className="pb-1 text-center text-[10px] text-slate-600">
+                  Stats scale to your level
+                </p>
+              </HeroCard>
+            </div>
           );
         })}
       </div>

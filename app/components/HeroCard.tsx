@@ -21,11 +21,11 @@ export const CLASS_GRADIENT: Record<string, string> = {
 };
 
 export const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/origins/origin-human.png",
-  orc: "/images/origins/origin-orc.png",
-  skeleton: "/images/origins/origin-skeleton.png",
-  demon: "/images/origins/origin-demon.png",
-  dogfolk: "/images/origins/origin-dogfolk.png",
+  human: "/images/origins/Avatar/origin-human_avatar_1.png",
+  orc: "/images/origins/Avatar/origin-orc_avatar_1.png",
+  skeleton: "/images/origins/Avatar/origin-skeleton_avatar_1.png",
+  demon: "/images/origins/Avatar/origin-demon_avatar_1.png",
+  dogfolk: "/images/origins/Avatar/origin-dogfolk_avatar_1.png",
 };
 
 export const BOSS_IMAGES: Record<string, string> = {
@@ -108,8 +108,13 @@ type StatCircleProps = {
   value: number;
   icon: string;
   color: string;
+  /** Hex color for the fill ring */
+  fillColor: string;
   label: string;
   size?: "sm" | "md";
+  hideLabel?: boolean;
+  /** Max value for fill progress (default 100) */
+  maxValue?: number;
 };
 
 /** Short abbreviation shown below the stat circle */
@@ -124,10 +129,12 @@ const STAT_ABBR: Record<string, string> = {
   Charisma: "CHA",
 };
 
-const StatCircle = ({ value, color, label, size = "md" }: StatCircleProps) => {
+const StatCircle = ({ value, fillColor, label, size = "md", hideLabel = false, maxValue = 100 }: StatCircleProps) => {
   const [hovered, setHovered] = useState(false);
-  const sizeClasses = size === "sm" ? "h-9 w-9 text-xs" : "h-11 w-11 text-sm";
+  const dim = size === "sm" ? 36 : 44;
+  const fontSize = size === "sm" ? "text-xs" : "text-sm";
   const abbr = STAT_ABBR[label] ?? label.slice(0, 3).toUpperCase();
+  const pct = Math.max(0, Math.min(100, (value / maxValue) * 100));
 
   return (
     <div
@@ -136,13 +143,25 @@ const StatCircle = ({ value, color, label, size = "md" }: StatCircleProps) => {
       onMouseLeave={() => setHovered(false)}
     >
       <div
-        className={`${sizeClasses} flex items-center justify-center rounded-full border-2 ${color} bg-slate-900/90 font-bold tabular-nums text-white shadow-md transition-transform hover:scale-110`}
+        className={`flex items-center justify-center rounded-full font-display tabular-nums text-white shadow-md transition-transform hover:scale-110`}
+        style={{
+          width: dim,
+          height: dim,
+          background: `conic-gradient(${fillColor} ${pct}%, rgba(30,41,59,0.9) ${pct}%)`,
+        }}
       >
-        {value}
+        <span
+          className={`flex items-center justify-center rounded-full bg-slate-900 ${fontSize}`}
+          style={{ width: dim - 6, height: dim - 6 }}
+        >
+          {value}
+        </span>
       </div>
-      <span className="mt-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-slate-500">
-        {abbr}
-      </span>
+      {!hideLabel && (
+        <span className="mt-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-slate-500">
+          {abbr}
+        </span>
+      )}
       {hovered && (
         <div className="pointer-events-none absolute -top-7 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-medium text-slate-300 shadow-lg border border-slate-700">
           {label}: {value}
@@ -172,7 +191,7 @@ const HpBar = ({ current, max }: HpBarProps) => {
         className={`absolute inset-y-0 left-0 bg-gradient-to-r ${barColor} transition-all duration-500 ease-out`}
         style={{ width: `${pct}%` }}
       />
-      <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+      <span className="absolute inset-0 flex items-center justify-center font-display text-sm text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
         {clamped.toLocaleString()} / {max.toLocaleString()}
       </span>
     </div>
@@ -258,6 +277,14 @@ export type HeroCardProps = {
   };
   /** Stat circle size */
   statSize?: "sm" | "md";
+  /** Hide stat circles entirely (e.g. on small mobile cards) */
+  hideStats?: boolean;
+  /** Hide stat abbreviation labels below circles */
+  hideStatLabels?: boolean;
+  /** Max value for stat circle fill progress (default 100) */
+  statMax?: number;
+  /** Hide description text (e.g. on small mobile cards) */
+  hideDescription?: boolean;
   /** Disable hover/click effects */
   disabled?: boolean;
   /** Aria label override */
@@ -283,6 +310,10 @@ const HeroCard = memo(({
   imageSrc,
   battle,
   statSize = "md",
+  hideStats = false,
+  hideStatLabels = false,
+  statMax = 100,
+  hideDescription = false,
   disabled = false,
   ariaLabel,
   children,
@@ -307,14 +338,14 @@ const HeroCard = memo(({
 
   // Stat config
   const statConfig = [
-    { key: "strength", icon: "⚔️", color: "border-red-500", label: "Strength" },
-    { key: "agility", icon: "🏃", color: "border-emerald-500", label: "Agility" },
-    { key: "intelligence", icon: "🧠", color: "border-blue-500", label: "Intelligence" },
-    { key: "vitality", icon: "❤️", color: "border-pink-500", label: "Vitality" },
-    { key: "luck", icon: "🍀", color: "border-amber-500", label: "Luck" },
-    { key: "endurance", icon: "🛡️", color: "border-orange-500", label: "Endurance" },
-    { key: "wisdom", icon: "📖", color: "border-indigo-500", label: "Wisdom" },
-    { key: "charisma", icon: "✨", color: "border-purple-500", label: "Charisma" },
+    { key: "strength", icon: "⚔️", color: "border-red-500", fillColor: "#ef4444", label: "Strength" },
+    { key: "agility", icon: "🏃", color: "border-emerald-500", fillColor: "#10b981", label: "Agility" },
+    { key: "intelligence", icon: "🧠", color: "border-blue-500", fillColor: "#3b82f6", label: "Intelligence" },
+    { key: "vitality", icon: "❤️", color: "border-pink-500", fillColor: "#ec4899", label: "Vitality" },
+    { key: "luck", icon: "🍀", color: "border-amber-500", fillColor: "#f59e0b", label: "Luck" },
+    { key: "endurance", icon: "🛡️", color: "border-orange-500", fillColor: "#f97316", label: "Endurance" },
+    { key: "wisdom", icon: "📖", color: "border-indigo-500", fillColor: "#6366f1", label: "Wisdom" },
+    { key: "charisma", icon: "✨", color: "border-purple-500", fillColor: "#a855f7", label: "Charisma" },
   ] as const;
 
   const visibleStats = stats
@@ -374,8 +405,8 @@ const HeroCard = memo(({
               alt={origin ?? name}
               width={1024}
               height={1024}
-              className="absolute left-1/2 -top-3 z-10 w-[280%] max-w-none -translate-x-1/2 drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
-              sizes="380px"
+              className="relative z-10 h-full w-full object-cover drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
+              sizes="220px"
             />
           ) : (
             <Image
@@ -400,14 +431,14 @@ const HeroCard = memo(({
 
         {/* Bottom gradient overlay for name */}
         <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-2 pb-2 pt-6">
-          <p className="truncate text-center text-sm font-bold text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
+          <p className="truncate text-center font-display text-base text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
             {name}
           </p>
         </div>
 
         {/* Level badge — top-right */}
         {level !== undefined && (
-          <div className="absolute right-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-amber-500/80 bg-slate-900/90 text-base font-bold text-amber-400 shadow-lg">
+          <div className="absolute right-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-amber-500/80 bg-slate-900/90 font-display text-lg font-black text-amber-400 shadow-lg">
             {level}
           </div>
         )}
@@ -436,13 +467,13 @@ const HeroCard = memo(({
 
       {/* ═══ HP bar ═══ */}
       {hp && (
-        <div className="px-2.5 pt-2">
+        <div className="px-2.5 py-2">
           <HpBar current={hp.current} max={hp.max} />
         </div>
       )}
 
       {/* ═══ Description ═══ */}
-      {description && (
+      {!hideDescription && description && (
         <div className="px-3 pt-2">
           <p className="text-center text-[11px] leading-relaxed text-slate-400">
             {description}
@@ -451,7 +482,7 @@ const HeroCard = memo(({
       )}
 
       {/* ═══ Stat circles ═══ */}
-      {visibleStats.length > 0 && (
+      {!hideStats && visibleStats.length > 0 && (
         <div className="flex flex-wrap items-center justify-center gap-2 px-2 py-3">
           {visibleStats.map((s) => (
             <StatCircle
@@ -459,8 +490,11 @@ const HeroCard = memo(({
               value={(stats as Record<string, number>)[s.key]}
               icon={s.icon}
               color={s.color}
+              fillColor={s.fillColor}
               label={s.label}
               size={statSize}
+              hideLabel={hideStatLabels}
+              maxValue={statMax}
             />
           ))}
         </div>

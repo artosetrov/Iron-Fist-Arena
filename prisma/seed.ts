@@ -7,33 +7,45 @@ const prisma = new PrismaClient();
 /* ------------------------------------------------------------------ */
 
 async function seedGenericItems() {
-  const count = await prisma.item.count({ where: { catalogId: null } });
-  if (count > 0) {
-    console.log("Generic items already seeded, skip.");
-    return;
+  // Delete old generic items that are NOT referenced in any inventory
+  const oldCount = await prisma.item.count({ where: { catalogId: null } });
+  if (oldCount > 0) {
+    const deleted = await prisma.item.deleteMany({
+      where: {
+        catalogId: null,
+        equipmentInventory: { none: {} },
+      },
+    });
+    console.log(`Cleaned up ${deleted.count} old generic items (${oldCount - deleted.count} kept — owned by players).`);
   }
   const types = ["weapon", "helmet", "chest", "gloves", "legs", "boots", "accessory"] as const;
   const rarities = ["common", "uncommon", "rare", "epic", "legendary"] as const;
+  const RARITY_MULT: Record<string, number> = { legendary: 50, epic: 15, rare: 6, uncommon: 2.5, common: 1 };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const batch: any[] = [];
   for (const rarity of rarities) {
-    for (let level = 1; level <= 25; level += 2) {
+    for (let level = 1; level <= 50; level++) {
       const base = level * 4 + 10;
-      const buyPrice = Math.floor(100 * Math.pow(1 + level / 10, 1.5) * (rarity === "legendary" ? 50 : rarity === "epic" ? 15 : rarity === "rare" ? 6 : rarity === "uncommon" ? 2.5 : 1));
+      const buyPrice = Math.floor(100 * Math.pow(1 + level / 10, 1.5) * (RARITY_MULT[rarity] ?? 1));
       for (const itemType of types) {
-        await prisma.item.create({
-          data: {
-            itemName: `${rarity} ${itemType} Lv.${level}`,
-            itemType,
-            rarity,
-            itemLevel: level,
-            baseStats: { strength: base, armor: itemType !== "weapon" ? Math.floor(base * 0.5) : 0 },
-            buyPrice,
-            sellPrice: Math.floor(buyPrice * 0.5),
-          },
+        batch.push({
+          itemName: `${rarity} ${itemType} Lv.${level}`,
+          itemType,
+          rarity,
+          itemLevel: level,
+          baseStats: { strength: base, armor: itemType !== "weapon" ? Math.floor(base * 0.5) : 0 },
+          buyPrice,
+          sellPrice: Math.floor(buyPrice * 0.5),
         });
       }
     }
   }
-  console.log("Generic items seed done.");
+  // Batch insert in chunks of 500 for performance
+  for (let i = 0; i < batch.length; i += 500) {
+    await prisma.item.createMany({ data: batch.slice(i, i + 500) });
+  }
+  console.log(`Generic items seed done: ${batch.length} items created.`);
 }
 
 /* ------------------------------------------------------------------ */
@@ -67,6 +79,14 @@ const BUY_MULT: Record<string, number> = {
   legendary: 25.0,
 };
 
+/** Catalog items get itemLevel based on rarity tier */
+const CATALOG_LEVEL: Record<string, number> = {
+  common: 5,
+  rare: 15,
+  epic: 25,
+  legendary: 35,
+};
+
 const calcBuyPrice = (rarity: string): number => {
   const basePrice = 200;
   return Math.floor(basePrice * (BUY_MULT[rarity] ?? 1));
@@ -93,6 +113,14 @@ async function seedCatalogItems() {
     });
 
     if (existing) {
+      // Update itemLevel for existing catalog items (migration from flat 30 → rarity-based)
+      const targetLevel = CATALOG_LEVEL[item.rarity] ?? 20;
+      if (existing.itemLevel !== targetLevel) {
+        await prisma.item.update({
+          where: { catalogId: item.catalogId },
+          data: { itemLevel: targetLevel },
+        });
+      }
       skipped++;
       continue;
     }
@@ -106,7 +134,7 @@ async function seedCatalogItems() {
         itemName: item.name,
         itemType: item.slot,
         rarity: item.rarity,
-        itemLevel: 30,
+        itemLevel: CATALOG_LEVEL[item.rarity] ?? 20,
         baseStats: item.baseStats,
         classRestriction: item.classRestriction ?? null,
         setName: item.setName ?? null,

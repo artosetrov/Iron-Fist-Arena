@@ -169,7 +169,7 @@ const CombatResultModal = ({
             {bannerIcon}
           </span>
           <h2
-            className={`text-2xl font-black uppercase tracking-wider ${titleColor}`}
+            className={`font-display text-3xl tracking-wider ${titleColor}`}
           >
             {title}
           </h2>

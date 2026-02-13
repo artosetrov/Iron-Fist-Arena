@@ -1,4 +1,4 @@
-# Item System Design Document v1.0
+# Item System Design Document v2.0
 
 ## 1. Purpose
 
@@ -12,7 +12,60 @@ Legendary sets are the ultimate endgame chase items.
 
 ---
 
-## 2. Rarity System
+## 2. Item Sources
+
+В игре существуют **два источника предметов**, которые объединяются в единый пул магазина:
+
+### 2.1 Generic Items (процедурные)
+
+Генерируются автоматически при seed базы данных. Покрывают все уровни и типы:
+
+- **Уровни:** 1–50 (каждый уровень)
+- **Типы:** weapon, helmet, chest, gloves, legs, boots, accessory (7 типов)
+- **Рарности:** common, uncommon, rare, epic, legendary (5 рарностей)
+- **Итого:** 7 × 5 × 50 = **1750 предметов**
+- **Название:** автоматическое (`"{rarity} {type} Lv.{level}"`)
+- **Статы:** формульные (`base = level × 4 + 10`, armor = 50% от base для неоружия)
+- **Цена покупки:** `100 × (1 + level/10)^1.5 × Rarity_Mult`
+- **Цена продажи:** 50% от цены покупки
+
+### 2.2 Catalog Items (авторские)
+
+Уникальные предметы с авторскими названиями, статами и описаниями. Хранятся в `lib/game/item-catalog.ts`.
+
+- **Всего:** 232 предмета (116 доспехов + 116 оружия)
+- Включают легендарные сеты (4 класса × 8 предметов = 32 legendary)
+- Каждый предмет имеет уникальный `catalogId`
+- Уровень предмета (`itemLevel`) зависит от рарности:
+
+| Rarity    | itemLevel | Когда виден в магазине (уровень персонажа) |
+|-----------|-----------|---------------------------------------------|
+| Common    | 5         | Level 4–7                                   |
+| Rare      | 15        | Level 14–17                                 |
+| Epic      | 25        | Level 24–27                                 |
+| Legendary | 35        | Не продаётся (drop-only)                    |
+
+---
+
+## 3. NPC Shop — Скользящее окно
+
+Магазин показывает предметы на основе уровня персонажа:
+
+```
+Window = [max(1, CharLevel - 1), CharLevel + 2]
+```
+
+- Окно: **4 уровня предметов** (от −1 до +2 относительно уровня)
+- **Legendary предметы исключены** из магазина (drop-only)
+- Generic + Catalog предметы фильтруются **одним запросом** с общим условием по `itemLevel`
+- Ассортимент обновляется автоматически при каждом level-up
+- ~30–50 предметов на любом уровне
+
+**API endpoint:** `GET /api/shop/items?characterId={id}`
+
+---
+
+## 4. Rarity System
 
 | Rarity          | Color  | Drop Rate | Stat Multiplier | Sell Value |
 | --------------- | ------ | --------- | --------------- | ---------- |
@@ -25,7 +78,7 @@ Rarity multiplier applies to **base item stats**.
 
 ---
 
-## 3. Equipment Slots
+## 5. Equipment Slots
 
 Each player has **5 equipment slots**:
 
@@ -39,7 +92,7 @@ Each player has **5 equipment slots**:
 
 ---
 
-## 4. Item Stat Types
+## 6. Item Stat Types
 
 Items can provide 1–3 stats from the following pool:
 
@@ -53,9 +106,9 @@ Items can provide 1–3 stats from the following pool:
 
 ---
 
-## 5. Base Item Stats (Level 30 Baseline)
+## 7. Base Item Stats (Level 30 Baseline)
 
-### 5.1 Armor Base Stats
+### 7.1 Armor Base Stats
 
 | Slot   | DEF | HP  | ATK | SPEED |
 | ------ | --- | --- | --- | ----- |
@@ -88,7 +141,7 @@ Items can provide 1–3 stats from the following pool:
 - Epic (x1.15): ATK 17, DEF 17, SPEED 6
 - Legendary (x1.22): ATK 18, DEF 18, SPEED 6
 
-### 5.2 Weapon Base Stats
+### 7.2 Weapon Base Stats
 
 4 weapon subtypes with different stat profiles:
 
@@ -127,7 +180,7 @@ Items within the same rarity vary by ±10–15% for diversity.
 
 ---
 
-## 6. Legendary Class Sets
+## 8. Legendary Class Sets
 
 Each class has a unique **4-piece legendary set**. Wearing pieces of the same set grants bonus effects.
 
@@ -197,7 +250,7 @@ Each class has a unique **4-piece legendary set**. Wearing pieces of the same se
 
 ---
 
-## 7. Balance Rules
+## 9. Balance Rules
 
 - Full legendary set provides **~15–18% power advantage**
 - **No direct pay-to-win items**
@@ -207,7 +260,7 @@ Each class has a unique **4-piece legendary set**. Wearing pieces of the same se
 
 ---
 
-## 8. Crafting System
+## 10. Crafting System
 
 | Action                      | Result                        |
 | --------------------------- | ----------------------------- |
@@ -218,7 +271,7 @@ Designed for **full-season progression** (approximately 10 legendary salvages to
 
 ---
 
-## 9. Item Catalog Summary
+## 11. Item Catalog Summary
 
 ### Armor (116 items)
 
@@ -244,7 +297,7 @@ Full item catalog with stats: `lib/game/item-catalog.ts`
 
 ---
 
-## 10. Technical Notes
+## 12. Technical Notes
 
 - Stats stored in `baseStats` JSON field in the `items` table
 - Legendary items have `classRestriction` and `setName` fields
@@ -253,3 +306,7 @@ Full item catalog with stats: `lib/game/item-catalog.ts`
 - Existing 7 equipment slots (weapon, helmet, chest, gloves, legs, boots, accessory) remain; catalog items use weapon + 4 armor slots
 - Existing uncommon rarity preserved for backward compatibility
 - Weapon subtypes (Sword, Dagger, Mace, Staff) stored in `description` field for UI display
+- Generic items: `catalogId = null`, catalog items: `catalogId = "warrior-helmet-crimson-conqueror"` (unique)
+- Shop API endpoint: `GET /api/shop/items?characterId={id}` — единый запрос с фильтром по `itemLevel` и исключением legendary
+- Seed: generic items перегенерируются при каждом запуске (старые без владельца удаляются), catalog items обновляются (upsert по `catalogId`)
+- Catalog item levels: common=5, rare=15, epic=25, legendary=35 (определяются в seed через `CATALOG_LEVEL`)

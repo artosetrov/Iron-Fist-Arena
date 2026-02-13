@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useAdminGuard } from "@/lib/hooks/useAdminGuard";
 import PageLoader from "@/app/components/PageLoader";
 import FormInput from "@/app/components/FormInput";
@@ -113,7 +114,7 @@ const Section = ({
 }) => (
   <section className="rounded-xl border border-slate-700/50 bg-slate-900/80">
     <div className="border-b border-slate-700/50 px-5 py-3">
-      <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">
+      <h2 className="font-display text-base tracking-wider text-slate-300">
         {title}
       </h2>
     </div>
@@ -211,34 +212,116 @@ const InputPreview = () => {
 
 /* ────────────────── Preview: HeroCards ────────────────── */
 
-const HeroCardPreview = () => {
-  const classes = ["warrior", "rogue", "mage", "tank"];
-  const mockStats = {
-    strength: 25,
-    agility: 18,
-    intelligence: 12,
-    vitality: 30,
-    luck: 8,
-  };
+const PREVIEW_BOSS_PROPS = {
+  name: "Iron Dummy",
+  level: 15,
+  hp: { current: 2800, max: 3500 } as const,
+  imageSrc: "/images/bosses/boss-iron-dummy.png",
+  description: "A relentless training construct",
+  stats: { strength: 40, agility: 15, intelligence: 10, endurance: 35, luck: 5 },
+} as const;
 
-  return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4" style={{ maxWidth: 720 }}>
-      {classes.map((cls) => (
-        <HeroCard
-          key={cls}
-          name={`${cls.charAt(0).toUpperCase() + cls.slice(1)} Hero`}
-          className={cls}
-          origin="human"
-          level={42}
-          rating={1500}
-          hp={{ current: 750, max: 1000 }}
-          stats={mockStats}
-          statSize="sm"
-        />
-      ))}
+const PREVIEW_HERO_PROPS = {
+  name: "Warrior Hero",
+  className: "warrior",
+  origin: "human",
+  level: 42,
+  rating: 1500,
+  hp: { current: 750, max: 1000 } as const,
+  stats: { strength: 25, agility: 18, intelligence: 12, vitality: 30, luck: 8 },
+} as const;
+
+const CardSizeLabel = ({ width }: { width: number }) => (
+  <span className="absolute -top-5 left-0 text-[10px] font-medium text-slate-500">
+    {width}px
+  </span>
+);
+
+const HeroCardPreview = () => (
+  <div className="space-y-8">
+    {/* ── Desktop (4 cards in a row) ── */}
+    <div>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-amber-400/80">
+        Desktop — 4 in row (container 780px)
+      </p>
+      <div className="grid grid-cols-4 gap-4" style={{ maxWidth: 780 }}>
+        <div className="relative">
+          <CardSizeLabel width={180} />
+          <HeroCard {...PREVIEW_BOSS_PROPS} statSize="sm" hideStats hideDescription />
+        </div>
+        <div className="relative">
+          <CardSizeLabel width={180} />
+          <HeroCard
+            name="Drill Sergeant Grizzle"
+            level={25}
+            hp={{ current: 4200, max: 6000 }}
+            imageSrc="/images/bosses/boss-drill-sergeant-grizzle.png"
+            description="The toughest drill instructor"
+            stats={PREVIEW_BOSS_PROPS.stats}
+            statSize="sm"
+            hideStats
+            hideDescription
+          />
+        </div>
+        <div className="relative">
+          <CardSizeLabel width={180} />
+          <HeroCard {...PREVIEW_HERO_PROPS} statSize="sm" hideStats hideDescription />
+        </div>
+        <div className="relative">
+          <CardSizeLabel width={180} />
+          <HeroCard
+            name="Mage Hero"
+            className="mage"
+            origin="demon"
+            level={38}
+            rating={1850}
+            hp={{ current: 480, max: 650 }}
+            stats={{ ...PREVIEW_HERO_PROPS.stats, intelligence: 35, strength: 10 }}
+            statSize="sm"
+            hideStats
+            hideDescription
+          />
+        </div>
+      </div>
     </div>
-  );
-};
+
+    {/* ── Mobile (2 cards in a row) ── */}
+    <div>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-amber-400/80">
+        Mobile — 2 in row (container 360px)
+      </p>
+      <div
+        className="grid grid-cols-2 gap-3 rounded-lg border border-dashed border-slate-600/50 bg-slate-950 p-3"
+        style={{ maxWidth: 360 }}
+      >
+        <div className="relative">
+          <CardSizeLabel width={165} />
+          <HeroCard {...PREVIEW_BOSS_PROPS} statSize="sm" hideStats hideDescription />
+        </div>
+        <div className="relative">
+          <CardSizeLabel width={165} />
+          <HeroCard {...PREVIEW_HERO_PROPS} statSize="sm" hideStats hideDescription />
+        </div>
+      </div>
+    </div>
+
+    {/* ── Single card (full-width mobile) ── */}
+    <div>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-amber-400/80">
+        Single card — full mobile width (320px)
+      </p>
+      <div
+        className="rounded-lg border border-dashed border-slate-600/50 bg-slate-950 p-3"
+        style={{ maxWidth: 320 }}
+      >
+        <div className="relative">
+          <CardSizeLabel width={294} />
+          <HeroCard {...PREVIEW_HERO_PROPS} statSize="md" hideStatLabels />
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 /* ────────────────── Preview: Progress Bars ────────────────── */
 
@@ -286,13 +369,13 @@ const LoaderPreview = () => (
 
 const TypographyPreview = () => (
   <div className="space-y-3">
-    <h1 className="text-2xl font-bold" style={{ color: "var(--ds-text)" }}>
+    <h1 className="font-display text-3xl" style={{ color: "var(--ds-text)" }}>
       Heading 1 — Iron Fist Arena
     </h1>
-    <h2 className="text-xl font-bold" style={{ color: "var(--ds-text)" }}>
+    <h2 className="font-display text-2xl" style={{ color: "var(--ds-text)" }}>
       Heading 2 — Battle Report
     </h2>
-    <h3 className="text-lg font-semibold" style={{ color: "var(--ds-text)" }}>
+    <h3 className="font-display text-xl" style={{ color: "var(--ds-text)" }}>
       Heading 3 — Item Details
     </h3>
     <p className="text-sm" style={{ color: "var(--ds-text-muted)" }}>
@@ -466,9 +549,17 @@ const DesignSystemPage = () => {
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="relative flex flex-wrap items-center justify-between gap-4">
+        <Link
+          href="/hub"
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
         <div>
-          <h1 className="text-2xl font-bold text-white">Design System</h1>
+          <h1 className="font-display text-3xl font-bold uppercase text-white">Design System</h1>
           <p className="text-sm text-slate-400">
             Master components — changes here apply globally across the entire product.
           </p>
@@ -588,31 +679,31 @@ const DesignSystemPage = () => {
           <Section title="Full Component Gallery">
             <div className="space-y-8">
               <div>
-                <h3 className="mb-3 text-sm font-bold text-slate-300">Buttons</h3>
+                <h3 className="mb-3 font-display text-base text-slate-300">Buttons</h3>
                 <ButtonPreview />
               </div>
               <div>
-                <h3 className="mb-3 text-sm font-bold text-slate-300">Form Inputs</h3>
+                <h3 className="mb-3 font-display text-base text-slate-300">Form Inputs</h3>
                 <InputPreview />
               </div>
               <div>
-                <h3 className="mb-3 text-sm font-bold text-slate-300">Hero Cards</h3>
+                <h3 className="mb-3 font-display text-base text-slate-300">Hero Cards</h3>
                 <HeroCardPreview />
               </div>
               <div>
-                <h3 className="mb-3 text-sm font-bold text-slate-300">Progress Bars</h3>
+                <h3 className="mb-3 font-display text-base text-slate-300">Progress Bars</h3>
                 <ProgressBarPreview />
               </div>
               <div>
-                <h3 className="mb-3 text-sm font-bold text-slate-300">Navigation</h3>
+                <h3 className="mb-3 font-display text-base text-slate-300">Navigation</h3>
                 <NavPreview />
               </div>
               <div>
-                <h3 className="mb-3 text-sm font-bold text-slate-300">Page Loader</h3>
+                <h3 className="mb-3 font-display text-base text-slate-300">Page Loader</h3>
                 <LoaderPreview />
               </div>
               <div>
-                <h3 className="mb-3 text-sm font-bold text-slate-300">Typography</h3>
+                <h3 className="mb-3 font-display text-base text-slate-300">Typography</h3>
                 <TypographyPreview />
               </div>
             </div>

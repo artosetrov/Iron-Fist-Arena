@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useDisplaySettings, useSoundSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/client";
 import PageLoader from "@/app/components/PageLoader";
@@ -152,7 +153,7 @@ const DisplayTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Brightness</h3>
+        <h3 className="mb-4 font-display text-sm tracking-wider text-slate-500">Brightness</h3>
         <SettingsSlider
           label="Brightness"
           value={settings.brightness}
@@ -161,7 +162,7 @@ const DisplayTab = () => {
       </div>
 
       <div>
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">Combat</h3>
+        <h3 className="mb-3 font-display text-sm tracking-wider text-slate-500">Combat</h3>
         <div className="space-y-1">
           <SettingsCheckbox
             label="Combat Animations"
@@ -179,7 +180,7 @@ const DisplayTab = () => {
       </div>
 
       <div>
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">Notifications</h3>
+        <h3 className="mb-3 font-display text-sm tracking-wider text-slate-500">Notifications</h3>
         <SettingsCheckbox
           label="Show Notifications"
           checked={settings.showNotifications}
@@ -208,7 +209,7 @@ const SoundTab = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Volume</h3>
+        <h3 className="mb-4 font-display text-sm tracking-wider text-slate-500">Volume</h3>
         <div className="space-y-5">
           <SettingsSlider
             label="Master Volume"
@@ -323,7 +324,7 @@ const CharacterTab = () => {
     <div className="space-y-6">
       {/* Current origin */}
       <div>
-        <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+        <h3 className="mb-4 font-display text-sm tracking-wider text-slate-500">
           Current Origin
         </h3>
         {currentOrigin && (
@@ -343,7 +344,7 @@ const CharacterTab = () => {
 
       {/* Change origin */}
       <div>
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+        <h3 className="mb-3 font-display text-sm tracking-wider text-slate-500">
           Change Origin
           <span className="ml-2 text-yellow-500">
             (Cost: {ORIGIN_CHANGE_COST} gold — You have {gold})
@@ -582,7 +583,7 @@ const AccountTab = () => {
     <div className="space-y-6">
       {/* User info */}
       <div>
-        <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Account Info</h3>
+        <h3 className="mb-4 font-display text-sm tracking-wider text-slate-500">Account Info</h3>
         <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-800/30 p-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-slate-400">Username</span>
@@ -598,7 +599,7 @@ const AccountTab = () => {
 
       {/* Actions */}
       <div>
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">Security</h3>
+        <h3 className="mb-3 font-display text-sm tracking-wider text-slate-500">Security</h3>
         <div className="space-y-2">
           <button
             type="button"
@@ -661,7 +662,7 @@ const AccountTab = () => {
               </svg>
             </button>
 
-            <h3 className="mb-4 text-lg font-bold text-white">
+            <h3 className="mb-4 font-display text-xl text-white">
               {modal === "password" ? "Change Password" : "Change Email"}
             </h3>
 
@@ -768,10 +769,18 @@ const SettingsContent = () => {
   const [activeTab, setActiveTab] = useState<TabId>("display");
 
   return (
-    <div className="p-4 lg:p-6">
+    <div className="relative p-4 lg:p-6">
+      <Link
+        href="/hub"
+        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+        aria-label="Back to Hub"
+        tabIndex={0}
+      >
+        ✕
+      </Link>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-white">Settings</h1>
+      <div className="mb-6 text-center">
+        <h1 className="font-display text-2xl font-bold uppercase text-white">Settings</h1>
         <p className="mt-1 text-sm text-slate-500">Customize your game experience</p>
       </div>
 

@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatLootScreen from "@/app/components/CombatLootScreen";
 import PageLoader from "@/app/components/PageLoader";
@@ -671,16 +672,21 @@ function DungeonContent() {
             >
               ←
             </button>
-            <h1 className="text-xl font-bold text-white">
+            <h1 className="font-display text-2xl font-bold uppercase text-white">
               {dungeon.theme.icon} {dungeon.name}
             </h1>
           </div>
-          <span className="rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300">
-            Stamina{" "}
-            <span className="font-bold text-amber-400">
-              {character.currentStamina}/{character.maxStamina}
-            </span>
-          </span>
+          <div className="w-28 shrink-0">
+            <div className="relative h-6 w-full overflow-hidden rounded-full bg-slate-800 border border-slate-700">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
+                style={{ width: `${character.maxStamina ? (character.currentStamina / character.maxStamina) * 100 : 0}%` }}
+              />
+              <span className="absolute inset-0 flex items-center justify-center text-xs font-bold leading-none text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                ⚡ {character.currentStamina}/{character.maxStamina}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Boss card */}
@@ -726,7 +732,7 @@ function DungeonContent() {
       <div className="flex min-h-full flex-col items-center justify-center p-4 lg:p-6">
         <div className="w-full max-w-md rounded-2xl border border-green-700/60 bg-gradient-to-b from-green-900/30 to-slate-900/80 p-6 text-center">
           <p className="mb-1 text-3xl">🏆</p>
-          <p className="text-lg font-bold text-green-400">
+          <p className="font-display text-xl text-green-400">
             {screen.dungeon.name} Complete!
           </p>
           <p className="mt-1 text-xs text-slate-500">All bosses defeated</p>
@@ -763,7 +769,7 @@ function DungeonContent() {
       <div className="flex min-h-full flex-col items-center justify-center p-4 lg:p-6">
         <div className="w-full max-w-md rounded-2xl border border-red-700/60 bg-gradient-to-b from-red-900/30 to-slate-900/80 p-6 text-center">
           <p className="mb-1 text-3xl">💀</p>
-          <p className="text-lg font-bold text-red-400">Defeat</p>
+          <p className="font-display text-xl text-red-400">Defeat</p>
           <p className="mt-2 text-sm text-slate-400">
             The boss was too strong. Prepare and try again.
           </p>
@@ -814,7 +820,7 @@ function DungeonContent() {
             ←
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-bold text-white lg:text-xl">
+            <h1 className="font-display text-xl font-bold uppercase text-white lg:text-2xl">
               {dungeon.theme.icon} {dungeon.name}
             </h1>
             <p className="text-[10px] text-slate-500">{dungeon.subtitle}</p>
@@ -1160,24 +1166,29 @@ function DungeonContent() {
   return (
     <div className="flex min-h-full flex-col p-4 lg:p-6">
       {/* Header */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-white">🏰 Dungeons</h1>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Defeat 10 bosses in sequence to conquer each dungeon.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-slate-400">
-            <strong className="text-white">{character.characterName}</strong> ·
-            Lv. {character.level}
-          </span>
-          <span className="rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300">
-            Stamina{" "}
-            <span className="font-bold text-amber-400">
-              {character.currentStamina}/{character.maxStamina}
+      <div className="relative mb-6 flex flex-col items-center gap-2">
+        <Link
+          href="/hub"
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
+        <h1 className="font-display text-3xl font-bold uppercase text-white">Dungeons</h1>
+        <p className="text-xs text-slate-500">
+          Defeat 10 bosses in sequence to conquer each dungeon.
+        </p>
+        <div className="w-32">
+          <div className="relative h-6 w-full overflow-hidden rounded-full bg-slate-800 border border-slate-700">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
+              style={{ width: `${character.maxStamina ? (character.currentStamina / character.maxStamina) * 100 : 0}%` }}
+            />
+            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold leading-none text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+              ⚡ {character.currentStamina}/{character.maxStamina}
             </span>
-          </span>
+          </div>
         </div>
       </div>
 
@@ -1292,7 +1303,7 @@ function DungeonContent() {
                 {/* ── Card info panel (overlay at bottom) ── */}
                 <div className="relative z-10 mt-auto flex flex-col gap-2.5 p-4">
                   {/* Title */}
-                  <h3 className="text-lg font-bold leading-tight text-white drop-shadow-lg">
+                  <h3 className="font-display text-xl leading-tight text-white drop-shadow-lg">
                     {dungeon.name}
                   </h3>
 

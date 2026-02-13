@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import PageLoader from "@/app/components/PageLoader";
 import useCharacterAvatar from "@/app/hooks/useCharacterAvatar";
 import {
@@ -262,7 +263,7 @@ const GoldPurchaseModal = ({
           <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-amber-600/50 bg-gradient-to-br from-amber-800/30 to-amber-900/50 text-3xl shadow-lg shadow-amber-500/20">
             🪙
           </div>
-          <h2 className="text-xl font-bold text-white">Buy Gold</h2>
+          <h2 className="font-display text-2xl text-white">Buy Gold</h2>
           <p className="mt-1 text-sm text-slate-500">Choose a package to boost your treasury</p>
         </div>
 
@@ -657,12 +658,15 @@ function ShopContent() {
   const [buying, setBuying] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<Tab>("all");
-  const [rarityFilter, setRarityFilter] = useState<Rarity | "all">("all");
+  const initialTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<Tab>(
+    initialTab && TABS.some((t) => t.key === initialTab) ? (initialTab as Tab) : "all"
+  );
   const [sortBy, setSortBy] = useState<"price_asc" | "price_desc" | "level" | "rarity">("rarity");
   const [goldModalOpen, setGoldModalOpen] = useState(false);
   const [buyingConsumable, setBuyingConsumable] = useState<string | null>(null);
   const [consumableInv, setConsumableInv] = useState<ConsumableInventoryItem[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   /* ── Load data ── */
   useEffect(() => {
@@ -703,9 +707,6 @@ function ShopContent() {
     if (activeTab !== "all") {
       result = result.filter((i) => i.itemType === activeTab);
     }
-    if (rarityFilter !== "all") {
-      result = result.filter((i) => i.rarity === rarityFilter);
-    }
 
     switch (sortBy) {
       case "price_asc":
@@ -724,7 +725,7 @@ function ShopContent() {
         break;
     }
     return result;
-  }, [items, activeTab, rarityFilter, sortBy]);
+  }, [items, activeTab, sortBy]);
 
   /* ── Buy handler ── */
   const handleBuy = useCallback(
@@ -743,6 +744,8 @@ function ShopContent() {
           const item = items.find((i) => i.id === itemId);
           setCharacter((c) => (c ? { ...c, gold: c.gold - (item?.buyPrice ?? 0) } : null));
           setToast(item?.itemName ?? "Item");
+          // Notify sidebar to refresh character data
+          window.dispatchEvent(new Event("character-updated"));
         } else {
           setError(data.error ?? "Purchase error");
         }
@@ -792,6 +795,8 @@ function ShopContent() {
           });
           const def = CONSUMABLE_CATALOG.find((c) => c.type === consumableType);
           setToast(`${def?.icon ?? "🧪"} ${def?.name ?? "Potion"} added to inventory`);
+          // Notify sidebar to refresh consumables
+          window.dispatchEvent(new Event("character-updated"));
         } else {
           setError(data.error ?? "Purchase error");
         }
@@ -821,23 +826,27 @@ function ShopContent() {
   return (
     <div className="flex min-h-full flex-col p-4 lg:p-6">
       {/* ── Header ── */}
-      <div className="mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-amber-700/50 bg-gradient-to-br from-amber-900/40 to-amber-950/60 text-2xl shadow-lg shadow-amber-500/10">
-              🏪
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Shop</h1>
-              <p className="text-xs text-slate-500">Items matched to your level</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Stamina display */}
-            <div
-              className="flex items-center gap-2 rounded-xl border border-emerald-700/40 bg-gradient-to-r from-emerald-900/30 to-emerald-950/50 px-4 py-2 shadow-lg shadow-emerald-500/5"
-              aria-label="Current Stamina"
+      <div className="relative mb-6">
+        <Link
+          href="/hub"
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
+        <div className="mb-3 text-center">
+          <h1 className="font-display text-2xl font-bold uppercase text-white">Shop</h1>
+          <p className="text-xs text-slate-500">Items matched to your level</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+            {/* Stamina display — click to jump to potions tab */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("potions")}
+              className="flex items-center gap-2 rounded-xl border border-emerald-700/40 bg-gradient-to-r from-emerald-900/30 to-emerald-950/50 px-4 py-2 shadow-lg shadow-emerald-500/5 transition-all duration-200 hover:border-emerald-600/60 hover:shadow-emerald-500/15 hover:brightness-110 active:scale-95"
+              aria-label="View Potions"
+              tabIndex={0}
             >
               <span className="text-xl">⚡</span>
               <div className="text-left">
@@ -847,7 +856,7 @@ function ShopContent() {
                   <span className="text-sm font-medium text-emerald-600">/{character.maxStamina}</span>
                 </p>
               </div>
-            </div>
+            </button>
 
             {/* Gems display */}
             <div
@@ -876,7 +885,6 @@ function ShopContent() {
               </div>
               <span className="ml-1 text-lg text-amber-500/60">+</span>
             </button>
-          </div>
         </div>
       </div>
 
@@ -897,83 +905,87 @@ function ShopContent() {
         </div>
       )}
 
-      {/* ── Category Tabs ── */}
-      <div className="mb-4 overflow-x-auto">
-        <div className="flex gap-1.5 rounded-xl border border-slate-800 bg-slate-900/50 p-1.5">
-          {TABS.map((tab) => {
-            const count = categoryCounts[tab.key] ?? 0;
-            const active = activeTab === tab.key;
-            if (tab.key !== "all" && count === 0) return null;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key)}
-                className={`
-                  flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium transition-all
-                  ${active
-                    ? "border border-indigo-500/40 bg-indigo-500/15 text-white shadow-sm"
-                    : "border border-transparent text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
-                  }
-                `}
-                aria-label={tab.label}
-                aria-pressed={active}
-                tabIndex={0}
-              >
-                <span className="text-sm">{tab.icon}</span>
-                <span>{tab.label}</span>
-                <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active ? "bg-indigo-500/30 text-indigo-300" : "bg-slate-800 text-slate-500"}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* ── Filter + Sort row ── */}
+      <div className="relative mb-5 flex items-center gap-3">
+        {/* Category dropdown */}
+        <div className="relative flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((prev) => !prev)}
+            className="flex h-10 w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 px-4 transition-colors hover:bg-slate-900/80"
+            aria-expanded={filtersOpen}
+            aria-controls="shop-category-tabs"
+            aria-label="Toggle category filter"
+            tabIndex={0}
+          >
+            <div className="flex items-center gap-2 text-sm">
+              <span>{TABS.find((t) => t.key === activeTab)?.icon ?? "🏪"}</span>
+              <span className="font-medium text-white">
+                {TABS.find((t) => t.key === activeTab)?.label ?? "All"}
+              </span>
+              <span className="rounded-full bg-indigo-500/30 px-1.5 py-0.5 text-[10px] font-bold text-indigo-300">
+                {categoryCounts[activeTab] ?? 0}
+              </span>
+            </div>
+            <span
+              className={`text-slate-400 transition-transform duration-200 ${filtersOpen ? "rotate-180" : ""}`}
+            >
+              ▾
+            </span>
+          </button>
 
-      {/* ── Filters row (hidden on potions tab) ── */}
-      {activeTab !== "potions" && (
-        <div className="mb-5 flex flex-wrap items-center gap-3">
-          {/* Rarity filter */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Rarity:</span>
-            <div className="flex gap-1">
-              <button
-                type="button"
-                onClick={() => setRarityFilter("all")}
-                className={`rounded-md px-2 py-1 text-[11px] font-medium transition ${rarityFilter === "all" ? "bg-slate-700 text-white" : "text-slate-500 hover:text-slate-300"}`}
-                aria-label="All rarities"
-                aria-pressed={rarityFilter === "all"}
-                tabIndex={0}
-              >
-                All
-              </button>
-              {RARITY_ORDER.map((r) => {
-                const conf = RARITY_CONFIG[r];
-                return (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setRarityFilter(r)}
-                    className={`rounded-md px-2 py-1 text-[11px] font-medium transition ${rarityFilter === r ? `${conf.badge}` : "text-slate-500 hover:text-slate-300"}`}
-                    aria-label={conf.label}
-                    aria-pressed={rarityFilter === r}
-                    tabIndex={0}
-                  >
-                    {conf.label}
-                  </button>
-                );
-              })}
+          {/* Collapsible tabs panel */}
+          <div
+            id="shop-category-tabs"
+            className={`absolute left-0 right-0 top-full z-20 grid transition-all duration-200 ease-in-out ${
+              filtersOpen ? "mt-1.5 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
+            }`}
+          >
+            <div className="overflow-hidden">
+              <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-800 bg-slate-900 p-1.5 shadow-xl shadow-black/30">
+                {TABS.map((tab) => {
+                  const count = categoryCounts[tab.key] ?? 0;
+                  const active = activeTab === tab.key;
+                  if (tab.key !== "all" && count === 0) return null;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(tab.key);
+                        setFiltersOpen(false);
+                      }}
+                      className={`
+                        flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all
+                        ${active
+                          ? "border border-indigo-500/40 bg-indigo-500/15 text-white shadow-sm"
+                          : "border border-transparent text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                        }
+                      `}
+                      aria-label={tab.label}
+                      aria-pressed={active}
+                      tabIndex={filtersOpen ? 0 : -1}
+                    >
+                      <span className="text-sm">{tab.icon}</span>
+                      <span>{tab.label}</span>
+                      <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active ? "bg-indigo-500/30 text-indigo-300" : "bg-slate-800 text-slate-500"}`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Sort */}
-          <div className="ml-auto flex items-center gap-1.5">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Sort:</span>
+        {/* Sort (hidden on potions tab) */}
+        {activeTab !== "potions" && (
+          <div className="flex shrink-0 items-center gap-1.5">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-1.5 text-xs text-slate-300 outline-none transition focus:border-indigo-500"
+              className="h-10 rounded-xl border border-slate-800 bg-slate-900/50 px-2.5 text-xs text-slate-300 outline-none transition focus:border-indigo-500"
               aria-label="Sort items"
             >
               <option value="rarity">By rarity</option>
@@ -982,12 +994,12 @@ function ShopContent() {
               <option value="level">By level</option>
             </select>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── Consumables Grid ── */}
       {activeTab === "potions" ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
           {CONSUMABLE_CATALOG.map((consumable) => {
             const owned = consumableInv.find((ci) => ci.consumableType === consumable.type)?.quantity ?? 0;
             const canAfford = consumable.currency === "gold"
@@ -1007,7 +1019,7 @@ function ShopContent() {
         </div>
       ) : /* ── Item Grid ── */
       filteredItems.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
           {filteredItems.map((item) => (
             <ItemCard
               key={item.id}
@@ -1024,11 +1036,11 @@ function ShopContent() {
             🏪
           </div>
           <p className="text-sm font-medium text-slate-400">No items match current filters</p>
-          <p className="mt-1 text-xs text-slate-600">Try changing category or rarity</p>
+          <p className="mt-1 text-xs text-slate-600">Try changing category</p>
           {activeTab !== "all" && (
             <button
               type="button"
-              onClick={() => { setActiveTab("all"); setRarityFilter("all"); }}
+              onClick={() => setActiveTab("all")}
               className="mt-3 rounded-lg bg-slate-800 px-4 py-2 text-xs font-medium text-slate-300 transition hover:bg-slate-700"
               aria-label="Reset Filters"
               tabIndex={0}

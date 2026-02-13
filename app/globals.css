@@ -392,3 +392,50 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.5);
 }
+
+/* ── Bet slider (shell game & minigames) ── */
+.bet-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 9999px;
+  outline: none;
+}
+
+.bet-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  border: 2px solid #92400e;
+  box-shadow: 0 0 8px rgba(217, 119, 6, 0.5);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bet-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.7);
+}
+
+.bet-slider::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+}
+
+.bet-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  border: 2px solid #92400e;
+  box-shadow: 0 0 8px rgba(217, 119, 6, 0.5);
+  cursor: pointer;
+}
+
+.bet-slider::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}

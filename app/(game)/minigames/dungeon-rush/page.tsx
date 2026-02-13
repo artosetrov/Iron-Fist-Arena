@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatLootScreen from "@/app/components/CombatLootScreen";
 import PageLoader from "@/app/components/PageLoader";
@@ -325,7 +326,7 @@ const DungeonRushContent = () => {
           <p className="mb-1 text-3xl">
             {MOB_EMOJIS[mobName] ?? "⚔️"}
           </p>
-          <p className="text-lg font-bold text-emerald-400">
+          <p className="font-display text-xl text-emerald-400">
             Wave {screen.fightResult.wave}/{TOTAL_WAVES} Cleared!
           </p>
           <p className="mt-1 text-xs text-slate-500">
@@ -393,7 +394,7 @@ const DungeonRushContent = () => {
       <div className="flex min-h-full flex-col items-center justify-center p-4 lg:p-6">
         <div className="w-full max-w-md rounded-2xl border border-amber-600/60 bg-gradient-to-b from-amber-900/30 to-slate-900/80 p-6 text-center">
           <p className="mb-1 text-4xl">🏆</p>
-          <p className="text-xl font-black text-amber-400">
+          <p className="font-display text-2xl text-amber-400">
             Dungeon Rush Complete!
           </p>
           <p className="mt-1 text-xs text-slate-500">
@@ -404,14 +405,14 @@ const DungeonRushContent = () => {
           <div className="mt-5 flex items-center justify-center gap-8 text-sm">
             <div className="text-center">
               <span className="text-2xl">🪙</span>
-              <p className="text-lg font-bold text-yellow-400">
+              <p className="font-display text-xl text-yellow-400">
                 +{screen.fightResult.accumulatedGold}
               </p>
               <p className="text-[10px] text-slate-500">Total Gold</p>
             </div>
             <div className="text-center">
               <span className="text-2xl">✨</span>
-              <p className="text-lg font-bold text-blue-400">
+              <p className="font-display text-xl text-blue-400">
                 +{screen.fightResult.accumulatedXp}
               </p>
               <p className="text-[10px] text-slate-500">Total XP</p>
@@ -457,7 +458,7 @@ const DungeonRushContent = () => {
       <div className="flex min-h-full flex-col items-center justify-center p-4 lg:p-6">
         <div className="w-full max-w-md rounded-2xl border border-red-700/60 bg-gradient-to-b from-red-900/30 to-slate-900/80 p-6 text-center">
           <p className="mb-1 text-3xl">💀</p>
-          <p className="text-lg font-bold text-red-400">Defeat</p>
+          <p className="font-display text-xl text-red-400">Defeat</p>
           <p className="mt-1 text-xs text-slate-500">
             Fell on wave {screen.fightResult.wave}/{TOTAL_WAVES}
           </p>
@@ -546,13 +547,23 @@ const DungeonRushContent = () => {
           >
             ←
           </button>
-          <h1 className="text-xl font-bold text-white">🏃 Dungeon Rush</h1>
-          <span className="rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300">
-            ⚡{" "}
-            <span className="font-bold text-amber-400">
-              {character.currentStamina}/{character.maxStamina}
+          <h1 className="font-display text-2xl font-bold uppercase text-white">Dungeon Rush</h1>
+          <div className="flex items-center gap-2">
+            <span className="rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300">
+              ⚡{" "}
+              <span className="font-bold text-amber-400">
+                {character.currentStamina}/{character.maxStamina}
+              </span>
             </span>
-          </span>
+            <Link
+              href="/hub"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+              aria-label="Back to Hub"
+              tabIndex={0}
+            >
+              ✕
+            </Link>
+          </div>
         </div>
 
         {/* Main card */}
@@ -582,7 +593,7 @@ const DungeonRushContent = () => {
 
           {hasRun ? (
             <>
-              <p className="text-2xl font-black text-white">
+              <p className="font-display text-3xl text-white">
                 Wave {currentWave}
               </p>
               <p className="mt-1 text-xs text-slate-400">
@@ -592,7 +603,7 @@ const DungeonRushContent = () => {
           ) : (
             <>
               <p className="mb-2 text-4xl">🏃</p>
-              <p className="text-xl font-bold text-white">Dungeon Rush</p>
+              <p className="font-display text-2xl text-white">Dungeon Rush</p>
               <p className="mt-1 text-xs text-slate-400">
                 5 waves of PvE combat. Earn XP and Gold!
               </p>

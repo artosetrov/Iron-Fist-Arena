@@ -38,7 +38,7 @@ const PageLoader = ({ emoji = "⚔️", text = "Loading…", avatarSrc }: PageLo
                 alt="Character"
                 width={256}
                 height={256}
-                className="absolute left-1/2 -top-1 w-[280%] max-w-none -translate-x-1/2"
+                className="h-full w-full object-cover"
                 sizes="72px"
               />
             ) : (

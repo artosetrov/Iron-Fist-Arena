@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useAdminGuard } from "@/lib/hooks/useAdminGuard";
 
 /* ────────────────── Types ────────────────── */
@@ -491,8 +492,16 @@ const BalanceEditorPage = () => {
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Balance Editor</h1>
+      <div className="relative mb-6 text-center">
+        <Link
+          href="/hub"
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
+        <h1 className="font-display text-3xl font-bold uppercase text-white">Balance Editor</h1>
         <p className="text-sm text-slate-400 mt-1">
           Edit game balance constants. Changes are saved directly to{" "}
           <code className="text-amber-400/80">lib/game/balance.ts</code>

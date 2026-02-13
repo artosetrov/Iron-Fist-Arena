@@ -115,11 +115,11 @@ const CLASS_IMAGE: Record<string, string> = {
 };
 
 const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/origins/origin-human.png",
-  orc: "/images/origins/origin-orc.png",
-  skeleton: "/images/origins/origin-skeleton.png",
-  demon: "/images/origins/origin-demon.png",
-  dogfolk: "/images/origins/origin-dogfolk.png",
+  human: "/images/origins/Avatar/origin-human_avatar_1.png",
+  orc: "/images/origins/Avatar/origin-orc_avatar_1.png",
+  skeleton: "/images/origins/Avatar/origin-skeleton_avatar_1.png",
+  demon: "/images/origins/Avatar/origin-demon_avatar_1.png",
+  dogfolk: "/images/origins/Avatar/origin-dogfolk_avatar_1.png",
 };
 
 /* ────────────────── Character Card ────────────────── */
@@ -159,8 +159,8 @@ const CharacterCard = ({
               alt={character.origin}
               width={1024}
               height={1024}
-              className="absolute left-1/2 -top-2 w-[300%] max-w-none -translate-x-1/2"
-              sizes="168px"
+              className="h-full w-full object-cover"
+              sizes="56px"
             />
           ) : (
             <span className="text-3xl">{CLASS_ICON[cls] ?? "⚔️"}</span>
@@ -172,7 +172,7 @@ const CharacterCard = ({
 
         {/* Info */}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-bold text-white">{character.characterName}</p>
+          <p className="truncate font-display text-xl text-white">{character.characterName}</p>
           <p className={`text-xs font-semibold uppercase tracking-wider ${CLASS_ACCENT[cls] ?? "text-slate-400"}`}>
             {CLASS_LABELS[cls] ?? cls}
             {character.origin && ORIGIN_DEFS[character.origin as CharacterOrigin] && (
@@ -324,7 +324,7 @@ const CharacterPreview = ({ detail, onContinue, onClose }: CharacterPreviewProps
     <div className="animate-in fade-in slide-in-from-right-4 duration-300 rounded-2xl border border-slate-700/60 bg-slate-900/90 shadow-2xl shadow-black/40 overflow-hidden">
       {/* Header with close */}
       <div className="flex items-center justify-between border-b border-slate-700/50 px-5 py-3">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">Character Info</h2>
+        <h2 className="font-display text-base tracking-widest text-slate-300">Character Info</h2>
         <button
           type="button"
           onClick={onClose}
@@ -345,8 +345,8 @@ const CharacterPreview = ({ detail, onContinue, onClose }: CharacterPreviewProps
               alt={origin}
               width={1024}
               height={1024}
-              className="absolute left-1/2 -top-5 w-[300%] max-w-none -translate-x-1/2"
-              sizes="384px"
+              className="h-full w-full object-cover"
+              sizes="128px"
             />
           ) : (
             <span className="text-5xl">{CLASS_ICON[cls] ?? "⚔️"}</span>
@@ -355,7 +355,7 @@ const CharacterPreview = ({ detail, onContinue, onClose }: CharacterPreviewProps
             Lv.{detail.level}
           </span>
         </div>
-        <p className="text-xl font-bold text-white">{detail.characterName}</p>
+        <p className="font-display text-2xl text-white">{detail.characterName}</p>
         <p className={`mt-0.5 text-xs font-semibold uppercase tracking-wider ${CLASS_ACCENT[cls] ?? "text-slate-400"}`}>
           {CLASS_LABELS[cls] ?? cls}
           {origin && ORIGIN_DEFS[origin as CharacterOrigin] && (
@@ -401,7 +401,7 @@ const CharacterPreview = ({ detail, onContinue, onClose }: CharacterPreviewProps
                 <span className="ml-1 text-slate-300">{r.derivedValue}</span>
               </p>
             </div>
-            <span className="text-lg font-bold text-white">{r.value}</span>
+            <span className="font-display text-xl text-white">{r.value}</span>
           </div>
         ))}
       </div>
@@ -425,7 +425,7 @@ const CharacterPreview = ({ detail, onContinue, onClose }: CharacterPreviewProps
         <button
           type="button"
           onClick={onContinue}
-          className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3.5 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30 active:scale-[0.98]"
+          className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3.5 font-display text-lg tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30 active:scale-[0.98]"
           aria-label={`Continue as ${detail.characterName}`}
           tabIndex={0}
         >
@@ -563,7 +563,15 @@ export default function CharacterPage() {
   const isCreateVisible = showCreateForm || !hasCharacters;
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-slate-950 px-4 py-8 sm:px-8">
+    <main className="relative flex min-h-screen flex-col items-center bg-slate-950 px-4 py-8 sm:px-8">
+      <Link
+        href="/hub"
+        className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+        aria-label="Back to Hub"
+        tabIndex={0}
+      >
+        ✕
+      </Link>
       {/* Background decoration */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-amber-500/5 blur-3xl" />
@@ -573,7 +581,7 @@ export default function CharacterPage() {
       <div className="relative z-10 w-full max-w-4xl">
         {/* Header */}
         <header className="mb-8 text-center">
-          <h1 className="text-3xl font-bold uppercase tracking-wider text-white sm:text-4xl">
+          <h1 className="font-display text-4xl font-bold uppercase tracking-wider text-white sm:text-5xl">
             Character Selection
           </h1>
           <p className="mt-2 text-sm text-slate-500">Choose your champion or forge a new one</p>
@@ -590,7 +598,7 @@ export default function CharacterPage() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
                     <span className="text-sm">⭐</span>
                   </div>
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">
+                  <h2 className="font-display text-base tracking-widest text-slate-300">
                     Characters
                   </h2>
                   <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-400">
@@ -624,7 +632,7 @@ export default function CharacterPage() {
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 text-xl transition-all group-hover:border-amber-500/40 group-hover:bg-amber-500/10">
                   +
                 </span>
-                <span className="text-sm font-bold uppercase tracking-wider">Create New Character</span>
+                <span className="font-display text-base tracking-wider">Create New Character</span>
               </button>
             )}
 
@@ -636,7 +644,7 @@ export default function CharacterPage() {
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/10">
                       <span className="text-sm">✨</span>
                     </div>
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">
+                    <h2 className="font-display text-base tracking-widest text-slate-300">
                       {hasCharacters ? "New Character" : "Create Your First Character"}
                     </h2>
                   </div>
@@ -738,7 +746,7 @@ export default function CharacterPage() {
                   <button
                     type="submit"
                     disabled={creating}
-                    className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30 disabled:opacity-50 disabled:hover:from-amber-600 disabled:hover:to-orange-600"
+                    className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 py-3 font-display text-lg tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/30 disabled:opacity-50 disabled:hover:from-amber-600 disabled:hover:to-orange-600"
                   >
                     {creating ? (
                       <span className="flex items-center justify-center gap-2">

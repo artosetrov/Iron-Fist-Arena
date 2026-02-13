@@ -84,7 +84,7 @@ const FloatingNumber = ({ data }: { data: FloatingNumberData }) => {
         ? "text-amber-300"
         : "text-white";
 
-  const sizeClass = data.isCrit ? "text-2xl font-black" : "text-lg font-bold";
+  const sizeClass = data.isCrit ? "font-display text-3xl" : "font-display text-xl";
 
   const animClass = data.isCrit
     ? "animate-float-damage-crit"
@@ -481,7 +481,7 @@ const CombatBattleScreen = ({
 
         {/* Center VS area */}
         <div className="flex flex-col items-center gap-2">
-          <span className="text-2xl font-black text-slate-700">VS</span>
+          <span className="font-display text-3xl text-slate-700">VS</span>
           {/* Current action message */}
           {currentStep >= 0 && currentStep < log.length && (
             <div className="max-w-[180px] rounded-lg bg-slate-800/80 px-3 py-1.5 text-center text-[10px] text-slate-400 shadow-lg">

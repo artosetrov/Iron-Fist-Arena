@@ -21,6 +21,7 @@ type Character = {
   level: number;
   currentXp: number;
   gold: number;
+  gems: number;
   currentStamina: number;
   maxStamina: number;
   lastStaminaUpdate: string;
@@ -44,31 +45,54 @@ const CLASS_ICON: Record<string, string> = {
 };
 
 const ORIGIN_IMAGE: Record<string, string> = {
-  human: "/images/origins/origin-human.png",
-  orc: "/images/origins/origin-orc.png",
-  skeleton: "/images/origins/origin-skeleton.png",
-  demon: "/images/origins/origin-demon.png",
-  dogfolk: "/images/origins/origin-dogfolk.png",
+  human: "/images/origins/Avatar/origin-human_avatar_1.png",
+  orc: "/images/origins/Avatar/origin-orc_avatar_1.png",
+  skeleton: "/images/origins/Avatar/origin-skeleton_avatar_1.png",
+  demon: "/images/origins/Avatar/origin-demon_avatar_1.png",
+  dogfolk: "/images/origins/Avatar/origin-dogfolk_avatar_1.png",
 };
 
-type NavItem = {
+type NavChild = {
   href: string;
   label: string;
   icon: string;
-  description: string;
 };
 
+type NavItem =
+  | { kind: "link"; href: string; label: string; icon: string; description: string }
+  | { kind: "group"; id: string; label: string; icon: string; description: string; children: NavChild[] };
+
 const NAV_ITEMS: NavItem[] = [
-  { href: "/hub", label: "Hub", icon: "🏠", description: "Home" },
-  { href: "/arena", label: "Arena", icon: "⚔️", description: "PvP Battles" },
-  { href: "/dungeon", label: "Dungeons", icon: "🏰", description: "PvE, Loot" },
-  { href: "/shop", label: "Shop", icon: "🪙", description: "Buy Items" },
-  { href: "/minigames", label: "Tavern", icon: "🍺", description: "Mini Games & Gambling" },
-  { href: "/combat", label: "Training", icon: "🎯", description: "Practice & XP" },
-  { href: "/leaderboard", label: "Leaderboard", icon: "🏆", description: "Rankings" },
+  {
+    kind: "group",
+    id: "tavern",
+    label: "TAVERN",
+    icon: "🍺",
+    description: "",
+    children: [
+      { href: "/minigames", label: "Lobby", icon: "🎲" },
+      { href: "/minigames/shell-game", label: "Shell Game", icon: "🐚" },
+      { href: "/minigames/gold-mine", label: "Gold Mine", icon: "⛏️" },
+      { href: "/minigames/dungeon-rush", label: "Dungeon Rush", icon: "🏃" },
+    ],
+  },
+  {
+    kind: "group",
+    id: "fights",
+    label: "FIGHTS",
+    icon: "⚔️",
+    description: "",
+    children: [
+      { href: "/arena", label: "Arena", icon: "🏟️" },
+      { href: "/dungeon", label: "Dungeons", icon: "🏰" },
+      { href: "/combat", label: "Training", icon: "🎯" },
+    ],
+  },
+  { kind: "link", href: "/shop", label: "SHOP", icon: "🪙", description: "" },
+  { kind: "link", href: "/leaderboard", label: "LEADERBOARD", icon: "🏆", description: "" },
 ];
 
-const ADMIN_NAV_ITEMS: NavItem[] = [
+const ADMIN_NAV_ITEMS: { href: string; label: string; icon: string; description: string }[] = [
   { href: "/dev-dashboard", label: "Dev Panel", icon: "🛠", description: "Monitoring" },
   { href: "/balance-editor", label: "Balance", icon: "⚖️", description: "Game Balance Editor" },
   { href: "/admin/design-system", label: "Design System", icon: "🎨", description: "Master Components" },
@@ -244,6 +268,44 @@ const GameSidebar = () => {
     ? `${Math.floor(nextIn / 60)}:${String(nextIn % 60).padStart(2, "0")}`
     : null;
 
+  /* ── Accordion open state (auto-open group containing active route) ── */
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    for (const item of NAV_ITEMS) {
+      if (item.kind === "group" && item.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))) {
+        initial.add(item.id);
+      }
+    }
+    return initial;
+  });
+
+  // Auto-open group when navigating into it
+  useEffect(() => {
+    for (const item of NAV_ITEMS) {
+      if (item.kind === "group" && item.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))) {
+        setOpenGroups((prev) => {
+          if (prev.has(item.id)) return prev;
+          const next = new Set(prev);
+          next.add(item.id);
+          return next;
+        });
+      }
+    }
+  }, [pathname]);
+
+  const handleToggleGroup = useCallback((groupId: string) => {
+    setOpenGroups((prev) => {
+      if (prev.has(groupId)) {
+        // Closing the currently open group
+        const next = new Set(prev);
+        next.delete(groupId);
+        return next;
+      }
+      // Opening a new group — close all others
+      return new Set([groupId]);
+    });
+  }, []);
+
   const buildHref = (base: string) => {
     if (!characterId) return base;
     return `${base}?characterId=${characterId}`;
@@ -251,12 +313,10 @@ const GameSidebar = () => {
 
   const isActive = (href: string) => pathname === href;
 
-  // #region agent log
-  // Debug: track pathname changes
-  useEffect(() => {
-    fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:pathChange',message:'pathname changed',data:{pathname,characterId},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-  }, [pathname]);
-  // #endregion
+  /** Is any child of this group currently active? */
+  const isGroupActive = (item: Extract<NavItem, { kind: "group" }>) =>
+    item.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"));
+
 
   /* ── Available potions for quick use ── */
   const availablePotions = consumables
@@ -348,7 +408,7 @@ const GameSidebar = () => {
               {/* Avatar */}
               <Link
                 href={buildHref("/inventory")}
-                className="group relative flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 transition hover:border-indigo-500"
+                className="group relative flex h-[96px] w-[96px] shrink-0 items-center justify-center rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 transition hover:border-indigo-500"
                 aria-label="Open Inventory"
               >
                 <div className="absolute inset-0 overflow-hidden rounded-[10px]">
@@ -358,30 +418,23 @@ const GameSidebar = () => {
                       alt={character.origin}
                       width={1024}
                       height={1024}
-                      className="absolute left-1/2 -top-2 w-[300%] max-w-none -translate-x-1/2"
-                      sizes="168px"
+                      className="h-full w-full object-cover"
+                      sizes="96px"
                     />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center text-2xl">{CLASS_ICON[character.class] ?? "⚔️"}</span>
                   )}
                 </div>
-                <span className="absolute -bottom-1 -right-1 z-10 rounded bg-slate-700 px-1.5 text-[10px] font-bold text-white">
+                <span className="absolute -bottom-1 -right-1 z-10 rounded bg-slate-700 px-1.5 font-display text-xs text-white">
                   {character.level}
                 </span>
               </Link>
 
-              {/* Name + resources */}
+              {/* Resources */}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-white">{character.characterName}</p>
-                {character.origin && ORIGIN_DEFS[character.origin as CharacterOrigin] && (
-                  <p className="truncate text-[10px] text-slate-500">
-                    {ORIGIN_DEFS[character.origin as CharacterOrigin].icon}{" "}
-                    {ORIGIN_DEFS[character.origin as CharacterOrigin].label}
-                  </p>
-                )}
-                <div className="mt-0.5 grid grid-cols-2 gap-x-3 gap-y-0 text-[11px]">
-                  <span className="text-yellow-400">🪙 {character.gold}</span>
-                  <span className="text-slate-400">⚡ {stamina}/{character.maxStamina}</span>
+                <div className="flex flex-col gap-0 font-display text-base font-bold">
+                  <span className="text-yellow-400">🪙 {(character.gold ?? 0).toLocaleString()}</span>
+                  <span className="text-purple-400">💎 {(character.gems ?? 0).toLocaleString()}</span>
                   <span className="text-slate-400">🏅 {character.pvpRating}</span>
                   {nextInStr && <span className="text-slate-500">⏱ {nextInStr}</span>}
                 </div>
@@ -401,15 +454,23 @@ const GameSidebar = () => {
               </span>
             </div>
 
-            {/* Stamina bar */}
-            <div className="mt-1">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+            {/* Stamina bar — click to go to potions shop */}
+            <Link
+              href={buildHref("/shop") + (characterId ? "&tab=potions" : "?tab=potions")}
+              className="mt-1 block"
+              aria-label="Buy potions"
+              tabIndex={0}
+            >
+              <div className="relative h-6 w-full overflow-hidden rounded-full bg-slate-800 transition hover:brightness-125">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
                   style={{ width: `${staminaPercent}%` }}
                 />
+                <span className="absolute inset-0 flex items-center justify-center text-sm font-bold leading-none text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                  ⚡ {stamina}
+                </span>
               </div>
-            </div>
+            </Link>
 
             {/* Quick potion use */}
             {availablePotions.length > 0 && (
@@ -446,30 +507,98 @@ const GameSidebar = () => {
       <nav className="flex-1 overflow-y-auto p-2" aria-label="Game Menu">
         <ul className="space-y-1">
           {NAV_ITEMS.map((item) => {
-            const active = isActive(item.href);
+            if (item.kind === "link") {
+              const active = isActive(item.href);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={buildHref(item.href)}
+                    className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-all
+                      ${active
+                        ? "border text-white"
+                        : "border border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-800/60 hover:text-white"
+                      }
+                    `}
+                    style={active ? { borderColor: "var(--ds-nav-active-border)", backgroundColor: "var(--ds-nav-active-bg)" } : undefined}
+                    aria-label={item.label}
+                    aria-current={active ? "page" : undefined}
+                    tabIndex={0}
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/80 text-xl transition group-hover:border-slate-600">
+                      {item.icon}
+                    </span>
+                    <span className="min-w-0 truncate font-black tracking-wide text-base">{item.label}</span>
+                  </Link>
+                </li>
+              );
+            }
+
+            /* ── Accordion group ── */
+            const groupActive = isGroupActive(item);
+            const isOpen = openGroups.has(item.id);
+
             return (
-              <li key={item.href}>
-                <Link
-                  href={buildHref(item.href)}
-                  className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all
-                    ${active
+              <li key={item.id}>
+                {/* Group header — clickable to toggle */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleGroup(item.id)}
+                  className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-all
+                    ${groupActive
                       ? "border text-white"
                       : "border border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-800/60 hover:text-white"
                     }
                   `}
-                  style={active ? { borderColor: "var(--ds-nav-active-border)", backgroundColor: "var(--ds-nav-active-bg)" } : undefined}
+                  style={groupActive ? { borderColor: "var(--ds-nav-active-border)", backgroundColor: "var(--ds-nav-active-bg)" } : undefined}
+                  aria-expanded={isOpen}
                   aria-label={item.label}
-                  aria-current={active ? "page" : undefined}
-                  tabIndex={0}
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/80 text-lg transition group-hover:border-slate-600">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/80 text-xl transition group-hover:border-slate-600">
                     {item.icon}
                   </span>
-                  <div className="min-w-0">
-                    <p className="truncate font-bold tracking-wide">{item.label}</p>
-                    <p className="truncate text-[10px] text-slate-500">{item.description}</p>
-                  </div>
-                </Link>
+                  <span className="min-w-0 flex-1 truncate text-left font-black tracking-wide text-base">{item.label}</span>
+                  {/* Chevron */}
+                  <svg
+                    className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Collapsible children */}
+                <div
+                  className="overflow-hidden transition-all duration-200"
+                  style={{ maxHeight: isOpen ? `${item.children.length * 44}px` : "0px", opacity: isOpen ? 1 : 0 }}
+                >
+                  <ul className="ml-6 mt-1 space-y-0.5 border-l border-slate-700/50 pl-3">
+                    {item.children.map((child) => {
+                      const childActive = isActive(child.href);
+                      return (
+                        <li key={child.href}>
+                          <Link
+                            href={buildHref(child.href)}
+                            className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-all
+                              ${childActive
+                                ? "bg-slate-800/80 font-semibold text-white"
+                                : "text-slate-400 hover:bg-slate-800/40 hover:text-white"
+                              }
+                            `}
+                            aria-label={child.label}
+                            aria-current={childActive ? "page" : undefined}
+                            tabIndex={0}
+                          >
+                            <span className="text-base">{child.icon}</span>
+                            <span className="truncate">{child.label}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               </li>
             );
           })}
@@ -514,7 +643,7 @@ const GameSidebar = () => {
       </nav>
 
       {/* Bottom: settings & switch character */}
-      <div className="border-t border-slate-700/50 p-3 flex items-center justify-center gap-2">
+      <div className="border-t border-slate-700/50 p-3 flex items-center justify-between">
         <Link
           href={buildHref("/settings")}
           className={`flex h-10 w-10 items-center justify-center rounded-lg border text-lg transition

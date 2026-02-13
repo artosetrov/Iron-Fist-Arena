@@ -16,7 +16,6 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const characterId = searchParams.get("characterId");
-    const level = Math.max(1, parseInt(searchParams.get("level") ?? "1", 10));
     if (!characterId) {
       return NextResponse.json({ error: "characterId required" }, { status: 400 });
     }
@@ -28,26 +27,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Generic items filtered by character level
-    const genericItems = await prisma.item.findMany({
-      where: {
-        catalogId: null,
-        itemLevel: { gte: Math.max(1, level - 2), lte: level + 5 },
-        buyPrice: { not: null },
-      },
-      take: 50,
-    });
+    const charLevel = character.level;
 
-    // Catalog items (Item System v1.0) — always available in shop
-    const catalogItems = await prisma.item.findMany({
+    // All items filtered by character level window [-1, +2], no legendary (drop-only)
+    const items = await prisma.item.findMany({
       where: {
-        catalogId: { not: null },
+        itemLevel: { gte: Math.max(1, charLevel - 1), lte: charLevel + 2 },
         buyPrice: { not: null },
+        rarity: { not: "legendary" },
       },
-      orderBy: [{ rarity: "asc" }, { itemType: "asc" }],
+      orderBy: [{ itemLevel: "asc" }, { rarity: "asc" }, { itemType: "asc" }],
     });
-
-    const items = [...catalogItems, ...genericItems];
 
     return NextResponse.json({ items });
   } catch (error) {

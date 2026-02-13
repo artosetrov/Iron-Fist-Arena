@@ -8,7 +8,6 @@ import PageLoader from "@/app/components/PageLoader";
 import {
   SHELL_GAME_MIN_BET,
   SHELL_GAME_MAX_BET,
-  SHELL_GAME_BET_PRESETS,
   SHELL_GAME_CUPS,
 } from "@/lib/game/minigames/shell-game";
 
@@ -46,7 +45,7 @@ const CUP_POSITIONS = [0, 1, 2];
 const INITIAL_STATE: GameState = {
   gameId: null,
   phase: "idle",
-  betAmount: SHELL_GAME_BET_PRESETS[0],
+  betAmount: 0,
   initialPosition: 0,
   swaps: [],
   chosenCup: null,
@@ -65,7 +64,6 @@ const ShellGameContent = () => {
   const characterId = searchParams.get("characterId");
 
   const [state, setState] = useState<GameState>(INITIAL_STATE);
-  const [customBet, setCustomBet] = useState("");
   const [cupPositions, setCupPositions] = useState<number[]>([0, 1, 2]);
   const [liftedCup, setLiftedCup] = useState<number | null>(null);
   const [ballVisible, setBallVisible] = useState(false);
@@ -109,7 +107,7 @@ const ShellGameContent = () => {
   const handleStartGame = useCallback(async () => {
     if (!characterId || state.loading) return;
 
-    const bet = customBet ? Number(customBet) : state.betAmount;
+    const bet = state.betAmount;
     if (!Number.isFinite(bet) || bet < SHELL_GAME_MIN_BET || bet > SHELL_GAME_MAX_BET) {
       setState((s) => ({ ...s, error: `Bet must be ${SHELL_GAME_MIN_BET}–${SHELL_GAME_MAX_BET} gold` }));
       return;
@@ -165,7 +163,8 @@ const ShellGameContent = () => {
     } catch {
       setState((s) => ({ ...s, loading: false, error: "Network error" }));
     }
-  }, [characterId, state.loading, state.betAmount, state.gold, customBet]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [characterId, state.loading, state.betAmount, state.gold]);
 
   /* ── Shuffle animation ── */
   const runShuffleAnimation = (initialPos: number, swaps: ShellGameSwap[]) => {
@@ -275,18 +274,16 @@ const ShellGameContent = () => {
     }));
   };
 
-  /* ── Bet input ── */
-  const handleBetPreset = (amount: number) => {
-    setCustomBet("");
-    setState((s) => ({ ...s, betAmount: amount, error: null }));
+  /* ── Bet slider ── */
+  const maxBet = state.gold !== null ? Math.min(state.gold, SHELL_GAME_MAX_BET) : SHELL_GAME_MAX_BET;
+  const sliderFillPercent = maxBet > 0 ? (state.betAmount / maxBet) * 100 : 0;
+
+  const handleBetSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setState((s) => ({ ...s, betAmount: Number(e.target.value), error: null }));
   };
 
-  const handleCustomBetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value.replace(/\D/g, "");
-    setCustomBet(v);
-    if (v) {
-      setState((s) => ({ ...s, betAmount: Number(v), error: null }));
-    }
+  const handleSetMaxBet = () => {
+    setState((s) => ({ ...s, betAmount: maxBet, error: null }));
   };
 
   /* ── Cup rendering helpers ── */
@@ -299,7 +296,15 @@ const ShellGameContent = () => {
   const isCupClickable = state.phase === "picking" && !state.loading;
 
   return (
-    <div className="flex min-h-full flex-col items-center px-4 py-8">
+    <div className="relative flex min-h-full flex-col items-center px-4 py-8">
+      <Link
+        href="/hub"
+        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+        aria-label="Back to Hub"
+        tabIndex={0}
+      >
+        ✕
+      </Link>
       {/* Header */}
       <div className="mb-2 flex items-center gap-3">
         <Link
@@ -312,8 +317,8 @@ const ShellGameContent = () => {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-          <span className="mr-2">🥤</span>Shell Game
+        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-white sm:text-4xl">
+          Shell Game
         </h1>
       </div>
 
@@ -359,6 +364,7 @@ const ShellGameContent = () => {
               }}
             >
               {/* Ball (under the cup) */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/minigames/shell-game-ball.png"
                 alt="Ball"
@@ -437,59 +443,53 @@ const ShellGameContent = () => {
 
       {/* ── Betting controls ── */}
       {(state.phase === "betting" || state.phase === "idle") && (
-        <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-2xl border border-slate-700/50 bg-slate-800/40 p-6">
+        <div className="flex w-full max-w-md flex-col items-center gap-5 rounded-2xl border border-slate-700/50 bg-slate-800/40 p-6">
           <p className="text-sm font-bold text-slate-300">Place your bet</p>
 
-          {/* Presets */}
-          <div className="flex flex-wrap justify-center gap-2">
-            {SHELL_GAME_BET_PRESETS.map((preset) => {
-              const active = !customBet && state.betAmount === preset;
-              const disabled = state.gold !== null && preset > state.gold;
-              return (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => handleBetPreset(preset)}
-                  disabled={disabled}
-                  className={`rounded-lg border px-4 py-2 text-sm font-bold transition
-                    ${active
-                      ? "border-amber-500/50 bg-amber-900/40 text-amber-300"
-                      : disabled
-                        ? "border-slate-800 bg-slate-900/40 text-slate-600 cursor-not-allowed"
-                        : "border-slate-700 bg-slate-800 text-slate-300 hover:border-amber-600/40 hover:text-amber-300"
-                    }
-                  `}
-                  aria-label={`Bet ${preset} gold`}
-                  tabIndex={0}
-                >
-                  {preset}
-                </button>
-              );
-            })}
-          </div>
+          {/* Bet amount display */}
+          <p className="font-display text-3xl text-amber-400">
+            {state.betAmount.toLocaleString()}
+            <span className="ml-1.5 text-base text-amber-400/60">gold</span>
+          </p>
 
-          {/* Custom input */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">or</span>
+          {/* Slider */}
+          <div className="w-full px-1">
             <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Custom bet"
-              value={customBet}
-              onChange={handleCustomBetChange}
-              className="w-32 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-center text-sm font-bold text-white placeholder-slate-600 outline-none transition focus:border-amber-500/50"
-              aria-label="Custom bet amount"
+              type="range"
+              min={0}
+              max={maxBet}
+              step={10}
+              value={state.betAmount}
+              onChange={handleBetSliderChange}
+              className="bet-slider w-full cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, #d97706 0%, #f59e0b ${sliderFillPercent}%, #334155 ${sliderFillPercent}%, #334155 100%)`,
+              }}
+              aria-label="Bet amount slider"
+              aria-valuemin={0}
+              aria-valuemax={maxBet}
+              aria-valuenow={state.betAmount}
             />
-            <span className="text-xs text-slate-500">
-              ({SHELL_GAME_MIN_BET}–{SHELL_GAME_MAX_BET})
-            </span>
+            <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-500">
+              <span>0</span>
+              <button
+                type="button"
+                onClick={handleSetMaxBet}
+                className="rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-amber-400/80 transition hover:bg-slate-700 hover:text-amber-300"
+                aria-label="Set maximum bet"
+                tabIndex={0}
+              >
+                MAX
+              </button>
+              <span>{maxBet.toLocaleString()}</span>
+            </div>
           </div>
 
           {/* Start button */}
           <button
             type="button"
             onClick={handleStartGame}
-            disabled={state.loading || state.gold === null}
+            disabled={state.loading || state.gold === null || state.betAmount < SHELL_GAME_MIN_BET}
             className="w-full max-w-xs rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-700 px-6 py-3 text-sm font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-900/30 transition hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Start game"
             tabIndex={0}
@@ -499,10 +499,18 @@ const ShellGameContent = () => {
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 Starting...
               </span>
+            ) : state.betAmount < SHELL_GAME_MIN_BET ? (
+              `Min bet: ${SHELL_GAME_MIN_BET} gold`
             ) : (
-              `Bet ${(customBet ? Number(customBet) : state.betAmount).toLocaleString()} Gold`
+              `Bet ${state.betAmount.toLocaleString()} Gold`
             )}
           </button>
+
+          {state.betAmount > 0 && state.betAmount < SHELL_GAME_MIN_BET && (
+            <p className="text-xs text-amber-500/70">
+              Minimum bet is {SHELL_GAME_MIN_BET} gold
+            </p>
+          )}
         </div>
       )}
 

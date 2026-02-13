@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatResultModal from "@/app/components/CombatResultModal";
 import PageLoader from "@/app/components/PageLoader";
@@ -19,6 +20,11 @@ type Character = {
   currentStamina: number;
   maxStamina: number;
   pvpRating: number;
+  strength: number;
+  agility: number;
+  vitality: number;
+  intelligence: number;
+  luck: number;
 };
 
 type Opponent = {
@@ -107,6 +113,66 @@ const CLASS_LABEL: Record<string, string> = {
   tank: "Tank",
 };
 
+/* ────────────────── Stat Compare Tooltip ────────────────── */
+
+type StatRow = { label: string; yours: number; theirs: number };
+
+const COMPARE_STATS: { key: keyof Pick<Character, "strength" | "agility" | "intelligence" | "vitality" | "luck">; label: string }[] = [
+  { key: "strength", label: "STR" },
+  { key: "agility", label: "AGI" },
+  { key: "intelligence", label: "INT" },
+  { key: "vitality", label: "VIT" },
+  { key: "luck", label: "LCK" },
+];
+
+const StatCompareRow = ({ label, yours, theirs }: StatRow) => {
+  const diff = yours - theirs;
+  const color = diff > 0 ? "text-emerald-400" : diff < 0 ? "text-red-400" : "text-slate-400";
+  const sign = diff > 0 ? "+" : "";
+  return (
+    <div className="flex items-center justify-between gap-3 text-xs">
+      <span className="w-8 text-slate-500">{label}</span>
+      <span className="w-6 text-right text-slate-300">{yours}</span>
+      <span className="text-slate-600">vs</span>
+      <span className="w-6 text-right text-white">{theirs}</span>
+      <span className={`w-8 text-right font-bold ${color}`}>
+        {diff === 0 ? "=" : `${sign}${diff}`}
+      </span>
+    </div>
+  );
+};
+
+const StatCompareTooltip = ({ character, opponent }: { character: Character; opponent: Opponent }) => (
+  <div className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 rounded-xl border border-slate-600/60 bg-slate-900/95 px-4 py-3 shadow-xl backdrop-blur-sm"
+    style={{ minWidth: 200 }}
+  >
+    {/* Arrow */}
+    <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-slate-600/60 bg-slate-900/95" />
+
+    <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-widest text-amber-400/70">
+      You vs {opponent.characterName}
+    </p>
+    <div className="space-y-1">
+      {COMPARE_STATS.map((s) => (
+        <StatCompareRow
+          key={s.key}
+          label={s.label}
+          yours={character[s.key]}
+          theirs={opponent[s.key]}
+        />
+      ))}
+    </div>
+    {/* HP compare */}
+    <div className="mt-2 border-t border-slate-700/50 pt-2">
+      <StatCompareRow
+        label="HP"
+        yours={getMaxHp(character.vitality)}
+        theirs={getMaxHp(opponent.vitality)}
+      />
+    </div>
+  </div>
+);
+
 /* ────────────────── Screen states ────────────────── */
 
 type ScreenState =
@@ -129,6 +195,7 @@ function ArenaContent() {
   const [screen, setScreen] = useState<ScreenState>({ kind: "select" });
   const [error, setError] = useState<string | null>(null);
   const [attemptsLeft, setAttemptsLeft] = useState(10);
+  const [hoveredOpponent, setHoveredOpponent] = useState<string | null>(null);
 
   /* ── Load character ── */
   useEffect(() => {
@@ -271,8 +338,16 @@ function ArenaContent() {
       {/* Content wrapper above background */}
       <div className="relative z-10 flex min-h-full flex-1 flex-col">
       {/* Header */}
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold uppercase tracking-wider text-amber-400">
+      <div className="relative mb-2 flex flex-col items-center gap-2">
+        <Link
+          href="/hub"
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
+        <h1 className="font-display text-2xl font-bold uppercase tracking-wider text-amber-400">
           Arena
         </h1>
         <div className="flex items-center gap-2">
@@ -297,7 +372,7 @@ function ArenaContent() {
       </div>
 
       {/* Choose opponent */}
-      <h2 className="mb-4 text-center text-sm font-semibold text-slate-300">
+      <h2 className="mb-4 text-center font-display text-base text-slate-300">
         Choose your opponent:
       </h2>
 
@@ -330,45 +405,54 @@ function ArenaContent() {
           </button>
         </div>
       ) : (
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="scrollbar-hide mx-auto mb-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:grid sm:snap-none sm:grid-cols-3 sm:overflow-visible sm:pb-0" style={{ maxWidth: 3 * 320 + 2 * 16 }}>
           {opponents.map((opp) => {
             const cls = opp.class.toLowerCase();
             const maxHp = getMaxHp(opp.vitality);
 
             return (
-              <HeroCard
+              <div
                 key={opp.id}
-                name={opp.characterName}
-                className={cls}
-                origin={opp.origin}
-                level={opp.level}
-                rating={opp.pvpRating}
-                hp={{ current: maxHp, max: maxHp }}
-                selected={selectedOpponent === opp.id}
-                onClick={() => setSelectedOpponent(opp.id)}
-                ariaLabel={`Select ${opp.characterName}`}
-                stats={{
-                  strength: opp.strength,
-                  agility: opp.agility,
-                  intelligence: opp.intelligence,
-                  vitality: opp.vitality,
-                  luck: opp.luck,
-                }}
-              />
+                className="relative w-[75vw] min-w-[220px] max-w-[320px] flex-shrink-0 snap-center sm:w-auto sm:min-w-0 sm:max-w-none sm:flex-shrink"
+                onMouseEnter={() => setHoveredOpponent(opp.id)}
+                onMouseLeave={() => setHoveredOpponent(null)}
+              >
+                <HeroCard
+                  name={opp.characterName}
+                  className={cls}
+                  origin={opp.origin}
+                  level={opp.level}
+                  rating={opp.pvpRating}
+                  hp={{ current: maxHp, max: maxHp }}
+                  selected={selectedOpponent === opp.id}
+                  onClick={() => setSelectedOpponent(opp.id)}
+                  ariaLabel={`Select ${opp.characterName}`}
+                  stats={{
+                    strength: opp.strength,
+                    agility: opp.agility,
+                    intelligence: opp.intelligence,
+                    vitality: opp.vitality,
+                    luck: opp.luck,
+                  }}
+                />
+                {hoveredOpponent === opp.id && character && (
+                  <StatCompareTooltip character={character} opponent={opp} />
+                )}
+              </div>
             );
           })}
         </div>
       )}
 
       {/* Actions */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap justify-center gap-3">
         <button
           type="button"
           onClick={handleFight}
           disabled={!selectedOpponent || fighting || !canAfford}
           aria-label="Start Battle"
           className={`
-            flex-1 rounded-2xl px-6 py-4 text-sm font-bold text-white shadow-lg transition
+            rounded-2xl px-6 py-4 text-sm font-bold text-white shadow-lg transition
             ${
               selectedOpponent && canAfford
                 ? "bg-gradient-to-r from-amber-600 to-orange-600 shadow-amber-900/40 hover:from-amber-500 hover:to-orange-500"
@@ -388,9 +472,9 @@ function ArenaContent() {
           onClick={loadOpponents}
           disabled={loadingOpponents}
           aria-label="Refresh opponents"
-          className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-4 text-sm font-medium text-slate-400 transition hover:bg-slate-700 disabled:opacity-50"
+          className="rounded-2xl border border-slate-700 bg-slate-800 px-4 py-4 text-sm text-slate-400 transition hover:bg-slate-700 disabled:opacity-50"
         >
-          🔄 Refresh
+          🔄
         </button>
       </div>
 

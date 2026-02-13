@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
 
@@ -181,8 +182,16 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <div className="p-4 lg:p-6">
-      <h1 className="mb-4 text-xl font-bold text-white">🏆 Leaderboard · Season {data.season}</h1>
+    <div className="relative p-4 lg:p-6">
+      <Link
+        href="/hub"
+        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+        aria-label="Back to Hub"
+        tabIndex={0}
+      >
+        ✕
+      </Link>
+      <h1 className="mb-4 text-center font-display text-2xl font-bold uppercase text-white">Leaderboard · Season {data.season}</h1>
 
       <div className="overflow-x-auto rounded-xl border border-slate-800">
         <table className="w-full text-sm">

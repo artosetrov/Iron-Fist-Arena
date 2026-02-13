@@ -101,7 +101,7 @@ const LoginForm = () => {
                 priority
               />
             </Link>
-            <h1 className="text-xl font-bold uppercase tracking-wider text-white">
+            <h1 className="font-display text-2xl font-bold uppercase tracking-wider text-white">
               Welcome Back
             </h1>
             <p className="text-xs text-slate-500">Sign in to enter the arena</p>
