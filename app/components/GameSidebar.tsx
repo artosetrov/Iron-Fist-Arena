@@ -514,10 +514,10 @@ const GameSidebar = () => {
       </nav>
 
       {/* Bottom: settings & switch character */}
-      <div className="border-t border-slate-700/50 p-3 space-y-2">
+      <div className="border-t border-slate-700/50 p-3 flex items-center justify-center gap-2">
         <Link
           href={buildHref("/settings")}
-          className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs transition
+          className={`flex h-10 w-10 items-center justify-center rounded-lg border text-lg transition
             ${isActive("/settings")
               ? "text-white"
               : "border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:bg-slate-800 hover:text-white"
@@ -526,17 +526,17 @@ const GameSidebar = () => {
           style={isActive("/settings") ? { borderColor: "var(--ds-nav-active-border)", backgroundColor: "var(--ds-nav-active-bg)" } : undefined}
           aria-label="Settings"
           aria-current={isActive("/settings") ? "page" : undefined}
+          title="Settings"
         >
-          <span>⚙️</span>
-          <span>Settings</span>
+          ⚙️
         </Link>
         <Link
           href="/character"
-          className="flex items-center justify-center gap-2 rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-xs text-slate-400 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/50 text-lg text-slate-400 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
           aria-label="Switch Character"
+          title="Switch Character"
         >
-          <span>🔄</span>
-          <span>Switch Character</span>
+          🔄
         </Link>
       </div>
     </div>
