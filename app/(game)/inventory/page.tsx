@@ -1012,12 +1012,13 @@ function InventoryContent() {
           <div className="p-4">
             {/* Equipment paper-doll layout */}
             <div className="flex gap-4">
-              {/* Left column: helmet, chest, gloves, legs, ring */}
+              {/* Left column: helmet, chest, gloves, legs, necklace, ring */}
               <div className="flex flex-col items-center gap-2">
                 <EquipmentSlot slotKey="helmet" item={equippedMap.helmet} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="chest" item={equippedMap.chest} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="gloves" item={equippedMap.gloves} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="legs" item={equippedMap.legs} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
+                <EquipmentSlot slotKey="necklace" item={equippedMap.necklace} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
                 <EquipmentSlot slotKey="ring" item={equippedMap.ring} onUnequip={handleUnequip} onHoverItem={handleHoverItem} onSelectItem={handleSelectItem} />
               </div>
 

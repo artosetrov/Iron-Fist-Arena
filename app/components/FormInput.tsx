@@ -34,7 +34,21 @@ const FormInput = ({
       maxLength={maxLength}
       autoComplete={autoComplete}
       placeholder={placeholder}
-      className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30"
+      className="border bg-[var(--ds-bg-input)] text-sm text-[var(--ds-text)] placeholder-slate-600 outline-none transition"
+      style={{
+        borderColor: "var(--ds-border)",
+        borderRadius: "var(--ds-input-radius)",
+        paddingInline: "var(--ds-input-px)",
+        paddingBlock: "var(--ds-input-py)",
+      }}
+      onFocus={(e) => {
+        e.currentTarget.style.borderColor = "var(--ds-border-focus)";
+        e.currentTarget.style.boxShadow = "0 0 0 1px var(--ds-ring-focus)";
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.borderColor = "var(--ds-border)";
+        e.currentTarget.style.boxShadow = "none";
+      }}
       aria-label={label}
     />
   </label>

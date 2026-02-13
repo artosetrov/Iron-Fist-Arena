@@ -17,11 +17,14 @@ const PageLoader = ({ emoji = "⚔️", text = "Loading…", avatarSrc }: PageLo
       <div className="text-center">
         <div className="relative mx-auto mb-4 h-24 w-24">
           {/* Outer spinner ring */}
-          <div className="absolute inset-0 animate-spin rounded-full border-2 border-slate-700 border-t-indigo-400" />
+          <div
+            className="absolute inset-0 animate-spin rounded-full border-2 border-slate-700"
+            style={{ borderTopColor: "var(--ds-loader-accent-1)" }}
+          />
           {/* Inner spinner ring */}
           <div
-            className="absolute inset-1.5 animate-spin rounded-full border-2 border-slate-700 border-t-purple-400"
-            style={{ animationDirection: "reverse", animationDuration: "1.5s" }}
+            className="absolute inset-1.5 animate-spin rounded-full border-2 border-slate-700"
+            style={{ borderTopColor: "var(--ds-loader-accent-2)", animationDirection: "reverse", animationDuration: "1.5s" }}
           />
           {/* Avatar or fallback emoji */}
           <div

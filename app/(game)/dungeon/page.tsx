@@ -561,11 +561,41 @@ function DungeonContent() {
     handleFightResultDirect(screen.fightResult, screen.dungeon);
   };
 
-  const handleLootContinue = () => {
-    // Boss defeated, go back to list (run is already deleted, need to reload)
-    loadData();
-    setScreen({ kind: "list" });
+  const handleLootContinue = async () => {
+    // Boss defeated — reload data, then return to dungeon detail (not list)
+    const dungeonId = screen.kind === "loot" ? screen.dungeon.id : null;
     window.dispatchEvent(new Event("character-updated"));
+
+    if (!characterId) return;
+    setError(null);
+    try {
+      const [charRes, dungeonRes] = await Promise.all([
+        fetch(`/api/characters/${characterId}`),
+        fetch(`/api/dungeons?characterId=${characterId}`),
+      ]);
+      if (!charRes.ok) throw new Error("Failed to load character");
+      if (!dungeonRes.ok) throw new Error("Failed to load dungeons");
+      const charData = await charRes.json();
+      const dungeonData = await dungeonRes.json();
+      const freshDungeons: DungeonInfo[] = dungeonData.dungeons ?? [];
+      setCharacter(charData);
+      setDungeons(freshDungeons);
+
+      // Try to navigate back to the same dungeon's detail page
+      const updatedDungeon = dungeonId
+        ? freshDungeons.find((d) => d.id === dungeonId)
+        : null;
+
+      if (updatedDungeon) {
+        setSelectedBoss(null);
+        setScreen({ kind: "detail", dungeon: updatedDungeon });
+      } else {
+        setScreen({ kind: "list" });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Loading error");
+      setScreen({ kind: "list" });
+    }
   };
 
   const handleBackToList = () => {
@@ -1157,7 +1187,7 @@ function DungeonContent() {
       )}
 
       {/* Dungeon carousel */}
-      <div className="relative flex-1">
+      <div className="relative flex flex-1 items-center">
         {/* Navigation arrows */}
         <button
           type="button"

@@ -91,11 +91,20 @@ const tickStatusEffects = (
       state.currentHp = Math.min(state.maxHp, state.currentHp + heal);
       ticks.push({ type: "regen", healed: heal });
     }
-    return s.duration > 0;
-  });
 
-  // Clean up expired self-buff status effects (str_buff, dodge_buff, armor_buff, resist_buff)
-  // These are automatically removed by the duration filter above.
+    // Revert stat bonuses when buff expires
+    const expiring = s.duration <= 0;
+    if (expiring && s.value) {
+      if (s.type === "str_buff") {
+        state.baseStats.strength = Math.max(0, state.baseStats.strength - s.value);
+      }
+      if (s.type === "armor_buff") {
+        state.armor = Math.max(0, state.armor - s.value);
+      }
+    }
+
+    return !expiring;
+  });
 
   if (ticks.length > 0 && state.currentHp > 0) {
     log.push({

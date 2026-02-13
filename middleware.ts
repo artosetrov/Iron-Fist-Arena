@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const gamePaths = ["/hub", "/arena", "/dungeon", "/inventory", "/shop", "/combat", "/character", "/settings", "/leaderboard", "/minigames", "/dev-dashboard"];
+const gamePaths = ["/hub", "/arena", "/dungeon", "/inventory", "/shop", "/combat", "/character", "/settings", "/leaderboard", "/minigames", "/dev-dashboard", "/admin/design-system", "/balance-editor"];
 const authPaths = ["/login", "/register"];
 
 const isGamePath = (pathname: string) =>

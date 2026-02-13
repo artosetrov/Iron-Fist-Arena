@@ -380,3 +380,12 @@ model GoldMineSession {
   @@index([characterId, collected])
   @@map("gold_mine_sessions")
 }
+
+model DesignToken {
+  id        String   @id @default("global")
+  tokens    Json     @default("{}")
+  updatedAt DateTime @default(now()) @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  @@map("design_tokens")
+}

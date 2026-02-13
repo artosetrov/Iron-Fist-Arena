@@ -38,6 +38,7 @@ export async function GET(request: Request) {
     const character = await prisma.character.findFirst({
       where: { id: characterId, userId: user.id },
       include: {
+        user: true,
         equipment: { include: { item: true } },
       },
     });
@@ -57,7 +58,7 @@ export async function GET(request: Request) {
       currentStamina: character.currentStamina,
       maxStamina: character.maxStamina,
       lastStaminaUpdate: lastUpdate,
-      isVip: false,
+      isVip: !!character.user?.premiumUntil && character.user.premiumUntil > new Date(),
     });
     if (currentStamina !== character.currentStamina || lastStaminaUpdate.getTime() !== lastUpdate.getTime()) {
       await prisma.character.update({

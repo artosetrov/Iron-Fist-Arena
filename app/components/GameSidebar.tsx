@@ -71,6 +71,7 @@ const NAV_ITEMS: NavItem[] = [
 const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/dev-dashboard", label: "Dev Panel", icon: "🛠", description: "Monitoring" },
   { href: "/balance-editor", label: "Balance", icon: "⚖️", description: "Game Balance Editor" },
+  { href: "/admin/design-system", label: "Design System", icon: "🎨", description: "Master Components" },
 ];
 
 /* ────────────────── Stamina Hook ────────────────── */
@@ -431,10 +432,11 @@ const GameSidebar = () => {
                   href={buildHref(item.href)}
                   className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all
                     ${active
-                      ? "border border-indigo-500/30 bg-indigo-500/10 text-white"
+                      ? "border text-white"
                       : "border border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-800/60 hover:text-white"
                     }
                   `}
+                  style={active ? { borderColor: "var(--ds-nav-active-border)", backgroundColor: "var(--ds-nav-active-bg)" } : undefined}
                   aria-label={item.label}
                   aria-current={active ? "page" : undefined}
                   tabIndex={0}
@@ -451,7 +453,7 @@ const GameSidebar = () => {
             );
           })}
 
-          {/* Admin-only navigation */}
+          {/* Admin-only navigation — compact horizontal icons */}
           {userRole === "admin" && (
             <>
               <li className="pt-2">
@@ -459,33 +461,32 @@ const GameSidebar = () => {
                   Admin
                 </div>
               </li>
-              {ADMIN_NAV_ITEMS.map((item) => {
-                const active = isActive(item.href);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={buildHref(item.href)}
-                      className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all
-                        ${active
-                          ? "border border-amber-500/30 bg-amber-500/10 text-white"
-                          : "border border-transparent text-slate-400 hover:border-amber-700/50 hover:bg-amber-900/20 hover:text-white"
-                        }
-                      `}
-                      aria-label={item.label}
-                      aria-current={active ? "page" : undefined}
-                      tabIndex={0}
-                    >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-amber-700/50 bg-amber-900/30 text-lg transition group-hover:border-amber-600">
+              <li>
+                <div className="flex items-center gap-1.5 px-2">
+                  {ADMIN_NAV_ITEMS.map((item) => {
+                    const active = isActive(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={buildHref(item.href)}
+                        className={`group flex h-10 w-10 items-center justify-center rounded-lg text-lg transition-all
+                          ${active
+                            ? "border text-white"
+                            : "border border-transparent text-slate-400 hover:border-amber-700/50 hover:bg-amber-900/20 hover:text-white"
+                          }
+                        `}
+                        style={active ? { borderColor: "var(--ds-nav-admin-active-border)", backgroundColor: "var(--ds-nav-admin-active-bg)" } : undefined}
+                        aria-label={item.label}
+                        aria-current={active ? "page" : undefined}
+                        tabIndex={0}
+                        title={`${item.label} — ${item.description}`}
+                      >
                         {item.icon}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate font-bold tracking-wide">{item.label}</p>
-                        <p className="truncate text-[10px] text-slate-500">{item.description}</p>
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </li>
             </>
           )}
         </ul>
@@ -497,10 +498,11 @@ const GameSidebar = () => {
           href={buildHref("/settings")}
           className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs transition
             ${isActive("/settings")
-              ? "border-indigo-500/30 bg-indigo-500/10 text-white"
+              ? "text-white"
               : "border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:bg-slate-800 hover:text-white"
             }
           `}
+          style={isActive("/settings") ? { borderColor: "var(--ds-nav-active-border)", backgroundColor: "var(--ds-nav-active-bg)" } : undefined}
           aria-label="Settings"
           aria-current={isActive("/settings") ? "page" : undefined}
         >

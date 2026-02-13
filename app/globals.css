@@ -5,6 +5,86 @@
 :root {
   --foreground: 15 23 42;
   --background: 248 250 252;
+
+  /* ── Design System Tokens (defaults) ── */
+
+  /* Global colors */
+  --ds-primary-from: #d97706;
+  --ds-primary-to: #ea580c;
+  --ds-primary-hover-from: #b45309;
+  --ds-primary-hover-to: #c2410c;
+  --ds-accent: #6366f1;
+  --ds-danger: #ef4444;
+  --ds-success: #22c55e;
+  --ds-bg-card: rgba(15,23,42,0.8);
+  --ds-bg-input: rgba(30,41,59,0.6);
+  --ds-border: #334155;
+  --ds-border-focus: rgba(245,158,11,0.5);
+  --ds-ring-focus: rgba(245,158,11,0.3);
+  --ds-text: #ffffff;
+  --ds-text-muted: #94a3b8;
+
+  /* Button */
+  --ds-btn-radius: 1rem;
+  --ds-btn-px: 1.5rem;
+  --ds-btn-py: 0.75rem;
+  --ds-btn-font-size: 0.875rem;
+  --ds-btn-font-weight: 700;
+
+  /* Card */
+  --ds-card-radius: 1rem;
+  --ds-card-border-width: 2px;
+
+  /* Input */
+  --ds-input-radius: 0.75rem;
+  --ds-input-px: 1rem;
+  --ds-input-py: 0.75rem;
+
+  /* Loader */
+  --ds-loader-accent-1: #818cf8;
+  --ds-loader-accent-2: #c084fc;
+
+  /* Class: Warrior */
+  --ds-class-warrior-border: rgba(185,28,28,0.8);
+  --ds-class-warrior-glow: rgba(220,38,38,0.4);
+  --ds-class-warrior-accent-from: #991b1b;
+  --ds-class-warrior-accent-via: #7f1d1d;
+  --ds-class-warrior-accent-to: #450a0a;
+  --ds-class-warrior-gradient-from: #7f1d1d;
+  --ds-class-warrior-gradient-to: #450a0a;
+
+  /* Class: Rogue */
+  --ds-class-rogue-border: rgba(4,120,87,0.8);
+  --ds-class-rogue-glow: rgba(5,150,105,0.4);
+  --ds-class-rogue-accent-from: #065f46;
+  --ds-class-rogue-accent-via: #064e3b;
+  --ds-class-rogue-accent-to: #022c22;
+  --ds-class-rogue-gradient-from: #064e3b;
+  --ds-class-rogue-gradient-to: #022c22;
+
+  /* Class: Mage */
+  --ds-class-mage-border: rgba(29,78,216,0.8);
+  --ds-class-mage-glow: rgba(37,99,235,0.4);
+  --ds-class-mage-accent-from: #1e40af;
+  --ds-class-mage-accent-via: #1e3a8a;
+  --ds-class-mage-accent-to: #172554;
+  --ds-class-mage-gradient-from: #1e3a8a;
+  --ds-class-mage-gradient-to: #172554;
+
+  /* Class: Tank */
+  --ds-class-tank-border: rgba(180,83,9,0.8);
+  --ds-class-tank-glow: rgba(217,119,6,0.4);
+  --ds-class-tank-accent-from: #92400e;
+  --ds-class-tank-accent-via: #78350f;
+  --ds-class-tank-accent-to: #451a03;
+  --ds-class-tank-gradient-from: #78350f;
+  --ds-class-tank-gradient-to: #451a03;
+
+  /* Nav */
+  --ds-nav-active-border: rgba(99,102,241,0.3);
+  --ds-nav-active-bg: rgba(99,102,241,0.1);
+  --ds-nav-admin-active-border: rgba(245,158,11,0.3);
+  --ds-nav-admin-active-bg: rgba(245,158,11,0.1);
 }
 
 body {

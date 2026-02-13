@@ -41,35 +41,65 @@ export const BOSS_IMAGES: Record<string, string> = {
   "Drill Sergeant Grizzle": "/images/bosses/boss-drill-sergeant-grizzle.png",
 };
 
-/* ────────────────── Card Frame Colors ────────────────── */
+/* ────────────────── Card Frame Colors (CSS var driven) ────────────────── */
 
-const CLASS_FRAME: Record<string, { border: string; glow: string; accent: string }> = {
+type FrameStyle = {
+  borderColor: string;
+  glowColor: string;
+  accentFrom: string;
+  accentVia: string;
+  accentTo: string;
+  gradientFrom: string;
+  gradientTo: string;
+};
+
+const CLASS_FRAME_VARS: Record<string, FrameStyle> = {
   warrior: {
-    border: "border-red-700/80",
-    glow: "shadow-red-600/40",
-    accent: "from-red-800 via-red-900 to-red-950",
+    borderColor: "var(--ds-class-warrior-border)",
+    glowColor: "var(--ds-class-warrior-glow)",
+    accentFrom: "var(--ds-class-warrior-accent-from)",
+    accentVia: "var(--ds-class-warrior-accent-via)",
+    accentTo: "var(--ds-class-warrior-accent-to)",
+    gradientFrom: "var(--ds-class-warrior-gradient-from)",
+    gradientTo: "var(--ds-class-warrior-gradient-to)",
   },
   rogue: {
-    border: "border-emerald-700/80",
-    glow: "shadow-emerald-600/40",
-    accent: "from-emerald-800 via-emerald-900 to-emerald-950",
+    borderColor: "var(--ds-class-rogue-border)",
+    glowColor: "var(--ds-class-rogue-glow)",
+    accentFrom: "var(--ds-class-rogue-accent-from)",
+    accentVia: "var(--ds-class-rogue-accent-via)",
+    accentTo: "var(--ds-class-rogue-accent-to)",
+    gradientFrom: "var(--ds-class-rogue-gradient-from)",
+    gradientTo: "var(--ds-class-rogue-gradient-to)",
   },
   mage: {
-    border: "border-blue-700/80",
-    glow: "shadow-blue-600/40",
-    accent: "from-blue-800 via-blue-900 to-blue-950",
+    borderColor: "var(--ds-class-mage-border)",
+    glowColor: "var(--ds-class-mage-glow)",
+    accentFrom: "var(--ds-class-mage-accent-from)",
+    accentVia: "var(--ds-class-mage-accent-via)",
+    accentTo: "var(--ds-class-mage-accent-to)",
+    gradientFrom: "var(--ds-class-mage-gradient-from)",
+    gradientTo: "var(--ds-class-mage-gradient-to)",
   },
   tank: {
-    border: "border-amber-700/80",
-    glow: "shadow-amber-600/40",
-    accent: "from-amber-800 via-amber-900 to-amber-950",
+    borderColor: "var(--ds-class-tank-border)",
+    glowColor: "var(--ds-class-tank-glow)",
+    accentFrom: "var(--ds-class-tank-accent-from)",
+    accentVia: "var(--ds-class-tank-accent-via)",
+    accentTo: "var(--ds-class-tank-accent-to)",
+    gradientFrom: "var(--ds-class-tank-gradient-from)",
+    gradientTo: "var(--ds-class-tank-gradient-to)",
   },
 };
 
-const DEFAULT_FRAME = {
-  border: "border-slate-600/80",
-  glow: "shadow-slate-600/40",
-  accent: "from-slate-700 via-slate-800 to-slate-900",
+const DEFAULT_FRAME_VARS: FrameStyle = {
+  borderColor: "rgba(71,85,105,0.8)", // slate-600/80
+  glowColor: "rgba(100,116,139,0.4)", // slate-600/40
+  accentFrom: "#334155", // slate-700
+  accentVia: "#1e293b", // slate-800
+  accentTo: "#0f172a", // slate-900
+  gradientFrom: "#1e293b",
+  gradientTo: "#0f172a",
 };
 
 /* ────────────────── Stat Circle ────────────────── */
@@ -258,8 +288,7 @@ const HeroCard = memo(({
   children,
 }: HeroCardProps) => {
   const classKey = cls?.toLowerCase() ?? "";
-  const frame = CLASS_FRAME[classKey] ?? DEFAULT_FRAME;
-  const gradient = CLASS_GRADIENT[classKey] ?? "from-slate-800 to-slate-900";
+  const frame = CLASS_FRAME_VARS[classKey] ?? DEFAULT_FRAME_VARS;
   const classIcon = icon ?? CLASS_ICON[classKey] ?? "👤";
 
   // Determine which image to show
@@ -272,9 +301,9 @@ const HeroCard = memo(({
   const dodgeClass = battle?.isDodging ? "animate-dodge-slide" : "";
 
   // Selected / hover states
-  const selectedBorder = selected
+  const selectedClasses = selected
     ? "border-amber-500 ring-2 ring-amber-400/50 shadow-xl shadow-amber-600/30 scale-[1.03]"
-    : `${frame.border} hover:border-amber-600/50`;
+    : "hover:border-amber-600/50";
 
   // Stat config
   const statConfig = [
@@ -302,19 +331,28 @@ const HeroCard = memo(({
       aria-pressed={onClick ? selected : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={`
-        group relative flex aspect-[9/14] flex-col overflow-hidden rounded-2xl border-2 transition-all duration-300
-        ${selectedBorder}
+        group relative flex aspect-[9/14] flex-col overflow-hidden border-2 transition-all duration-300
+        ${selectedClasses}
         ${shakeClass} ${dodgeClass}
         ${disabled ? "opacity-60 cursor-not-allowed" : onClick ? "cursor-pointer" : ""}
         bg-slate-950/90
       `}
+      style={{
+        borderRadius: "var(--ds-card-radius)",
+        borderWidth: "var(--ds-card-border-width)",
+        borderColor: selected ? undefined : frame.borderColor,
+      }}
     >
       {/* ═══ Top ornament strip ═══ */}
-      <div className={`h-1.5 w-full bg-gradient-to-r ${frame.accent}`} />
+      <div
+        className="h-1.5 w-full"
+        style={{ background: `linear-gradient(to right, ${frame.accentFrom}, ${frame.accentVia}, ${frame.accentTo})` }}
+      />
 
       {/* ═══ Portrait area ═══ */}
       <div
-        className={`relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden bg-gradient-to-b ${gradient}`}
+        className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden"
+        style={{ background: `linear-gradient(to bottom, ${frame.gradientFrom}, ${frame.gradientTo})` }}
       >
         {/* Inner vignette */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.5)_100%)]" />
@@ -389,7 +427,10 @@ const HeroCard = memo(({
 
       {/* ═══ Ornamental divider ═══ */}
       <div className="relative flex h-3 items-center justify-center overflow-hidden">
-        <div className={`absolute inset-0 bg-gradient-to-r ${frame.accent} opacity-60`} />
+        <div
+          className="absolute inset-0 opacity-60"
+          style={{ background: `linear-gradient(to right, ${frame.accentFrom}, ${frame.accentVia}, ${frame.accentTo})` }}
+        />
         <div className="relative z-10 h-0.5 w-16 rounded-full bg-amber-500/60" />
       </div>
 
@@ -430,7 +471,10 @@ const HeroCard = memo(({
 
 
       {/* ═══ Bottom ornament strip ═══ */}
-      <div className={`h-1 w-full bg-gradient-to-r ${frame.accent} opacity-60`} />
+      <div
+        className="h-1 w-full opacity-60"
+        style={{ background: `linear-gradient(to right, ${frame.accentFrom}, ${frame.accentVia}, ${frame.accentTo})` }}
+      />
     </Wrapper>
   );
 });

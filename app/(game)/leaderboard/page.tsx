@@ -1,18 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import PageLoader from "@/app/components/PageLoader";
+import HeroCard from "@/app/components/HeroCard";
 
 type Entry = {
   rank: number;
   characterName: string;
   class: string;
+  origin?: string;
   level: number;
   pvpRating: number;
   pvpWins: number;
   pvpLosses: number;
   highestPvpRank: string;
   currentRank: string;
+  strength: number;
+  agility: number;
+  vitality: number;
+  intelligence: number;
+  luck: number;
+  maxHp: number;
+  currentHp: number;
 };
 
 const CLASS_LABEL: Record<string, string> = {
@@ -38,10 +48,71 @@ const getRankColor = (rank: string): string => {
   return RANK_COLOR[tier] ?? "text-slate-400";
 };
 
+/* ─────────── Hero tooltip on hover ─────────── */
+
+const CARD_W = 200;
+const CARD_H = 340;
+const TOOLTIP_GAP = 12;
+
+type TooltipState = {
+  entry: Entry;
+  x: number;
+  y: number;
+} | null;
+
+const HeroTooltip = ({ state }: { state: NonNullable<TooltipState> }) => {
+  const { entry, x, y } = state;
+
+  // Position so the card doesn't overflow viewport
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1920;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 1080;
+
+  let left = x + TOOLTIP_GAP;
+  let top = y - CARD_H / 2;
+
+  // Flip to left side if overflows right
+  if (left + CARD_W > vw - 8) {
+    left = x - CARD_W - TOOLTIP_GAP;
+  }
+  // Clamp vertical
+  if (top < 8) top = 8;
+  if (top + CARD_H > vh - 8) top = vh - CARD_H - 8;
+
+  return createPortal(
+    <div
+      className="pointer-events-none fixed z-[9999] animate-in fade-in zoom-in-95 duration-150"
+      style={{ left, top, width: CARD_W }}
+    >
+      <HeroCard
+        name={entry.characterName}
+        className={entry.class}
+        origin={entry.origin}
+        level={entry.level}
+        rating={entry.pvpRating}
+        hp={{ current: entry.currentHp, max: entry.maxHp }}
+        stats={{
+          strength: entry.strength,
+          agility: entry.agility,
+          vitality: entry.vitality,
+          intelligence: entry.intelligence,
+          luck: entry.luck,
+        }}
+        statSize="sm"
+        disabled
+      />
+    </div>,
+    document.body,
+  );
+};
+
+/* ─────────── Main Page ─────────── */
+
 export default function LeaderboardPage() {
   const [data, setData] = useState<{ season: number; leaderboard: Entry[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<TooltipState>(null);
+  const tooltipTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -61,6 +132,32 @@ export default function LeaderboardPage() {
     load();
     return () => controller.abort();
   }, []);
+
+  const handleRowMouseEnter = useCallback((entry: Entry, event: React.MouseEvent<HTMLTableRowElement>) => {
+    clearTimeout(tooltipTimeout.current);
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTooltip({
+      entry,
+      x: rect.right,
+      y: rect.top + rect.height / 2,
+    });
+  }, []);
+
+  const handleRowMouseMove = useCallback((entry: Entry, event: React.MouseEvent<HTMLTableRowElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTooltip({
+      entry,
+      x: rect.right,
+      y: rect.top + rect.height / 2,
+    });
+  }, []);
+
+  const handleRowMouseLeave = useCallback(() => {
+    tooltipTimeout.current = setTimeout(() => setTooltip(null), 80);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => () => clearTimeout(tooltipTimeout.current), []);
 
   if (error) {
     return (
@@ -105,6 +202,9 @@ export default function LeaderboardPage() {
               <tr
                 key={e.rank}
                 className="border-b border-slate-800/50 text-slate-300 transition hover:bg-slate-800/30"
+                onMouseEnter={(ev) => handleRowMouseEnter(e, ev)}
+                onMouseMove={(ev) => handleRowMouseMove(e, ev)}
+                onMouseLeave={handleRowMouseLeave}
               >
                 <td className="px-3 py-2 font-bold text-white">
                   {e.rank <= 3 ? (
@@ -132,6 +232,8 @@ export default function LeaderboardPage() {
           </tbody>
         </table>
       </div>
+
+      {tooltip && <HeroTooltip state={tooltip} />}
     </div>
   );
 }

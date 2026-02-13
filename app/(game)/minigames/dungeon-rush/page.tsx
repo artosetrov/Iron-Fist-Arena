@@ -121,15 +121,31 @@ const DungeonRushContent = () => {
   const [error, setError] = useState<string | null>(null);
   const [screen, setScreen] = useState<RushScreen>({ kind: "ready", runId: null, wave: 1 });
 
-  /* ── Load character ── */
+  const [abandoning, setAbandoning] = useState(false);
+
+  /* ── Load character + check active run ── */
   const loadCharacter = useCallback(async () => {
     if (!characterId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/characters/${characterId}`);
-      if (!res.ok) throw new Error("Failed to load character");
-      const data = await res.json();
-      setCharacter(data);
+      const [charRes, statusRes] = await Promise.all([
+        fetch(`/api/characters/${characterId}`),
+        fetch(`/api/dungeon-rush/status?characterId=${characterId}`),
+      ]);
+      if (!charRes.ok) throw new Error("Failed to load character");
+      const charData = await charRes.json();
+      setCharacter(charData);
+
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        if (statusData.activeRun) {
+          setScreen({
+            kind: "ready",
+            runId: statusData.activeRun.runId,
+            wave: statusData.activeRun.currentWave,
+          });
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Loading error");
     } finally {
@@ -140,6 +156,30 @@ const DungeonRushContent = () => {
   useEffect(() => {
     loadCharacter();
   }, [loadCharacter]);
+
+  /* ── Abandon run ── */
+  const handleAbandon = async () => {
+    if (!characterId) return;
+    setAbandoning(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/dungeon-rush/abandon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Error abandoning run");
+        return;
+      }
+      setScreen({ kind: "ready", runId: null, wave: 1 });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setAbandoning(false);
+    }
+  };
 
   /* ── Start run ── */
   const handleStart = async () => {
@@ -161,6 +201,11 @@ const DungeonRushContent = () => {
       });
       const data = await res.json();
       if (!res.ok) {
+        // If there's already an active run, reload status to recover it
+        if (data.error?.includes("active run")) {
+          await loadCharacter();
+          return;
+        }
         setError(data.error ?? "Error starting run");
         setScreen({ kind: "ready", runId: null, wave: 1 });
         return;
@@ -571,18 +616,29 @@ const DungeonRushContent = () => {
             </p>
           )}
 
-          {/* Action button */}
-          <div className="mt-6">
+          {/* Action buttons */}
+          <div className="mt-6 space-y-3">
             {hasRun ? (
-              <button
-                type="button"
-                onClick={() => handleFight(screen.runId!, currentWave)}
-                disabled={isFighting}
-                aria-label={`Fight Wave ${currentWave}`}
-                className="w-full rounded-xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 px-6 py-4 text-base font-bold text-white shadow-lg shadow-red-900/40 transition hover:from-red-500 hover:via-orange-500 hover:to-amber-500 disabled:opacity-50"
-              >
-                {isFighting ? "Fighting..." : `⚔️ Fight Wave ${currentWave}`}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleFight(screen.runId!, currentWave)}
+                  disabled={isFighting || abandoning}
+                  aria-label={`Fight Wave ${currentWave}`}
+                  className="w-full rounded-xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 px-6 py-4 text-base font-bold text-white shadow-lg shadow-red-900/40 transition hover:from-red-500 hover:via-orange-500 hover:to-amber-500 disabled:opacity-50"
+                >
+                  {isFighting ? "Fighting..." : `⚔️ Fight Wave ${currentWave}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAbandon}
+                  disabled={abandoning || isFighting}
+                  aria-label="Abandon Run"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-6 py-3 text-sm font-medium text-slate-400 transition hover:bg-slate-700 hover:text-white disabled:opacity-50"
+                >
+                  {abandoning ? "Abandoning..." : "🚪 Abandon Run"}
+                </button>
+              </>
             ) : (
               <button
                 type="button"
