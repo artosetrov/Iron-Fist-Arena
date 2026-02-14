@@ -707,9 +707,10 @@ function DungeonContent() {
             </span>{" "}
             / {dungeon.bosses.length}
           </p>
-          <div className="w-[280px]">
+          <div className="hero-card-container--fixed">
             <HeroCard
               name={boss.name}
+              variant="default"
               imageSrc={BOSS_IMAGES[boss.name]}
               description={boss.description}
               hp={{ current: boss.hp, max: boss.maxHp }}
@@ -956,7 +957,7 @@ function DungeonContent() {
     const handleScrollBossCarousel = (direction: "left" | "right") => {
       const el = bossCarouselRef.current;
       if (!el) return;
-      const card = el.querySelector<HTMLElement>(".boss-carousel-card");
+      const card = el.querySelector<HTMLElement>(".hero-card-container--fixed");
       if (!card) return;
       const scrollAmount = card.offsetWidth + 12;
       el.scrollBy({ left: direction === "right" ? scrollAmount : -scrollAmount, behavior: "smooth" });
@@ -1072,7 +1073,7 @@ function DungeonContent() {
                 return (
                   <div
                     key={boss.index}
-                    className="boss-carousel-card w-[280px] flex-shrink-0 snap-center"
+                    className="hero-card-container--fixed flex-shrink-0 snap-center"
                   >
                     {/* Status badge */}
                     <div className="mb-2 flex items-center justify-center gap-2">
@@ -1093,6 +1094,7 @@ function DungeonContent() {
 
                     <HeroCard
                       name={locked ? "???" : boss.name}
+                      variant="compact"
                       level={boss.level}
                       icon={locked ? "🔒" : undefined}
                       imageSrc={!locked ? BOSS_IMAGES[boss.name] : undefined}
@@ -1106,7 +1108,7 @@ function DungeonContent() {
                           ? { current: stats.maxHp, max: stats.maxHp }
                           : undefined
                       }
-                      hideStats
+                      hideDescription={false}
                       disabled={locked}
                     >
                       {renderBossCardChildren(boss.index, locked)}
@@ -1281,9 +1283,10 @@ function DungeonContent() {
             </div>
 
             {/* Boss HeroCard */}
-            <div className="w-full max-w-[280px]">
+            <div className="hero-card-container--fixed">
               <HeroCard
                 name={isBossLocked ? "???" : activeBoss.name}
+                variant="default"
                 level={activeBoss.level}
                 icon={isBossLocked ? "🔒" : undefined}
                 imageSrc={!isBossLocked ? BOSS_IMAGES[activeBoss.name] : undefined}
@@ -1311,7 +1314,6 @@ function DungeonContent() {
                       }
                     : undefined
                 }
-                statSize="sm"
                 disabled={isBossLocked}
               >
                 {renderBossCardChildren(selectedBossIndex, isBossLocked)}

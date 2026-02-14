@@ -197,7 +197,7 @@ export const DUNGEON_COMPLETE_RATING_PER_LEVEL = 0.5;
 
 /** GDD §5.3 — Enhanced roll thresholds */
 export const RARITY_THRESHOLDS: { rarity: Rarity; minRoll: number }[] = [
-  { rarity: "legendary", minRoll: 990 },
+  { rarity: "legendary", minRoll: 980 },
   { rarity: "epic", minRoll: 960 },
   { rarity: "rare", minRoll: 900 },
   { rarity: "uncommon", minRoll: 750 },
@@ -295,26 +295,26 @@ export const ARMOR_RANGE: Record<string, Record<Rarity, [number, number]>> = {
    ────────────────────────────────────────────────────────────────────── */
 
 /** Starting character resources */
-export const STARTING_GOLD = 500;
+export const STARTING_GOLD = 150;
 export const STARTING_STAMINA = 100;
 export const STARTING_MAX_STAMINA = 100;
 
 /** GDD §7.4 — Repair: cost = basePrice * REPAIR_COST_PCT * (lost / maxDur) */
-export const REPAIR_COST_PCT = 0.1;
+export const REPAIR_COST_PCT = 0.08;
 export const REPAIR_FALLBACK_PRICE = 100;
 
 /** GDD §7.5 — Upgrade system */
 export const UPGRADE_MAX_LEVEL = 10;
 export const UPGRADE_BASE_CHANCE = 75;
-export const UPGRADE_CHANCE_PER_LEVEL = 5;
-export const UPGRADE_COST_MULT = 0.2;
+export const UPGRADE_CHANCE_PER_LEVEL = 3;
+export const UPGRADE_COST_MULT = 0.15;
 export const UPGRADE_COST_EXP = 1.5;
 export const UPGRADE_FALLBACK_PRICE = 100;
 
-/** On failure: cumulative thresholds (0-50: stay, 50-80: downgrade, 80-100: destroy) */
+/** On failure: cumulative thresholds (0-50: stay, 50-90: downgrade, 90-100: destroy) */
 export const UPGRADE_FAIL_STAY = 50;
-export const UPGRADE_FAIL_DOWNGRADE = 80; // failRoll < 80 → downgrade
-// failRoll >= 80 → destroy (20% chance)
+export const UPGRADE_FAIL_DOWNGRADE = 90; // failRoll < 90 → downgrade
+// failRoll >= 90 → destroy (10% chance)
 
 /** GDD §7.2 — Sell price rarity multipliers */
 export const SELL_RARITY_MULT: Record<string, number> = {
@@ -339,7 +339,7 @@ export const BUY_BASE_MULT = 10;
 
 /** GDD §7.6 — Stat training: cost = floor(BASE * GROWTH^statValue) */
 export const STAT_TRAIN_BASE = 50;
-export const STAT_TRAIN_GROWTH = 1.05;
+export const STAT_TRAIN_GROWTH = 1.03;
 
 /** Inventory limit */
 export const INVENTORY_LIMIT = 50;
@@ -427,69 +427,4 @@ export const QUEST_POOL = [
   // GDD §11.1 — Win PvP at 80%+ HP
   { questType: "pvp_win_high_hp", target: 1, rewardGold: 250, rewardXp: 0, rewardGems: 35 },
 ] as const;
-
 export const DAILY_QUEST_COUNT = 3;
-
-/* ──────────────────────────────────────────────────────────────────────
-   TRAINING (Combat Simulate / Training Dummy)
-   ────────────────────────────────────────────────────────────────────── */
-
-/** Max training fights per day */
-export const TRAINING_MAX_DAILY = 10;
-
-/** XP formula: TRAINING_XP_BASE + level * TRAINING_XP_PER_LEVEL */
-export const TRAINING_XP_BASE = 20;
-export const TRAINING_XP_PER_LEVEL = 5;
-
-/** Dummy level = player level - TRAINING_DUMMY_LEVEL_OFFSET (min 1) */
-export const TRAINING_DUMMY_LEVEL_OFFSET = 2;
-
-/** Dummy stats = player stats * TRAINING_DUMMY_STAT_MULT */
-export const TRAINING_DUMMY_STAT_MULT = 0.6;
-
-/* ──────────────────────────────────────────────────────────────────────
-   DUNGEON RUSH (Mini-game)
-   ────────────────────────────────────────────────────────────────────── */
-
-/** Number of waves in a Dungeon Rush run */
-export const RUSH_WAVES = 5;
-
-/** XP per wave (multiplied by wave number) */
-export const RUSH_XP_PER_WAVE = 15;
-
-/** Gold per wave (multiplied by wave number) */
-export const RUSH_GOLD_PER_WAVE = 10;
-
-/** Bonus gold for clearing all waves */
-export const RUSH_FULL_CLEAR_BONUS = 100;
-
-/** Mob stat multiplier relative to boss stats */
-export const RUSH_MOB_STAT_MULT = 0.55;
-
-/* ──────────────────────────────────────────────────────────────────────
-   GOLD MINE (Idle Mini-game)
-   ────────────────────────────────────────────────────────────────────── */
-
-/** Mining session duration (non-VIP) in milliseconds — 4 hours */
-export const GOLD_MINE_DURATION_MS = 4 * 60 * 60 * 1000;
-
-/** Mining session duration (VIP) in milliseconds — 2 hours */
-export const GOLD_MINE_VIP_DURATION_MS = 2 * 60 * 60 * 1000;
-
-/** Base gold reward per mining session */
-export const GOLD_MINE_BASE_REWARD = 50;
-
-/** Gold reward multiplier per character level */
-export const GOLD_MINE_LEVEL_MULT = 5;
-
-/** Free mining slots available to all players */
-export const GOLD_MINE_FREE_SLOTS = 1;
-
-/** Maximum mining slots (free + purchased) */
-export const GOLD_MINE_MAX_SLOTS = 5;
-
-/** Gem cost to buy an additional mining slot */
-export const GOLD_MINE_SLOT_COST_GEMS = 200;
-
-/** Gem cost to boost (instant-finish) a mining session */
-export const GOLD_MINE_BOOST_COST_GEMS = 50;

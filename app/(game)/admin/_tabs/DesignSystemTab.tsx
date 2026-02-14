@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FormInput from "@/app/components/FormInput";
 import HeroCard from "@/app/components/HeroCard";
+import { GameButton } from "@/app/components/ui";
 import PageLoader from "@/app/components/PageLoader";
 import GameIcon from "@/app/components/ui/GameIcon";
 import {
@@ -228,90 +229,73 @@ const PREVIEW_HERO_PROPS = {
   stats: { strength: 25, agility: 18, intelligence: 12, vitality: 30, luck: 8 },
 } as const;
 
-const CardSizeLabel = ({ width }: { width: number }) => (
-  <span className="absolute -top-5 left-0 text-[10px] font-medium text-slate-500">
-    {width}px
-  </span>
-);
-
 const HeroCardPreview = () => (
   <div className="space-y-8">
+    {/* variant="default" — Arena / Combat select / Dungeon */}
     <div>
       <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-amber-400/80">
-        Desktop — 4 in row (container 780px)
+        variant=&quot;default&quot; — Arena carousel (300px / 75vw)
       </p>
-      <div className="grid grid-cols-4 gap-4" style={{ maxWidth: 780 }}>
-        <div className="relative">
-          <CardSizeLabel width={180} />
-          <HeroCard {...PREVIEW_BOSS_PROPS} statSize="sm" hideStats hideDescription />
+      <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="hero-card-container--default">
+          <HeroCard {...PREVIEW_HERO_PROPS} variant="default" />
         </div>
-        <div className="relative">
-          <CardSizeLabel width={180} />
-          <HeroCard
-            name="Drill Sergeant Grizzle"
-            level={25}
-            hp={{ current: 4200, max: 6000 }}
-            imageSrc="/images/bosses/boss-drill-sergeant-grizzle.png"
-            description="The toughest drill instructor"
-            stats={PREVIEW_BOSS_PROPS.stats}
-            statSize="sm"
-            hideStats
-            hideDescription
-          />
+        <div className="hero-card-container--default">
+          <HeroCard {...PREVIEW_BOSS_PROPS} variant="default" />
         </div>
-        <div className="relative">
-          <CardSizeLabel width={180} />
-          <HeroCard {...PREVIEW_HERO_PROPS} statSize="sm" hideStats hideDescription />
-        </div>
-        <div className="relative">
-          <CardSizeLabel width={180} />
+        <div className="hero-card-container--default">
           <HeroCard
             name="Mage Hero"
+            variant="default"
             className="mage"
             origin="demon"
             level={38}
             rating={1850}
             hp={{ current: 480, max: 650 }}
             stats={{ ...PREVIEW_HERO_PROPS.stats, intelligence: 35, strength: 10 }}
-            statSize="sm"
-            hideStats
-            hideDescription
           />
         </div>
       </div>
     </div>
 
+    {/* variant="compact" — Leaderboard tooltip */}
     <div>
       <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-amber-400/80">
-        Mobile — 2 in row (container 360px)
+        variant=&quot;compact&quot; — Leaderboard tooltip (200px)
       </p>
-      <div
-        className="grid grid-cols-2 gap-3 rounded-lg border border-dashed border-slate-600/50 bg-slate-950 p-3"
-        style={{ maxWidth: 360 }}
-      >
-        <div className="relative">
-          <CardSizeLabel width={165} />
-          <HeroCard {...PREVIEW_BOSS_PROPS} statSize="sm" hideStats hideDescription />
+      <div className="flex gap-4">
+        <div className="hero-card-container--compact">
+          <HeroCard {...PREVIEW_HERO_PROPS} variant="compact" />
         </div>
-        <div className="relative">
-          <CardSizeLabel width={165} />
-          <HeroCard {...PREVIEW_HERO_PROPS} statSize="sm" hideStats hideDescription />
+        <div className="hero-card-container--compact">
+          <HeroCard {...PREVIEW_BOSS_PROPS} variant="compact" />
         </div>
       </div>
     </div>
 
+    {/* variant="battle" — CombatBattleScreen */}
     <div>
       <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-amber-400/80">
-        Single card — full mobile width (320px)
+        variant=&quot;battle&quot; — Combat battle (max 220px)
       </p>
-      <div
-        className="rounded-lg border border-dashed border-slate-600/50 bg-slate-950 p-3"
-        style={{ maxWidth: 320 }}
-      >
-        <div className="relative">
-          <CardSizeLabel width={294} />
-          <HeroCard {...PREVIEW_HERO_PROPS} statSize="md" hideStatLabels />
+      <div className="flex items-center gap-6">
+        <div className="hero-card-container--battle">
+          <HeroCard {...PREVIEW_HERO_PROPS} variant="battle" />
         </div>
+        <span className="font-display text-2xl text-slate-700">VS</span>
+        <div className="hero-card-container--battle">
+          <HeroCard {...PREVIEW_BOSS_PROPS} variant="battle" />
+        </div>
+      </div>
+    </div>
+
+    {/* Fixed width — Dungeon boss detail */}
+    <div>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-amber-400/80">
+        Fixed 280px — Dungeon boss detail
+      </p>
+      <div className="hero-card-container--fixed">
+        <HeroCard {...PREVIEW_BOSS_PROPS} variant="default" />
       </div>
     </div>
   </div>
@@ -522,13 +506,6 @@ const DesignSystemTab = () => {
           ? "Error!"
           : "Save Changes";
 
-  const saveColor =
-    saveState === "saved"
-      ? "from-green-600 to-green-500"
-      : saveState === "error"
-        ? "from-red-600 to-red-500"
-        : "from-amber-600 to-orange-600";
-
   return (
     <div className="space-y-6">
       {/* Header toolbar */}
@@ -537,24 +514,22 @@ const DesignSystemTab = () => {
           Master components — changes here apply globally across the entire product.
         </p>
         <div className="flex gap-3">
-          <button
-            type="button"
+          <GameButton
+            variant="secondary"
             onClick={handleReset}
             disabled={saveState === "saving"}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:opacity-50"
             aria-label="Reset to defaults"
           >
             Reset Defaults
-          </button>
-          <button
-            type="button"
+          </GameButton>
+          <GameButton
+            variant={saveState === "saved" ? "action" : saveState === "error" ? "danger" : "primary"}
             onClick={handleSave}
             disabled={saveState === "saving"}
-            className={`rounded-lg bg-gradient-to-r ${saveColor} px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:brightness-110 disabled:opacity-70`}
             aria-label="Save design tokens"
           >
             {saveLabel}
-          </button>
+          </GameButton>
         </div>
       </div>
 

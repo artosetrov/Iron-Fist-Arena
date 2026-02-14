@@ -17,6 +17,12 @@ import {
 } from "@/lib/game/weapon-affinity";
 import { GameButton } from "@/app/components/ui";
 import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
+import {
+  CONSUMABLE_CATALOG,
+  type ConsumableType,
+  type ConsumableDef,
+  getConsumableImagePath,
+} from "@/lib/game/consumable-catalog";
 
 /* ────────────────── Types ────────────────── */
 
@@ -89,6 +95,11 @@ type ApiResponse = {
   equipped: InventoryItem[];
   unequipped: InventoryItem[];
   items: InventoryItem[];
+};
+
+type ConsumableInventoryItem = {
+  consumableType: ConsumableType;
+  quantity: number;
 };
 
 /* ────────────────── Constants ────────────────── */
@@ -699,6 +710,116 @@ InventoryCell.displayName = "InventoryCell";
 /* ────────────────── Tab: Attributes ────────────────── */
 
 
+/* ── Hold-to-repeat hook for stat buttons ── */
+
+const useHoldRepeat = (
+  callback: () => void,
+  { initialDelay = 400, minDelay = 80, acceleration = 0.8 } = {}
+) => {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const delayRef = useRef(initialDelay);
+
+  const stop = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    delayRef.current = initialDelay;
+  }, [initialDelay]);
+
+  const tick = useCallback(() => {
+    callback();
+    delayRef.current = Math.max(minDelay, delayRef.current * acceleration);
+    timerRef.current = setTimeout(tick, delayRef.current);
+  }, [callback, minDelay, acceleration]);
+
+  const start = useCallback(() => {
+    callback(); // fire immediately on press
+    delayRef.current = initialDelay;
+    timerRef.current = setTimeout(tick, initialDelay);
+  }, [callback, initialDelay, tick]);
+
+  useEffect(() => stop, [stop]); // cleanup on unmount
+
+  return { onMouseDown: start, onMouseUp: stop, onMouseLeave: stop };
+};
+
+/* ── Individual stat row with hold-to-repeat ── */
+
+type StatRowProps = {
+  row: { label: string; statKey: string | null; value: number; secondary: string; secondaryValue: string; color: string };
+  upgradeMode: "points" | "gold";
+  gold: number;
+  canUpgradeWithPoints: boolean;
+  hasMode: boolean;
+  onAllocate: (statKey: string, mode: "points" | "gold") => void;
+};
+
+const StatRow = ({ row: r, upgradeMode, gold, canUpgradeWithPoints, hasMode, onAllocate }: StatRowProps) => {
+  const isUpgradeable = r.statKey !== null;
+  const cost = isUpgradeable ? goldCostForStatTraining(r.value) : 0;
+  const canAfford = upgradeMode === "gold" ? gold >= cost : canUpgradeWithPoints;
+  const canUpgrade = isUpgradeable && hasMode && canAfford && r.value < MAX_STAT_VALUE;
+
+  const handleAllocate = useCallback(() => {
+    if (r.statKey && canUpgrade) {
+      onAllocate(r.statKey, upgradeMode);
+    }
+  }, [r.statKey, canUpgrade, onAllocate, upgradeMode]);
+
+  const holdProps = useHoldRepeat(handleAllocate);
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
+      <div className="min-w-0 flex-1">
+        <p className={`text-xs font-bold ${r.color}`}>{r.label}</p>
+        <p className="text-[10px] text-slate-400">
+          {r.secondary}
+          <span className="ml-1 text-slate-300">{r.secondaryValue}</span>
+        </p>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="font-display text-xl text-white">{r.value}</span>
+        {isUpgradeable && (
+          <div className="group/btn relative">
+            <button
+              type="button"
+              disabled={!canUpgrade}
+              {...(canUpgrade ? holdProps : {})}
+              className={`flex h-6 w-6 select-none items-center justify-center rounded-md text-xs font-bold transition
+                ${canUpgrade
+                  ? upgradeMode === "points"
+                    ? "bg-amber-600 text-white hover:bg-amber-500 active:scale-90"
+                    : "bg-yellow-600 text-white hover:bg-yellow-500 active:scale-90"
+                  : "cursor-not-allowed bg-slate-700/50 text-slate-600"
+                }
+              `}
+              aria-label={`Upgrade ${r.label}${upgradeMode === "gold" ? ` for ${cost.toLocaleString()} gold` : ""}`}
+              tabIndex={0}
+            >
+              +
+            </button>
+            <div
+              className="pointer-events-none absolute -top-9 right-0 z-50 hidden whitespace-nowrap rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs shadow-lg group-hover/btn:block"
+              role="tooltip"
+            >
+              {upgradeMode === "gold" ? (
+                <span className={canAfford ? "text-yellow-400" : "text-red-400"}>
+                  {cost.toLocaleString()} gold
+                </span>
+              ) : (
+                <span className={canUpgradeWithPoints ? "text-indigo-300" : "text-red-400"}>
+                  1 SP
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 type AttrTabProps = {
   stats: CharStats;
   derived: DerivedStats;
@@ -708,7 +829,6 @@ type AttrTabProps = {
   upgradeMode: "points" | "gold";
   onToggleMode: () => void;
   onAllocate: (statKey: string, mode: "points" | "gold") => void;
-  isAllocating: boolean;
 };
 
 const AttributesTab = ({
@@ -720,7 +840,6 @@ const AttributesTab = ({
   upgradeMode,
   onToggleMode,
   onAllocate,
-  isAllocating,
 }: AttrTabProps) => {
   const rows: { label: string; statKey: string | null; value: number; secondary: string; secondaryValue: string; color: string }[] = [
     { label: "STR", statKey: "strength", value: stats.str, secondary: "DMG", secondaryValue: `${derived.physicalDamage}`, color: "text-red-400" },
@@ -773,65 +892,17 @@ const AttributesTab = ({
 
       {/* Stat rows */}
       <div className="grid grid-cols-2 gap-2">
-        {rows.map((r) => {
-          const isUpgradeable = r.statKey !== null;
-          const cost = isUpgradeable ? goldCostForStatTraining(r.value) : 0;
-          const canAfford = upgradeMode === "gold" ? gold >= cost : canUpgradeWithPoints;
-          const canUpgrade = isUpgradeable && hasMode && canAfford && r.value < MAX_STAT_VALUE;
-
-          return (
-            <div
-              key={r.label}
-              className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2"
-            >
-              <div className="min-w-0 flex-1">
-                <p className={`text-xs font-bold ${r.color}`}>{r.label}</p>
-                <p className="text-[10px] text-slate-400">
-                  {r.secondary}
-                  <span className="ml-1 text-slate-300">{r.secondaryValue}</span>
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-display text-xl text-white">{r.value}</span>
-                {isUpgradeable && (
-                  <div className="group/btn relative">
-                    <button
-                      type="button"
-                      disabled={!canUpgrade || isAllocating}
-                      onClick={() => r.statKey && onAllocate(r.statKey, upgradeMode)}
-                      className={`flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold transition
-                        ${canUpgrade && !isAllocating
-                          ? upgradeMode === "points"
-                            ? "bg-amber-600 text-white hover:bg-amber-500"
-                            : "bg-yellow-600 text-white hover:bg-yellow-500"
-                          : "cursor-not-allowed bg-slate-700/50 text-slate-600"
-                        }
-                      `}
-                      aria-label={`Upgrade ${r.label}${upgradeMode === "gold" ? ` for ${cost.toLocaleString()} gold` : ""}`}
-                      tabIndex={0}
-                    >
-                      +
-                    </button>
-                    <div
-                      className="pointer-events-none absolute -top-9 right-0 z-50 hidden whitespace-nowrap rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs shadow-lg group-hover/btn:block"
-                      role="tooltip"
-                    >
-                      {upgradeMode === "gold" ? (
-                        <span className={canAfford ? "text-yellow-400" : "text-red-400"}>
-                          {cost.toLocaleString()} gold
-                        </span>
-                      ) : (
-                        <span className={canUpgradeWithPoints ? "text-indigo-300" : "text-red-400"}>
-                          1 SP
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {rows.map((r) => (
+          <StatRow
+            key={r.label}
+            row={r}
+            upgradeMode={upgradeMode}
+            gold={gold}
+            canUpgradeWithPoints={canUpgradeWithPoints}
+            hasMode={hasMode}
+            onAllocate={onAllocate}
+          />
+        ))}
       </div>
     </div>
   );
@@ -1180,10 +1251,11 @@ const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose, 
           </div>
 
           {/* Sell value estimate */}
-          <div className="mb-1 flex items-center justify-between rounded-lg border border-slate-700/20 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-500">
-            <span>Sell value</span>
-            <span className="flex items-center gap-1 font-medium text-slate-400">
-              <GameIcon name="gold" size={12} />
+          <div className="mb-1 flex items-center justify-between rounded-xl border border-slate-700/30 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <GameIcon name="gold" size={16} /> Sell value
+            </span>
+            <span className="font-bold text-yellow-400">
               {getSellPrice(inv).toLocaleString()}
             </span>
           </div>
@@ -1246,6 +1318,180 @@ const ItemDetailPanel = ({ inv, onEquip, onUnequip, onSell, isSelling, onClose, 
   );
 };
 
+/* ────────────────── Consumable Cell ────────────────── */
+
+type ConsumableCellProps = {
+  def: ConsumableDef;
+  quantity: number;
+  onSelect: (def: ConsumableDef, quantity: number) => void;
+};
+
+const ConsumableCell = memo(({ def, quantity, onSelect }: ConsumableCellProps) => {
+  const imgPath = getConsumableImagePath(def.type);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(def, quantity)}
+      className="relative flex h-14 w-14 items-center justify-center rounded-md border-2 border-emerald-600/50 bg-emerald-950/40 transition-all hover:border-emerald-500 hover:brightness-125"
+      aria-label={`${def.name} ×${quantity}`}
+      tabIndex={0}
+      title={`${def.name}: +${def.staminaRestore} ⚡ (×${quantity})`}
+    >
+      <Image
+        src={imgPath}
+        alt={def.name}
+        width={36}
+        height={36}
+        className="object-contain"
+        onError={(e) => {
+          // Fallback to emoji if image doesn't exist
+          (e.target as HTMLImageElement).style.display = "none";
+          (e.target as HTMLImageElement).parentElement!.querySelector(".consumable-emoji")?.classList.remove("hidden");
+        }}
+      />
+      <span className="consumable-emoji hidden text-2xl">{def.icon}</span>
+      {/* Quantity badge */}
+      <span className="absolute -bottom-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white shadow">
+        {quantity}
+      </span>
+    </button>
+  );
+});
+ConsumableCell.displayName = "ConsumableCell";
+
+/* ────────────────── Consumable Detail Modal ────────────────── */
+
+type ConsumableDetailProps = {
+  def: ConsumableDef;
+  quantity: number;
+  onUse: (type: ConsumableType) => void;
+  isUsing: boolean;
+  onClose: () => void;
+};
+
+const ConsumableDetailModal = ({ def, quantity, onUse, isUsing, onClose }: ConsumableDetailProps) => {
+  const imgPath = getConsumableImagePath(def.type);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Consumable details: ${def.name}`}
+    >
+      <div
+        className="relative mx-auto w-full max-w-sm overflow-hidden rounded-2xl border-2 border-emerald-600/60 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl shadow-emerald-900/20"
+        style={{ animation: "scaleIn 0.2s ease-out" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close btn */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-300"
+          aria-label="Close"
+          tabIndex={0}
+        >
+          ✕
+        </button>
+
+        {/* Header */}
+        <div className="flex items-start gap-4 border-b border-slate-700/40 bg-emerald-950/30 px-5 pb-4 pt-4">
+          <div className="min-w-0 flex-1">
+            <span className="rounded-md bg-emerald-900/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+              Consumable
+            </span>
+            <h2 className="mt-1 font-display text-lg font-bold leading-tight text-emerald-300">
+              {def.name}
+            </h2>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Stamina Potion · ×{quantity} in stock
+            </p>
+          </div>
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center">
+            <Image
+              src={imgPath}
+              alt={def.name}
+              width={96}
+              height={96}
+              className="object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+                (e.target as HTMLImageElement).parentElement!.querySelector(".consumable-emoji-lg")?.classList.remove("hidden");
+              }}
+            />
+            <span className="consumable-emoji-lg hidden text-6xl">{def.icon}</span>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4">
+          <p className="mb-3 text-sm italic leading-relaxed text-slate-400">
+            &ldquo;{def.description}&rdquo;
+          </p>
+
+          {/* Effect */}
+          <div className="mb-3 space-y-1.5 rounded-xl border border-slate-700/30 bg-slate-900/40 px-3 py-2.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-1.5 text-slate-400">
+                <GameIcon name="stamina" size={16} /> Stamina Restore
+              </span>
+              <span className="font-bold text-emerald-400">+{def.staminaRestore}</span>
+            </div>
+          </div>
+
+          {/* Cost info */}
+          <div className="mb-1 flex items-center justify-between rounded-xl border border-slate-700/30 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <GameIcon name={def.currency === "gold" ? "gold" : "gems"} size={16} /> Shop price
+            </span>
+            <span className={`font-bold ${def.currency === "gold" ? "text-yellow-400" : "text-purple-400"}`}>
+              {def.cost.toLocaleString()} {def.currency}
+            </span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-slate-700/40 bg-slate-900/60 px-5 py-4">
+          <GameButton
+            onClick={() => onUse(def.type)}
+            disabled={isUsing || quantity <= 0}
+            className="w-full justify-center"
+          >
+            {isUsing ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Using…
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <GameIcon name="stamina" size={16} />
+                Use Potion (+{def.staminaRestore} Stamina)
+              </span>
+            )}
+          </GameButton>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 /* ────────────────── Main Inventory Content ────────────────── */
 
 function InventoryContent() {
@@ -1259,8 +1505,12 @@ function InventoryContent() {
   const [hoveredItem, setHoveredItem] = useState<{ inv: InventoryItem; x: number; y: number } | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [upgradeMode, setUpgradeMode] = useState<"points" | "gold">("points");
-  const [isAllocating, setIsAllocating] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
+
+  /* ── Consumables state ── */
+  const [consumables, setConsumables] = useState<ConsumableInventoryItem[]>([]);
+  const [selectedConsumable, setSelectedConsumable] = useState<{ def: ConsumableDef; quantity: number } | null>(null);
+  const [usingConsumable, setUsingConsumable] = useState(false);
 
   /* ── Drag & Drop state ── */
   const dragRef = useRef<{
@@ -1271,6 +1521,18 @@ function InventoryContent() {
   const [dragOverTarget, setDragOverTarget] = useState<{ type: "slot"; slot: SlotKey } | { type: "bag"; idx?: number } | null>(null);
   /** Which slots light up as valid targets during drag */
   const [dragValidSlots, setDragValidSlots] = useState<Set<SlotKey>>(new Set());
+
+  const loadConsumables = useCallback(async (charId: string, signal?: AbortSignal) => {
+    try {
+      const res = await fetch(`/api/consumables?characterId=${charId}`, { signal });
+      if (res.ok) {
+        const data = await res.json();
+        setConsumables(data.consumables ?? []);
+      }
+    } catch {
+      // non-critical
+    }
+  }, []);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     if (!characterId) return;
@@ -1284,11 +1546,12 @@ function InventoryContent() {
       }
       const json = await res.json();
       setData(json);
+      loadConsumables(characterId, signal);
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
       setError(e instanceof Error ? e.message : "Error");
     }
-  }, [characterId]);
+  }, [characterId, loadConsumables]);
 
   useEffect(() => {
     if (!characterId) return;
@@ -1417,29 +1680,101 @@ function InventoryContent() {
     setUpgradeMode((prev) => (prev === "points" ? "gold" : "points"));
   }, []);
 
+  /** Map API stat key (strength) → CharStats key (str) */
+  const STAT_KEY_TO_SHORT: Record<string, keyof CharStats> = useMemo(() => ({
+    strength: "str",
+    agility: "agi",
+    vitality: "vit",
+    endurance: "end",
+    intelligence: "int",
+    wisdom: "wis",
+    luck: "lck",
+    charisma: "cha",
+  }), []);
+
+  /** Recompute derived stats from CharStats (mirrors API logic in inventory/route.ts) */
+  const recomputeDerived = useCallback((newStats: CharStats, armorVal: number) => {
+    const { str, agi, vit, int: intStat, wis, lck, end } = newStats;
+    const maxHp = Math.max(100, vit * 10);
+    const critChance = Math.min(50, 5 + agi / 10 + lck / 15);
+    const critDamage = Math.min(2.8, 1.5 + str / 500);
+    const dodgeChance = Math.min(40, 3 + agi / 8);
+    const armorReduction = armorVal > 0 ? Math.min(0.75, armorVal / (armorVal + 100)) : 0;
+    const magicResist = wis > 0 ? Math.min(0.7, wis / (wis + 150)) : 0;
+    const critFactor = 1 + (critChance / 100) * (critDamage - 1);
+    const physicalDamage = Math.floor(str * critFactor);
+    const magicDamage = Math.floor(intStat * 1.2 * critFactor);
+    return {
+      physicalDamage,
+      magicDamage,
+      defense: end,
+      magicDefense: wis,
+      critChance: Math.round(critChance * 100) / 100,
+      critDamage: Math.round(critDamage * 100) / 100,
+      dodgeChance: Math.round(dodgeChance * 100) / 100,
+      armorReduction: Math.round(armorReduction * 10000) / 100,
+      magicResistPercent: Math.round(magicResist * 10000) / 100,
+      maxHp,
+    };
+  }, []);
+
   const handleAllocateStat = useCallback(
     async (statKey: string, mode: "points" | "gold") => {
-      if (!characterId || isAllocating) return;
-      setIsAllocating(true);
+      if (!characterId) return;
+
+      const shortKey = STAT_KEY_TO_SHORT[statKey];
+      if (!shortKey) return;
+
+      // Optimistic local update BEFORE the request — instant UI feedback
+      setData((prev) => {
+        if (!prev) return prev;
+        const ch = prev.character;
+        const currentVal = ch.stats[shortKey];
+
+        // Guard: check if upgrade is possible locally
+        if (currentVal >= MAX_STAT_VALUE) return prev;
+        if (mode === "points" && ch.statPointsAvailable <= 0) return prev;
+        if (mode === "gold") {
+          const cost = goldCostForStatTraining(currentVal);
+          if (ch.gold < cost) return prev;
+        }
+
+        const newStats = { ...ch.stats, [shortKey]: currentVal + 1 };
+        const goldCost = mode === "gold" ? goldCostForStatTraining(currentVal) : 0;
+        const derived = recomputeDerived(newStats, ch.armor);
+
+        return {
+          ...prev,
+          character: {
+            ...ch,
+            stats: newStats,
+            statPointsAvailable: mode === "points" ? ch.statPointsAvailable - 1 : ch.statPointsAvailable,
+            gold: ch.gold - goldCost,
+            maxHp: statKey === "vitality" ? derived.maxHp : ch.maxHp,
+            derived,
+          },
+        };
+      });
+
+      // Fire request in background — rollback on error
       try {
         const res = await fetch(`/api/characters/${characterId}/allocate-stats`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ stat: statKey, mode }),
         });
-        if (res.ok) {
-          await load();
-        } else {
+        if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           setError(body.error ?? "Allocation failed");
+          // Rollback: reload full state from server
+          await load();
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error");
-      } finally {
-        setIsAllocating(false);
+        await load();
       }
     },
-    [characterId, isAllocating, load]
+    [characterId, STAT_KEY_TO_SHORT, recomputeDerived, load]
   );
 
   const handleSell = useCallback(
@@ -1467,6 +1802,77 @@ function InventoryContent() {
       }
     },
     [characterId, isSelling, load]
+  );
+
+  /* ── Consumable handlers ── */
+
+  const handleSelectConsumable = useCallback((def: ConsumableDef, quantity: number) => {
+    setSelectedConsumable({ def, quantity });
+  }, []);
+
+  const handleUseConsumable = useCallback(
+    async (consumableType: ConsumableType) => {
+      if (!characterId || usingConsumable) return;
+      setUsingConsumable(true);
+      try {
+        const res = await fetch("/api/consumables/use", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ characterId, consumableType }),
+        });
+        const resData = await res.json();
+        if (res.ok) {
+          // Update consumable inventory locally
+          setConsumables((prev) =>
+            prev
+              .map((ci) =>
+                ci.consumableType === consumableType
+                  ? { ...ci, quantity: resData.remainingQuantity }
+                  : ci
+              )
+              .filter((ci) => ci.quantity > 0)
+          );
+          // Update selected consumable quantity
+          setSelectedConsumable((prev) => {
+            if (!prev || prev.def.type !== consumableType) return prev;
+            if (resData.remainingQuantity <= 0) return null;
+            return { ...prev, quantity: resData.remainingQuantity };
+          });
+          // Update character stamina in data
+          setData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              character: {
+                ...prev.character,
+                currentStamina: resData.currentStamina ?? prev.character.currentStamina,
+                lastStaminaUpdate: resData.lastStaminaUpdate ?? prev.character.lastStaminaUpdate,
+              },
+            };
+          });
+          // Notify sidebar to refresh (sidebar will refetch with updated DB data)
+          window.dispatchEvent(new Event("character-updated"));
+        }
+      } catch {
+        // silently fail
+      } finally {
+        setUsingConsumable(false);
+      }
+    },
+    [characterId, usingConsumable]
+  );
+
+  /** Available consumables with catalog definitions */
+  const availableConsumables = useMemo(
+    () =>
+      consumables
+        .filter((ci) => ci.quantity > 0)
+        .map((ci) => {
+          const def = CONSUMABLE_CATALOG.find((c) => c.type === ci.consumableType);
+          return def ? { def, quantity: ci.quantity } : null;
+        })
+        .filter(Boolean) as { def: ConsumableDef; quantity: number }[],
+    [consumables]
   );
 
   /* ── Drag & Drop handlers ── */
@@ -1773,7 +2179,6 @@ function InventoryContent() {
                   upgradeMode={upgradeMode}
                   onToggleMode={handleToggleMode}
                   onAllocate={handleAllocateStat}
-                  isAllocating={isAllocating}
                 />
               )}
               {activeTab === "description" && <DescriptionTab character={character} />}
@@ -1782,8 +2187,30 @@ function InventoryContent() {
           </div>
         </section>
 
-        {/* ──── Right Panel: Bag inventory grid ──── */}
+        {/* ──── Right Panel: Consumables + Bag inventory grid ──── */}
         <section className="flex flex-1 flex-col gap-4">
+
+          {/* Consumables section */}
+          {availableConsumables.length > 0 && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+              <h2 className="mb-3 font-display text-base text-slate-300">
+                Consumables
+                <span className="ml-2 text-xs font-normal text-slate-500">
+                  {availableConsumables.reduce((sum, c) => sum + c.quantity, 0)} items
+                </span>
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {availableConsumables.map(({ def, quantity }) => (
+                  <ConsumableCell
+                    key={def.type}
+                    def={def}
+                    quantity={quantity}
+                    onSelect={handleSelectConsumable}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Bag grid */}
           <div
@@ -1889,6 +2316,17 @@ function InventoryContent() {
           onClose={() => setSelectedItem(null)}
           mainHandTwoHanded={mainHandIsTwoHanded}
           characterClass={character.class}
+        />
+      )}
+
+      {/* Consumable detail modal */}
+      {selectedConsumable && (
+        <ConsumableDetailModal
+          def={selectedConsumable.def}
+          quantity={selectedConsumable.quantity}
+          onUse={handleUseConsumable}
+          isUsing={usingConsumable}
+          onClose={() => setSelectedConsumable(null)}
         />
       )}
     </div>

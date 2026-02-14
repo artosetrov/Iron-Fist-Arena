@@ -98,6 +98,7 @@ export async function POST(request: Request) {
         ok: true,
         currentStamina: newStamina,
         maxStamina,
+        lastStaminaUpdate: lastStaminaUpdate.toISOString(),
         staminaRestored: Math.min(def.staminaRestore, newStamina - currentStamina),
         remainingQuantity: inv.quantity - 1,
       } as const;

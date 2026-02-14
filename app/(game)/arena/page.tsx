@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import PageHeader from "@/app/components/PageHeader";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
@@ -9,6 +9,7 @@ import CombatResultModal from "@/app/components/CombatResultModal";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard, { CLASS_ICON, ORIGIN_IMAGE } from "@/app/components/HeroCard";
 import GameIcon from "@/app/components/ui/GameIcon";
+import GameModal from "@/app/components/ui/GameModal";
 import { GameButton, PageContainer } from "@/app/components/ui";
 
 /* ────────────────── Types ────────────────── */
@@ -154,6 +155,8 @@ type CardBackProps = {
 };
 
 const CardBack = ({ character, opponent, canAfford, fighting, onFight, onFlipBack }: CardBackProps) => {
+  const router = useRouter();
+  const [showStaminaModal, setShowStaminaModal] = useState(false);
   const playerImg = character.origin ? ORIGIN_IMAGE[character.origin] : undefined;
   const opponentImg = opponent.origin ? ORIGIN_IMAGE[opponent.origin] : undefined;
   const playerIcon = CLASS_ICON[character.class?.toLowerCase()] ?? "👤";
@@ -162,6 +165,10 @@ const CardBack = ({ character, opponent, canAfford, fighting, onFight, onFlipBac
   const handleFight = (e: React.MouseEvent) => {
     e.stopPropagation();
     onFight();
+  };
+
+  const handleGoToShop = () => {
+    router.push(`/shop?tab=potions&characterId=${character.id}`);
   };
 
   return (
@@ -247,22 +254,65 @@ const CardBack = ({ character, opponent, canAfford, fighting, onFight, onFlipBac
         </div>
       </div>
 
-      {/* Fight button */}
-      <GameButton
-        onClick={handleFight}
-        disabled={!canAfford || fighting}
-        aria-label={`Fight ${opponent.characterName}`}
-        fullWidth
+      {/* Fight button — wrapper intercepts click when stamina is low */}
+      <div
         className="mt-6"
+        onClick={!canAfford && !fighting ? (e: React.MouseEvent) => { e.stopPropagation(); setShowStaminaModal(true); } : undefined}
       >
-        {fighting ? "Fighting…" : <><GameIcon name="fights" size={16} /> Fight (<GameIcon name="stamina" size={16} /> {STAMINA_COST})</>}
-      </GameButton>
+        <GameButton
+          onClick={canAfford ? handleFight : undefined}
+          disabled={!canAfford || fighting}
+          aria-label={`Fight ${opponent.characterName}`}
+          fullWidth
+          className={!canAfford ? "pointer-events-none" : ""}
+        >
+          {fighting ? "Fighting…" : <><GameIcon name="fights" size={16} /> Fight (<GameIcon name="stamina" size={16} /> {STAMINA_COST})</>}
+        </GameButton>
+      </div>
 
       {!canAfford && (
         <p className="mt-1 text-center text-[9px] text-red-400">
           Not enough stamina
         </p>
       )}
+
+      {/* Stamina shortage modal */}
+      <GameModal
+        open={showStaminaModal}
+        onClose={() => setShowStaminaModal(false)}
+        size="sm"
+        title="Not enough stamina"
+      >
+        <div className="flex flex-col items-center gap-4 text-center" onClick={(e) => e.stopPropagation()}>
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10 text-3xl">
+            <GameIcon name="stamina" size={32} />
+          </div>
+          <p className="text-sm text-slate-300">
+            You need <span className="font-bold text-amber-400">{STAMINA_COST}</span> stamina to fight, but you only have{" "}
+            <span className="font-bold text-red-400">{character.currentStamina}</span>.
+          </p>
+          <p className="text-xs text-slate-400">
+            Buy a stamina potion to refill your energy and get back into the arena!
+          </p>
+          <div className="flex w-full flex-col gap-2">
+            <GameButton
+              onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleGoToShop(); }}
+              fullWidth
+              aria-label="Go to potion shop"
+            >
+              🧪 Buy Potions
+            </GameButton>
+            <GameButton
+              variant="secondary"
+              onClick={(e: React.MouseEvent) => { e.stopPropagation(); setShowStaminaModal(false); }}
+              fullWidth
+              aria-label="Close stamina modal"
+            >
+              Cancel
+            </GameButton>
+          </div>
+        </div>
+      </GameModal>
     </div>
   );
 };
@@ -287,6 +337,7 @@ function ArenaContent() {
   const [screen, setScreen] = useState<ScreenState>({ kind: "select" });
   const [error, setError] = useState<string | null>(null);
   const [flippedCard, setFlippedCard] = useState<string | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   /* ── Load character ── */
   useEffect(() => {
@@ -447,36 +498,85 @@ function ArenaContent() {
         </div>
       ) : (
         <>
-          {/* ── Mobile scroll (< sm): fixed-width cards ── */}
-          <div className="scrollbar-hide -mx-4 mb-6 flex max-w-[100vw] snap-x snap-mandatory gap-3 overflow-x-auto px-[calc(50vw-140px)] pb-2 sm:hidden">
-            {opponents.map((opp) => {
-              const cls = opp.class.toLowerCase();
-              const maxHp = getMaxHp(opp.vitality);
+          {/* ── Opponent carousel (unified for mobile & desktop) ── */}
+          <div className="flex flex-1 items-center">
+            <div className="relative w-full">
+              {/* Navigation arrows */}
+              <button
+                type="button"
+                onClick={() => {
+                  const el = carouselRef.current;
+                  if (!el) return;
+                  const card = el.querySelector<HTMLElement>(".hero-card-container--default");
+                  if (!card) return;
+                  el.scrollBy({ left: -(card.offsetWidth + 20), behavior: "smooth" });
+                }}
+                aria-label="Previous opponent"
+                className="carousel-nav-btn left-0"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = carouselRef.current;
+                  if (!el) return;
+                  const card = el.querySelector<HTMLElement>(".hero-card-container--default");
+                  if (!card) return;
+                  el.scrollBy({ left: card.offsetWidth + 20, behavior: "smooth" });
+                }}
+                aria-label="Next opponent"
+                className="carousel-nav-btn right-0"
+              >
+                ›
+              </button>
 
-              return (
-                <div key={opp.id} className="w-[280px] flex-shrink-0 snap-center">
-                  <HeroCard
-                    name={opp.characterName}
-                    className={cls}
-                    origin={opp.origin}
-                    level={opp.level}
-                    rating={opp.pvpRating}
-                    hp={{ current: maxHp, max: maxHp }}
-                    onClick={() => setFlippedCard(opp.id)}
-                    ariaLabel={`View stats for ${opp.characterName}`}
-                  />
-                </div>
-              );
-            })}
+              {/* Cards scroll container */}
+              <div ref={carouselRef} className="arena-carousel px-8 py-4">
+                {opponents.map((opp) => {
+                  const cls = opp.class.toLowerCase();
+                  const maxHp = getMaxHp(opp.vitality);
+
+                  return (
+                    <div key={opp.id} className="hero-card-container--default">
+                      <HeroCard
+                        name={opp.characterName}
+                        variant="default"
+                        className={cls}
+                        origin={opp.origin}
+                        level={opp.level}
+                        rating={opp.pvpRating}
+                        hp={{ current: maxHp, max: maxHp }}
+                        onClick={() => setFlippedCard(opp.id)}
+                        ariaLabel={`View stats for ${opp.characterName}`}
+                        stats={{
+                          strength: opp.strength,
+                          agility: opp.agility,
+                          intelligence: opp.intelligence,
+                          vitality: opp.vitality,
+                          luck: opp.luck,
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
-          {/* ── Mobile stat-compare modal ── */}
+          {/* ── Stat-compare modal (on card click) ── */}
           {flippedCard && (() => {
             const flippedOpponent = opponents.find((o) => o.id === flippedCard);
             if (!flippedOpponent) return null;
             return (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:hidden">
-                <div className="w-full max-w-sm">
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                onClick={() => setFlippedCard(null)}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Stat comparison"
+              >
+                <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
                   <CardBack
                     character={character}
                     opponent={flippedOpponent}
@@ -490,68 +590,19 @@ function ArenaContent() {
             );
           })()}
 
-          {/* ── Desktop (sm+): flip cards ── */}
-          <div className="hidden sm:mx-auto sm:mb-6 sm:grid sm:gap-4 sm:grid-cols-2 lg:grid-cols-3" style={{ maxWidth: "fit-content" }}>
-            {opponents.map((opp) => {
-              const cls = opp.class.toLowerCase();
-              const maxHp = getMaxHp(opp.vitality);
-              const isFlipped = flippedCard === opp.id;
-
-              return (
-                <div
-                  key={opp.id}
-                  className="card-flip-container w-[260px]"
-                >
-                  <div className={`card-flip-inner ${isFlipped ? "flipped" : ""}`}>
-                    {/* Front — HeroCard */}
-                    <div className="card-flip-front">
-                      <HeroCard
-                        name={opp.characterName}
-                        className={cls}
-                        origin={opp.origin}
-                        level={opp.level}
-                        rating={opp.pvpRating}
-                        hp={{ current: maxHp, max: maxHp }}
-                        onClick={() => setFlippedCard(opp.id)}
-                        ariaLabel={`View stats for ${opp.characterName}`}
-                        fillHeight
-                        stats={{
-                          strength: opp.strength,
-                          agility: opp.agility,
-                          intelligence: opp.intelligence,
-                          vitality: opp.vitality,
-                          luck: opp.luck,
-                        }}
-                      />
-                    </div>
-
-                    {/* Back — Stat compare */}
-                    <div className="card-flip-back">
-                      <CardBack
-                        character={character}
-                        opponent={opp}
-                        canAfford={canAfford}
-                        fighting={fighting}
-                        onFight={() => handleFight(opp.id)}
-                        onFlipBack={() => setFlippedCard(null)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
           {/* Refresh button under cards */}
           <div className="flex justify-center">
-            <GameButton
-              variant="secondary"
+            <button
+              type="button"
               onClick={loadOpponents}
               disabled={loadingOpponents}
               aria-label="Refresh opponents"
+              tabIndex={0}
+              className="group flex items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/50 px-4 py-2 font-display text-base font-medium uppercase tracking-wider text-slate-400 transition-all hover:border-slate-600 hover:bg-slate-800/80 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <GameIcon name="switch-char" size={16} /> Refresh
-            </GameButton>
+              <GameIcon name="switch-char" size={20} />
+              Refresh
+            </button>
           </div>
         </>
       )}

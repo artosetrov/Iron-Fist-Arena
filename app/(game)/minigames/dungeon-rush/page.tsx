@@ -534,37 +534,40 @@ const DungeonRushContent = () => {
   const currentWave = screen.kind === "ready" ? screen.wave : 1;
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center p-4 lg:p-6">
+    <div className="relative flex min-h-full flex-col items-center justify-center p-4 lg:p-6">
+      {/* Back button — top-left */}
+      <button
+        type="button"
+        onClick={handleBackToTavern}
+        aria-label="Back to Tavern"
+        className="absolute left-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white lg:left-6 lg:top-6"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
+      {/* Close button — top-right */}
+      <Link
+        href="/hub"
+        className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white lg:right-6 lg:top-6"
+        aria-label="Back to Hub"
+        tabIndex={0}
+      >
+        ✕
+      </Link>
+
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="relative mb-6 flex items-center">
-          <button
-            type="button"
-            onClick={handleBackToTavern}
-            aria-label="Back to Tavern"
-            className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="absolute inset-x-0 text-center font-display text-2xl font-bold uppercase text-white">Dungeon Rush</h1>
-          <div className="flex-1" />
-          <div className="relative z-10 flex items-center gap-2">
+        <div className="relative mb-6 flex items-center justify-center">
+          <h1 className="text-center font-display text-2xl font-bold uppercase text-white">Dungeon Rush</h1>
+          <div className="absolute right-0 flex items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-300">
               <GameIcon name="stamina" size={14} />
               <span className="font-bold text-amber-400">
                 {character.currentStamina}/{character.maxStamina}
               </span>
             </span>
-            <Link
-              href="/hub"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-              aria-label="Back to Hub"
-              tabIndex={0}
-            >
-              ✕
-            </Link>
           </div>
         </div>
 

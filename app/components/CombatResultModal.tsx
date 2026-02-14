@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import GameIcon from "@/app/components/ui/GameIcon";
+import { GameButton } from "@/app/components/ui";
 
 /* ────────────────── Types ────────────────── */
 
@@ -275,15 +276,15 @@ const CombatResultModal = ({
 
         {/* Footer */}
         <div className="border-t border-slate-800 px-6 py-4">
-          <button
+          <GameButton
             ref={closeButtonRef}
-            type="button"
             onClick={onClose}
             aria-label="OK"
-            className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 text-sm font-bold uppercase tracking-wider text-white transition hover:from-amber-500 hover:to-orange-500"
+            fullWidth
+            size="lg"
           >
             OK
-          </button>
+          </GameButton>
         </div>
       </div>
     </div>

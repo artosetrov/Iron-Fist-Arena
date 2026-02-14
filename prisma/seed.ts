@@ -83,20 +83,13 @@ type CatalogEntry = {
   description?: string;
 };
 
-/** Sell price multipliers per rarity */
-const SELL_MULT: Record<string, number> = {
-  common: 1.0,
-  rare: 1.2,
-  epic: 1.5,
-  legendary: 2.2,
-};
-
-/** Buy price multipliers per rarity */
+/** Buy price multipliers per rarity (GDD formula) */
 const BUY_MULT: Record<string, number> = {
   common: 1.0,
-  rare: 4.0,
-  epic: 10.0,
-  legendary: 25.0,
+  uncommon: 2.5,
+  rare: 6.0,
+  epic: 15.0,
+  legendary: 50.0,
 };
 
 /** Catalog items get itemLevel based on rarity tier */
@@ -107,15 +100,15 @@ const CATALOG_LEVEL: Record<string, number> = {
   legendary: 35,
 };
 
+/** GDD formula: Equipment_Price = 100 × (1 + Item_Level/10)^1.5 × Rarity_Mult */
 const calcBuyPrice = (rarity: string): number => {
-  const basePrice = 200;
-  return Math.floor(basePrice * (BUY_MULT[rarity] ?? 1));
+  const level = CATALOG_LEVEL[rarity] ?? 10;
+  return Math.floor(100 * Math.pow(1 + level / 10, 1.5) * (BUY_MULT[rarity] ?? 1));
 };
 
-const calcSellPrice = (rarity: string, stats: Record<string, number>): number => {
-  const statSum = Object.values(stats).reduce((s, v) => s + v, 0);
-  const rarityMult = SELL_MULT[rarity] ?? 1;
-  return Math.floor((30 * rarityMult * 10 + statSum * 5) * rarityMult);
+/** GDD: Sell price = 50% of buy price */
+const calcSellPrice = (rarity: string): number => {
+  return Math.floor(calcBuyPrice(rarity) * 0.5);
 };
 
 async function seedCatalogItems() {
@@ -133,20 +126,21 @@ async function seedCatalogItems() {
     });
 
     if (existing) {
-      // Update itemLevel for existing catalog items (migration from flat 30 → rarity-based)
+      // Always update itemLevel and prices to match GDD formula
       const targetLevel = CATALOG_LEVEL[item.rarity] ?? 20;
-      if (existing.itemLevel !== targetLevel) {
-        await prisma.item.update({
-          where: { catalogId: item.catalogId },
-          data: { itemLevel: targetLevel },
-        });
-      }
+      const buyPrice = calcBuyPrice(item.rarity);
+      const sellPrice = calcSellPrice(item.rarity);
+
+      await prisma.item.update({
+        where: { catalogId: item.catalogId },
+        data: { itemLevel: targetLevel, buyPrice, sellPrice },
+      });
       skipped++;
       continue;
     }
 
     const buyPrice = calcBuyPrice(item.rarity);
-    const sellPrice = calcSellPrice(item.rarity, item.baseStats);
+    const sellPrice = calcSellPrice(item.rarity);
 
     await prisma.item.create({
       data: {

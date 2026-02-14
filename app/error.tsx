@@ -3,8 +3,9 @@
 import { useEffect } from "react";
 import Image from "next/image";
 import * as Sentry from "@sentry/nextjs";
+import { GameButton } from "@/app/components/ui";
 
-const GlobalError = ({
+const ErrorPage = ({
   error,
   reset,
 }: {
@@ -12,7 +13,7 @@ const GlobalError = ({
   reset: () => void;
 }) => {
   useEffect(() => {
-    console.error("[GlobalError]", error);
+    console.error("[ErrorPage]", error);
     Sentry.captureException(error);
   }, [error]);
 
@@ -43,17 +44,16 @@ const GlobalError = ({
         <p className="text-slate-400 max-w-md">
           An unexpected error occurred. Please try refreshing the page.
         </p>
-        <button
+        <GameButton
           onClick={reset}
-          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors"
-          type="button"
+          size="lg"
           aria-label="Try again"
         >
           Try Again
-        </button>
+        </GameButton>
       </div>
     </div>
   );
 };
 
-export default GlobalError;
+export default ErrorPage;

@@ -700,6 +700,24 @@ body {
   box-shadow: none;
 }
 
+/* ── Arena opponent carousel ── */
+.arena-carousel {
+  display: flex;
+  gap: 1.25rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0.5rem;
+}
+
+.arena-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+/* .arena-card is now .hero-card-container--default (see below) */
+
 /* ── Custom scrollbar for dungeon boss map ── */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
@@ -804,9 +822,38 @@ body {
   pointer-events: auto;
 }
 
-/* ── Hide stat circles on mobile in battle view ── */
+/* ── Standardised HeroCard container sizes ── */
+
+/* Default: carousel cards (arena, combat select, dungeon) */
+.hero-card-container--default {
+  flex: 0 0 min(300px, 75vw);
+  scroll-snap-align: center;
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.35s ease;
+}
+.hero-card-container--default:hover {
+  transform: translateY(-4px);
+}
+
+/* Compact: leaderboard tooltip, small grids */
+.hero-card-container--compact {
+  width: 200px;
+}
+
+/* Battle: CombatBattleScreen fighter cards */
+.hero-card-container--battle {
+  width: 100%;
+  max-width: 220px;
+}
+
+/* Hide stat bars on mobile in battle view */
 @media (max-width: 639px) {
-  .battle-fighter-card .hero-card-stats {
+  .hero-card-container--battle .hero-card-stats {
     display: none;
   }
+}
+
+/* Fixed-width card (dungeon boss, standalone) */
+.hero-card-container--fixed {
+  width: 280px;
 }

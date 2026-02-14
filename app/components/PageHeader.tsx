@@ -13,18 +13,22 @@ type PageHeaderProps = {
   actions?: ReactNode;
   /** Hide the close/back button (e.g. on Hub page) */
   hideClose?: boolean;
+  /** Когда true — хедер пропускает клики сквозь себя, только burger/close кликабельны (для overlay над скроллом) */
+  passThroughOverlay?: boolean;
 };
 
-const PageHeader = ({ title, backHref = "/hub", actions, hideClose = false }: PageHeaderProps) => {
+const PageHeader = ({ title, backHref = "/hub", actions, hideClose = false, passThroughOverlay = false }: PageHeaderProps) => {
   const { toggle } = useMobileSidebar();
 
   return (
-    <header className="relative flex h-14 w-full shrink-0 items-center px-3 lg:px-6">
+    <header
+      className={`relative flex h-14 w-full shrink-0 items-center px-3 lg:px-6 ${passThroughOverlay ? "pointer-events-none" : ""}`}
+    >
       {/* Burger — mobile only */}
       <button
         type="button"
         onClick={toggle}
-        className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/90 text-white backdrop-blur transition hover:bg-slate-800 lg:hidden"
+        className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/90 text-white backdrop-blur transition hover:bg-slate-800 lg:hidden ${passThroughOverlay ? "pointer-events-auto" : ""}`}
         aria-label="Open Menu"
         tabIndex={0}
       >
@@ -41,20 +45,24 @@ const PageHeader = ({ title, backHref = "/hub", actions, hideClose = false }: Pa
       {/* Spacer to push actions to the right */}
       <div className="flex-1" />
 
-      {/* Right side: actions + close */}
-      <div className="relative z-10 flex items-center gap-2">
-        {actions}
-        {!hideClose && (
-          <Link
-            href={backHref}
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-            aria-label="Back to Hub"
-            tabIndex={0}
-          >
-            ✕
-          </Link>
-        )}
-      </div>
+      {/* Right side: actions */}
+      {actions && (
+        <div className={`relative z-10 flex items-center gap-2 ${passThroughOverlay ? "pointer-events-auto" : ""}`}>
+          {actions}
+        </div>
+      )}
+
+      {/* Close button — fixed to top-right corner of the page */}
+      {!hideClose && (
+        <Link
+          href={backHref}
+          className={`fixed right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white lg:right-6 lg:top-6 ${passThroughOverlay ? "pointer-events-auto" : ""}`}
+          aria-label="Back to Hub"
+          tabIndex={0}
+        >
+          ✕
+        </Link>
+      )}
     </header>
   );
 };

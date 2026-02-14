@@ -2,7 +2,8 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import HeroCard, { BOSS_IMAGES } from "@/app/components/HeroCard";
-import CombatVfxLayer, { type VfxCommand } from "@/app/components/CombatVfxLayer";
+import { useCombatVfx, CombatVfxOverlay, type VfxCommand } from "@/app/components/CombatVfxLayer";
+import { GameButton } from "@/app/components/ui";
 
 /* ────────────────── Types ────────────────── */
 
@@ -123,9 +124,10 @@ const FighterCard = memo(({
   const cls = snapshot.class.toLowerCase();
 
   return (
-    <div className="battle-fighter-card w-full max-w-[220px]">
+    <div className="hero-card-container--battle">
       <HeroCard
         name={snapshot.name}
+        variant="battle"
         className={cls}
         origin={snapshot.origin}
         level={snapshot.level}
@@ -138,7 +140,6 @@ const FighterCard = memo(({
           endurance: snapshot.baseStats.endurance,
           luck: snapshot.baseStats.luck,
         }}
-        statSize="sm"
         battle={{ isShaking, isDodging, side }}
       />
     </div>
@@ -254,6 +255,12 @@ const CombatBattleScreen = ({
     timeoutIds.current.add(tid);
   }, []);
 
+  /** VFX hook — manages left/right element arrays */
+  const { leftElements: vfxLeft, rightElements: vfxRight } = useCombatVfx({
+    command: vfxCommand,
+    onScreenShake: handleScreenShake,
+  });
+
   /** Determine if an actor is the left fighter */
   const isLeftFighter = useCallback(
     (actorId: string) => actorId === playerSnapshot.id,
@@ -276,8 +283,8 @@ const CombatBattleScreen = ({
         isDodge,
         isHeal,
         side: targetSide,
-        x: 30 + Math.random() * 40,
-        y: 20 + Math.random() * 30,
+        x: 20 + Math.random() * 60,
+        y: 15 + Math.random() * 25,
       };
       setFloatingNumbers((prev) => [...prev, newFloat]);
       const tid = setTimeout(() => {
@@ -506,10 +513,7 @@ const CombatBattleScreen = ({
       </button>
 
       {/* Battle area */}
-      <div className={`relative flex flex-1 flex-col items-center justify-center px-4 py-6 lg:px-8 ${screenShaking ? "animate-screen-shake" : ""}`}>
-        {/* VFX layer — renders projectiles, impacts, pop-up texts */}
-        <CombatVfxLayer command={vfxCommand} onScreenShake={handleScreenShake} />
-
+      <div className={`relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-6 lg:px-8 ${screenShaking ? "animate-screen-shake" : ""}`}>
         {/* Fighters row */}
         <div className="flex items-center justify-center gap-4 lg:gap-8">
           {/* Left fighter */}
@@ -521,6 +525,8 @@ const CombatBattleScreen = ({
               isDodging={dodgingLeft}
               side="left"
             />
+            {/* VFX overlay — positioned relative to this card wrapper */}
+            <CombatVfxOverlay elements={vfxLeft} />
             {floatingNumbers
               .filter((f) => f.side === "left")
               .map((f) => (
@@ -540,6 +546,8 @@ const CombatBattleScreen = ({
               isDodging={dodgingRight}
               side="right"
             />
+            {/* VFX overlay — positioned relative to this card wrapper */}
+            <CombatVfxOverlay elements={vfxRight} />
             {floatingNumbers
               .filter((f) => f.side === "right")
               .map((f) => (
@@ -684,14 +692,13 @@ const CombatBattleScreen = ({
                 </svg>
               )}
             </button>
-            <button
-              type="button"
+            <GameButton
               onClick={handleSkip}
               aria-label="Skip Battle"
-              className="rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-amber-900/40 transition hover:from-amber-500 hover:to-orange-500"
+              size="md"
             >
               SKIP
-            </button>
+            </GameButton>
           </>
         ) : (
           <span className="text-sm text-slate-400 animate-pulse">

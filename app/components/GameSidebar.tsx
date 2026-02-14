@@ -8,6 +8,7 @@ import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
 import {
   CONSUMABLE_CATALOG,
   type ConsumableType,
+  getConsumableImagePath,
 } from "@/lib/game/consumable-catalog";
 import { xpForLevel } from "@/lib/game/progression";
 import { useMobileSidebar } from "@/app/components/MobileSidebarProvider";
@@ -140,9 +141,6 @@ const GameSidebar = () => {
   }, []);
 
   const loadCharacter = useCallback(async (signal: AbortSignal) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:loadCharacter',message:'loadCharacter called',data:{pathname,characterId},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-    // #endregion
     try {
       setFetchError(false);
       if (characterId) {
@@ -153,9 +151,6 @@ const GameSidebar = () => {
           return;
         }
         if (res.status === 401) {
-          // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:loadCharacter:401redirect',message:'redirecting to /login from loadCharacter',data:{pathname,characterId},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-          // #endregion
           router.push("/login");
           return;
         }
@@ -163,9 +158,6 @@ const GameSidebar = () => {
       // Fallback: load first character
       const listRes = await fetch("/api/characters", { signal });
       if (listRes.status === 401) {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:loadCharacter:listRes401',message:'list 401 redirecting to /login',data:{pathname},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-        // #endregion
         router.push("/login");
         return;
       }
@@ -173,18 +165,12 @@ const GameSidebar = () => {
       const list = await listRes.json();
       const chars = list.characters ?? [];
       if (chars.length === 0) {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:loadCharacter:noChars',message:'no chars redirecting to /character',data:{pathname},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-        // #endregion
         router.push("/character");
         return;
       }
       setCharacter(chars[0]);
       loadConsumables(chars[0].id, signal);
       if (!characterId) {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameSidebar.tsx:loadCharacter:replaceUrl',message:'replacing URL to add characterId',data:{pathname,newCharId:chars[0].id},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-        // #endregion
         router.replace(`${pathname}?characterId=${chars[0].id}`);
       }
     } catch (err) {
@@ -309,13 +295,13 @@ const GameSidebar = () => {
         });
         const data = await res.json();
         if (res.ok) {
-          // Update character stamina locally
+          // Update character stamina locally using server values
           setCharacter((c) =>
             c
               ? {
                   ...c,
                   currentStamina: data.currentStamina ?? c.currentStamina,
-                  lastStaminaUpdate: new Date().toISOString(),
+                  lastStaminaUpdate: data.lastStaminaUpdate ?? new Date().toISOString(),
                 }
               : null
           );
@@ -329,8 +315,11 @@ const GameSidebar = () => {
               )
               .filter((ci) => ci.quantity > 0)
           );
-          // Dispatch event so other components can react
-          window.dispatchEvent(new Event("character-updated"));
+          // Notify other components (pages) about stamina change
+          // NOTE: We intentionally do NOT dispatch "character-updated" here
+          // to avoid a race condition where loadCharacter refetch could
+          // momentarily overwrite the local optimistic update.
+          window.dispatchEvent(new Event("stamina-changed"));
         }
       } catch {
         // silently fail
@@ -455,7 +444,7 @@ const GameSidebar = () => {
 
             {/* Quick potion use */}
             {availablePotions.length > 0 && (
-              <div className="mt-2 flex gap-1">
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 {availablePotions.map((p) => {
                   const isUsing = usingPotion === p.type;
                   return (
@@ -464,15 +453,21 @@ const GameSidebar = () => {
                       type="button"
                       onClick={() => handleUsePotion(p.type)}
                       disabled={!!usingPotion}
-                      className="flex items-center gap-1 rounded-lg border border-emerald-700/40 bg-emerald-950/30 px-2 py-1 text-[10px] font-medium text-emerald-400 transition hover:border-emerald-600/60 hover:bg-emerald-900/40 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1.5 rounded-xl border border-emerald-600/50 bg-emerald-950/50 px-3 py-1.5 text-xs font-bold text-emerald-300 shadow-sm shadow-emerald-900/30 transition hover:border-emerald-500/70 hover:bg-emerald-900/50 hover:text-emerald-200 hover:shadow-emerald-800/40 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label={`Use ${p.name} (+${p.staminaRestore} stamina)`}
                       tabIndex={0}
                       title={`${p.name}: +${p.staminaRestore} ⚡ (×${p.quantity})`}
                     >
                       {isUsing ? (
-                        <span className="h-3 w-3 animate-spin rounded-full border border-emerald-400/30 border-t-emerald-400" />
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400/30 border-t-emerald-400" />
                       ) : (
-                        <span>{p.icon}</span>
+                        <Image
+                          src={getConsumableImagePath(p.type)}
+                          alt={p.name}
+                          width={20}
+                          height={20}
+                          className="h-5 w-5 object-contain"
+                        />
                       )}
                       <span className="tabular-nums">×{p.quantity}</span>
                     </button>

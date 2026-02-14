@@ -622,10 +622,10 @@ const ItemDetailModal = ({
                 {rarity.label}
               </span>
             </div>
-            <h2 className={`mt-1 font-display text-lg font-bold leading-tight ${rarity.text}`}>
+            <h2 className={`mt-1 font-display text-2xl font-bold leading-tight ${rarity.text}`}>
               {item.itemName}
             </h2>
-            <p className="mt-0.5 text-[11px] text-slate-500">
+            <p className="mt-1 text-sm text-slate-400">
               {itemType.label} · Lv. {item.itemLevel}
             </p>
           </div>
@@ -733,10 +733,11 @@ const ItemDetailModal = ({
           )}
 
           {/* Sell value estimate */}
-          <div className="mb-1 flex items-center justify-between rounded-lg border border-slate-700/20 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-500">
-            <span>Sell value</span>
-            <span className="flex items-center gap-1 font-medium text-slate-400">
-              <GameIcon name="gold" size={12} />
+          <div className="mb-1 flex items-center justify-between rounded-xl border border-slate-700/30 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <GameIcon name="gold" size={16} /> Sell value
+            </span>
+            <span className="font-bold text-yellow-400">
               {Math.round((item.buyPrice ?? 0) * 0.4).toLocaleString()}
             </span>
           </div>
@@ -796,118 +797,207 @@ const BuyToast = ({ itemName, onClose }: { itemName: string; onClose: () => void
   );
 };
 
-/* ────────────────── Consumable Card ────────────────── */
+/* ────────────────── Consumable Tile (compact, same as ShopItemTile) ────────────────── */
 
-const ConsumableCard = ({
+const ConsumableTile = ({
+  consumable,
+  ownedQty,
+  onSelect,
+}: {
+  consumable: ConsumableDef;
+  ownedQty: number;
+  onSelect: (c: ConsumableDef) => void;
+}) => {
+  const currencyIconKey: GameIconKey = consumable.currency === "gold" ? "gold" : "gems";
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(consumable)}
+      className={`
+        group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-xl border-2 transition-all duration-200
+        border-emerald-700/50 bg-emerald-950/20 shadow-[0_0_12px_rgba(16,185,129,0.06)]
+        hover:scale-105 hover:brightness-125 active:scale-95
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500
+      `}
+      aria-label={`${consumable.name} — +${consumable.staminaRestore} stamina`}
+      tabIndex={0}
+    >
+      {/* Owned badge */}
+      {ownedQty > 0 && (
+        <span className="absolute left-1 top-1 z-10 rounded bg-emerald-700/80 px-1 text-[9px] font-bold text-white">
+          x{ownedQty}
+        </span>
+      )}
+
+      {/* Item image */}
+      <div className="relative flex-1 w-full flex items-center justify-center overflow-hidden p-2">
+        <Image
+          src={getConsumableImagePath(consumable.type)}
+          alt={consumable.name}
+          width={64}
+          height={64}
+          className="object-contain transition-transform duration-200 group-hover:scale-110"
+        />
+      </div>
+
+      {/* Price strip at bottom */}
+      <div className="flex w-full items-center justify-center gap-1 border-t border-emerald-700/30 bg-slate-900/60 py-1">
+        <GameIcon name={currencyIconKey} size={20} />
+        <span className="text-[15px] font-bold leading-none text-yellow-400">
+          {consumable.cost.toLocaleString()}
+        </span>
+      </div>
+    </button>
+  );
+};
+
+/* ────────────────── Consumable Detail Modal ────────────────── */
+
+const ConsumableDetailModal = ({
   consumable,
   ownedQty,
   canAfford,
   onBuy,
   buying,
+  onClose,
 }: {
   consumable: ConsumableDef;
   ownedQty: number;
   canAfford: boolean;
   onBuy: (type: ConsumableType) => void;
   buying: string | null;
+  onClose: () => void;
 }) => {
-  const [hovered, setHovered] = useState(false);
   const isBuying = buying === consumable.type;
   const atMaxStack = ownedQty >= consumable.maxStack;
   const currencyIconKey: GameIconKey = consumable.currency === "gold" ? "gold" : "gems";
+  const canBuy = canAfford && !atMaxStack;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   return (
     <div
-      className={`
-        group relative flex flex-col overflow-hidden rounded-xl border transition-all duration-300
-        border-emerald-700/50 bg-emerald-950/20
-        shadow-[0_0_16px_rgba(16,185,129,0.08)]
-        hover:scale-[1.02] hover:brightness-110
-      `}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      role="article"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
       aria-label={consumable.name}
     >
-      {/* Top badge */}
-      <div className="flex items-center justify-between px-3 pt-3">
-        <span className="rounded-md bg-emerald-900/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-          Consumable
-        </span>
-        <span className="flex items-center gap-0.5 rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-          +{consumable.staminaRestore} <GameIcon name="stamina" size={12} />
-        </span>
-      </div>
-
-      {/* Icon + name */}
-      <div className="flex flex-col items-center px-3 pb-2 pt-3">
-        <div
-          className={`
-            mb-2 flex h-16 w-16 items-center justify-center rounded-xl border-2 
-            border-emerald-700/50 bg-slate-900/80 transition-transform duration-300
-            ${hovered ? "scale-110 rotate-3" : ""}
-          `}
+      <div
+        className="relative mx-auto w-full max-w-sm overflow-hidden rounded-2xl border-2 border-emerald-700/50 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl shadow-[0_0_12px_rgba(16,185,129,0.08)]"
+        style={{ animation: "scaleIn 0.2s ease-out" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close btn */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-300"
+          aria-label="Close"
+          tabIndex={0}
         >
-          <Image
-            src={getConsumableImagePath(consumable.type)}
-            alt={consumable.name}
-            width={64}
-            height={64}
-            className="object-contain"
-          />
+          ✕
+        </button>
+
+        {/* ── Header: name + image on right (same layout as ItemDetailModal) ── */}
+        <div className="flex items-start gap-4 border-b border-slate-700/40 bg-emerald-950/20 px-5 pb-4 pt-4">
+          {/* Text info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-emerald-900/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                Consumable
+              </span>
+            </div>
+            <h2 className="mt-1 font-display text-lg font-bold leading-tight text-emerald-400">
+              {consumable.name}
+            </h2>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              Potion · +{consumable.staminaRestore} Stamina
+            </p>
+          </div>
+          {/* Potion image on right */}
+          <div className="flex h-44 w-44 shrink-0 items-center justify-center">
+            <Image
+              src={getConsumableImagePath(consumable.type)}
+              alt={consumable.name}
+              width={176}
+              height={176}
+              className="object-contain"
+            />
+          </div>
         </div>
-        <p className="text-center text-sm font-bold leading-tight text-emerald-400">{consumable.name}</p>
-      </div>
 
-      {/* Description */}
-      <div className="mx-3 mb-2">
-        <p className="text-[10px] italic text-slate-500">{consumable.description}</p>
-      </div>
+        {/* ── Body ── */}
+        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+          {/* Primary stat (big number) */}
+          <div className="mb-4 text-center">
+            <p className="text-3xl font-black tabular-nums text-white">+{consumable.staminaRestore}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Stamina Restore</p>
+          </div>
 
-      {/* Stats */}
-      <div className="mx-3 mb-2 space-y-1.5 rounded-lg border border-slate-700/30 bg-slate-900/40 px-2.5 py-2">
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="flex items-center gap-1 text-slate-400"><GameIcon name="stamina" size={14} /> Stamina restore</span>
-          <span className="font-bold text-emerald-400">+{consumable.staminaRestore}</span>
+          {/* Stats list */}
+          <div className="mb-3 space-y-1.5 rounded-xl border border-slate-700/30 bg-slate-900/40 px-3 py-2.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-1.5 text-slate-400">
+                <GameIcon name="stamina" size={16} /> Stamina restore
+              </span>
+              <span className="font-bold text-emerald-400">+{consumable.staminaRestore}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-400">Owned</span>
+              <span className={`font-bold ${atMaxStack ? "text-amber-400" : "text-slate-300"}`}>
+                {ownedQty} / {consumable.maxStack}
+              </span>
+            </div>
+          </div>
+
+          {/* Stack limit warning */}
+          {atMaxStack && (
+            <div className="mb-3 rounded-xl border border-amber-700/30 bg-amber-950/20 px-3 py-2">
+              <p className="text-xs font-medium text-amber-400/90">
+                ✦ Max stack reached — use from inventory first
+              </p>
+            </div>
+          )}
+
+          {/* Description */}
+          <p className="mb-3 text-xs italic leading-relaxed text-slate-500">
+            &ldquo;{consumable.description}&rdquo;
+          </p>
         </div>
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-400">📦 Owned</span>
-          <span className={`font-bold ${ownedQty >= consumable.maxStack ? "text-amber-400" : "text-slate-300"}`}>
-            {ownedQty} / {consumable.maxStack}
-          </span>
-        </div>
-      </div>
 
-      {/* Stack limit info */}
-      <div className="mx-3 mb-2 rounded-lg border border-amber-700/30 bg-amber-950/20 px-2.5 py-1.5">
-        <p className="text-[10px] font-medium text-amber-400/80">
-          ✦ Max stack: {consumable.maxStack} · Use from inventory
-        </p>
-      </div>
-
-      {/* Price + Buy */}
-      <div className="mt-auto border-t border-slate-700/30 bg-slate-900/40 px-3 py-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <GameIcon name={currencyIconKey} size={20} />
-            <span className={`text-sm font-bold ${canAfford && !atMaxStack ? "text-yellow-400" : "text-red-400"}`}>
+        {/* ── Footer: Price + Buy (same layout as ItemDetailModal) ── */}
+        <div className="border-t border-slate-700/40 bg-slate-900/60 px-5 py-4">
+          <div className="mb-3 flex items-center justify-center gap-2">
+            <GameIcon name={currencyIconKey} size={22} />
+            <span className={`text-lg font-black ${canBuy ? "text-yellow-400" : "text-red-400"}`}>
               {consumable.cost.toLocaleString()}
             </span>
           </div>
           <GameButton
-            size="sm"
-            variant={canAfford && !atMaxStack ? "action" : "secondary"}
+            variant={canBuy ? "primary" : "secondary"}
             onClick={() => onBuy(consumable.type)}
-            disabled={!canAfford || isBuying || atMaxStack}
+            disabled={!canBuy || isBuying}
             aria-label={`Buy ${consumable.name}`}
+            tabIndex={0}
+            className="w-full justify-center"
           >
             {isBuying ? (
-              <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 animate-spin rounded-full border border-white/30 border-t-white" />
-                ...
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Buying...
               </span>
             ) : atMaxStack ? (
-              "Max"
+              "Max stack"
+            ) : !canAfford ? (
+              `Not enough ${consumable.currency}`
             ) : (
               "Buy"
             )}
@@ -940,6 +1030,7 @@ function ShopContent() {
   const [consumableInv, setConsumableInv] = useState<ConsumableInventoryItem[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [selectedConsumable, setSelectedConsumable] = useState<ConsumableDef | null>(null);
 
   /* ── Load data ── */
   useEffect(() => {
@@ -1084,7 +1175,7 @@ function ShopContent() {
 
   /* ── Category counts ── */
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: items.length, potions: CONSUMABLE_CATALOG.length };
+    const counts: Record<string, number> = { all: items.length + CONSUMABLE_CATALOG.length, potions: CONSUMABLE_CATALOG.length };
     for (const item of items) {
       counts[item.itemType] = (counts[item.itemType] ?? 0) + 1;
     }
@@ -1100,56 +1191,6 @@ function ShopContent() {
     <PageContainer>
       {/* ── Header ── */}
       <PageHeader title="Shop" />
-      <div className="mb-6">
-        <div className="flex flex-wrap items-center justify-center gap-3">
-            {/* Stamina display — click to jump to potions tab */}
-            <button
-              type="button"
-              onClick={() => setActiveTab("potions")}
-              className="flex items-center gap-2 rounded-xl border border-emerald-700/40 bg-gradient-to-r from-emerald-900/30 to-emerald-950/50 px-4 py-2 shadow-lg shadow-emerald-500/5 transition-all duration-200 hover:border-emerald-600/60 hover:shadow-emerald-500/15 hover:brightness-110 active:scale-95"
-              aria-label="View Potions"
-              tabIndex={0}
-            >
-              <GameIcon name="stamina" size={24} />
-              <div className="text-left">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-600">Stamina</p>
-                <p className="text-lg font-black tabular-nums text-emerald-400">
-                  {character.currentStamina}
-                  <span className="text-sm font-medium text-emerald-600">/{character.maxStamina}</span>
-                </p>
-              </div>
-            </button>
-
-            {/* Gems display */}
-            <div
-              className="flex items-center gap-2 rounded-xl border border-purple-700/40 bg-gradient-to-r from-purple-900/30 to-purple-950/50 px-4 py-2 shadow-lg shadow-purple-500/5"
-              aria-label="Gems"
-            >
-              <GameIcon name="gems" size={24} />
-              <div className="text-left">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-purple-600">Gems</p>
-                <p className="text-lg font-black tabular-nums text-purple-400">{character.gems.toLocaleString()}</p>
-              </div>
-            </div>
-
-            {/* Gold display — clickable to open purchase modal */}
-            <button
-              type="button"
-              onClick={() => setGoldModalOpen(true)}
-              className="flex items-center gap-2 rounded-xl border border-amber-700/40 bg-gradient-to-r from-amber-900/30 to-amber-950/50 px-4 py-2 shadow-lg shadow-amber-500/5 transition-all duration-200 hover:border-amber-600/60 hover:shadow-amber-500/15 hover:brightness-110 active:scale-95"
-              aria-label="Buy Gold"
-              tabIndex={0}
-            >
-              <GameIcon name="gold" size={24} />
-              <div className="text-left">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-amber-600">Gold</p>
-                <p className="text-lg font-black tabular-nums text-yellow-400">{character.gold.toLocaleString()}</p>
-              </div>
-              <span className="ml-1 text-lg text-amber-500/60">+</span>
-            </button>
-        </div>
-      </div>
-
       {/* ── Error ── */}
       {error && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-800/50 bg-red-950/30 px-4 py-2.5">
@@ -1167,21 +1208,60 @@ function ShopContent() {
         </div>
       )}
 
-      {/* ── Filter + Sort row ── */}
-      <div className="relative mb-5 flex items-center gap-3">
+      {/* ── Toolbar: Resources + Filter + Sort in one row ── */}
+      <div className="relative mb-5 flex flex-wrap items-center gap-2">
+        {/* Stamina — click to jump to potions tab */}
+        <button
+          type="button"
+          onClick={() => setActiveTab("potions")}
+          className="flex items-center gap-1.5 rounded-xl border border-emerald-700/40 bg-emerald-950/30 px-3 py-1.5 transition-all duration-200 hover:border-emerald-600/60 hover:bg-emerald-900/40 active:scale-95"
+          aria-label="View Potions"
+          tabIndex={0}
+        >
+          <GameIcon name="stamina" size={18} />
+          <span className="text-sm font-bold tabular-nums text-emerald-400">
+            {character.currentStamina}<span className="text-xs font-medium text-emerald-600">/{character.maxStamina}</span>
+          </span>
+        </button>
+
+        {/* Gems */}
+        <div
+          className="flex items-center gap-1.5 rounded-xl border border-purple-700/40 bg-purple-950/30 px-3 py-1.5"
+          aria-label="Gems"
+        >
+          <GameIcon name="gems" size={18} />
+          <span className="text-sm font-bold tabular-nums text-purple-400">{character.gems.toLocaleString()}</span>
+        </div>
+
+        {/* Gold — click to buy */}
+        <button
+          type="button"
+          onClick={() => setGoldModalOpen(true)}
+          className="flex items-center gap-1.5 rounded-xl border border-amber-700/40 bg-amber-950/30 px-3 py-1.5 transition-all duration-200 hover:border-amber-600/60 hover:bg-amber-900/40 active:scale-95"
+          aria-label="Buy Gold"
+          tabIndex={0}
+        >
+          <GameIcon name="gold" size={18} />
+          <span className="text-sm font-bold tabular-nums text-yellow-400">{character.gold.toLocaleString()}</span>
+          <span className="text-xs text-amber-500/60">+</span>
+        </button>
+
+        {/* Spacer pushes filter & sort to the right */}
+        <div className="flex-1" />
+
         {/* Category dropdown */}
-        <div className="relative flex-1 min-w-0">
+        <div className="relative min-w-[160px]">
           <button
             type="button"
             onClick={() => setFiltersOpen((prev) => !prev)}
-            className="flex h-10 w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 px-4 transition-colors hover:bg-slate-900/80"
+            className="flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900/50 px-3 transition-colors hover:bg-slate-900/80"
             aria-expanded={filtersOpen}
             aria-controls="shop-category-tabs"
             aria-label="Toggle category filter"
             tabIndex={0}
           >
             <div className="flex items-center gap-2 text-sm">
-              {(() => { const tab = TABS.find((t) => t.key === activeTab); return tab?.icon ? <GameIcon name={tab.icon} size={18} /> : <span>{tab?.iconEmoji ?? "🏪"}</span>; })()}
+              {(() => { const tab = TABS.find((t) => t.key === activeTab); return tab?.icon ? <GameIcon name={tab.icon} size={16} /> : <span className="text-sm">{tab?.iconEmoji ?? "🏪"}</span>; })()}
               <span className="font-medium text-white">
                 {TABS.find((t) => t.key === activeTab)?.label ?? "All"}
               </span>
@@ -1199,7 +1279,7 @@ function ShopContent() {
           {/* Collapsible tabs panel */}
           <div
             id="shop-category-tabs"
-            className={`absolute left-0 right-0 top-full z-20 grid transition-all duration-200 ease-in-out ${
+            className={`absolute right-0 top-full z-20 grid transition-all duration-200 ease-in-out ${
               filtersOpen ? "mt-1.5 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none"
             }`}
           >
@@ -1243,54 +1323,71 @@ function ShopContent() {
 
         {/* Sort (hidden on potions tab) */}
         {activeTab !== "potions" && (
-          <div className="flex shrink-0 items-center gap-1.5">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="h-10 rounded-xl border border-slate-800 bg-slate-900/50 px-2.5 text-xs text-slate-300 outline-none transition focus:border-indigo-500"
-              aria-label="Sort items"
-            >
-              <option value="rarity">By rarity</option>
-              <option value="price_asc">Price ↑</option>
-              <option value="price_desc">Price ↓</option>
-              <option value="level">By level</option>
-            </select>
-          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="h-9 rounded-xl border border-slate-800 bg-slate-900/50 px-2.5 text-xs text-slate-300 outline-none transition focus:border-indigo-500"
+            aria-label="Sort items"
+          >
+            <option value="rarity">By rarity</option>
+            <option value="price_asc">Price ↑</option>
+            <option value="price_desc">Price ↓</option>
+            <option value="level">By level</option>
+          </select>
         )}
       </div>
 
       {/* ── Consumables Grid ── */}
       {activeTab === "potions" ? (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
           {CONSUMABLE_CATALOG.map((consumable) => {
             const owned = consumableInv.find((ci) => ci.consumableType === consumable.type)?.quantity ?? 0;
-            const canAfford = consumable.currency === "gold"
-              ? character.gold >= consumable.cost
-              : character.gems >= consumable.cost;
             return (
-              <ConsumableCard
+              <ConsumableTile
                 key={consumable.type}
                 consumable={consumable}
                 ownedQty={owned}
-                canAfford={canAfford}
-                onBuy={handleBuyConsumable}
-                buying={buyingConsumable}
+                onSelect={setSelectedConsumable}
               />
             );
           })}
         </div>
       ) : /* ── Item Grid (compact icon tiles) ── */
       filteredItems.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
-          {filteredItems.map((item) => (
-            <ShopItemTile
-              key={item.id}
-              item={item}
-              canAfford={character.gold >= (item.buyPrice ?? 0)}
-              onSelect={setSelectedItem}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+            {filteredItems.map((item) => (
+              <ShopItemTile
+                key={item.id}
+                item={item}
+                canAfford={character.gold >= (item.buyPrice ?? 0)}
+                onSelect={setSelectedItem}
+              />
+            ))}
+          </div>
+
+          {/* Show potions at the bottom when viewing "All" */}
+          {activeTab === "all" && (
+            <>
+              <h3 className="mt-6 mb-2 flex items-center gap-2 text-sm font-bold text-emerald-400">
+                <span>🧪</span> Potions
+              </h3>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+                {CONSUMABLE_CATALOG.map((consumable) => {
+                  const owned = consumableInv.find((ci) => ci.consumableType === consumable.type)?.quantity ?? 0;
+                  return (
+                    <ConsumableTile
+                      key={consumable.type}
+                      consumable={consumable}
+                      ownedQty={owned}
+                      onSelect={setSelectedConsumable}
+                    />
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center py-16">
           <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-slate-700">
@@ -1333,6 +1430,25 @@ function ShopContent() {
           buying={buying}
           characterClass={character.class}
           onClose={() => setSelectedItem(null)}
+        />
+      )}
+
+      {/* ── Consumable Detail Modal ── */}
+      {selectedConsumable && (
+        <ConsumableDetailModal
+          consumable={selectedConsumable}
+          ownedQty={consumableInv.find((ci) => ci.consumableType === selectedConsumable.type)?.quantity ?? 0}
+          canAfford={
+            selectedConsumable.currency === "gold"
+              ? character.gold >= selectedConsumable.cost
+              : character.gems >= selectedConsumable.cost
+          }
+          onBuy={(type) => {
+            handleBuyConsumable(type);
+            setSelectedConsumable(null);
+          }}
+          buying={buyingConsumable}
+          onClose={() => setSelectedConsumable(null)}
         />
       )}
 

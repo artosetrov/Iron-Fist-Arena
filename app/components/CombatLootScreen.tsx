@@ -5,6 +5,7 @@ import Image from "next/image";
 import GameIcon from "@/app/components/ui/GameIcon";
 import type { GameIconKey } from "@/app/components/ui/GameIcon";
 import { ORIGIN_IMAGE, BOSS_IMAGES } from "@/app/components/HeroCard";
+import { GameButton } from "@/app/components/ui";
 
 /* ────────────────── Types ────────────────── */
 
@@ -182,16 +183,16 @@ const CombatLootScreen = ({
 
         {/* CTA */}
         <div className="border-t border-slate-800 px-6 py-4">
-          <button
+          <GameButton
             ref={btnRef}
-            type="button"
             onClick={onContinue}
             disabled={loading}
             aria-label="Continue"
-            className="w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 text-sm font-bold text-white transition hover:from-amber-500 hover:to-orange-500 disabled:opacity-50"
+            fullWidth
+            size="lg"
           >
             {loading ? "Loading…" : "Continue"}
-          </button>
+          </GameButton>
         </div>
       </div>
     </div>

@@ -44,14 +44,13 @@ interface PageLoaderProps {
 }
 
 const PageLoader = ({ emoji = "⚔️", icon, text = "Loading…" }: PageLoaderProps) => {
-  const [tipIndex, setTipIndex] = useState(
-    () => Math.floor(Math.random() * TIPS.length),
-  );
+  const [tipIndex, setTipIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const startRef = useRef<number>(Date.now());
 
-  /* Rotate lore tips */
+  /* Set random starting tip + rotate lore tips */
   useEffect(() => {
+    setTipIndex(Math.floor(Math.random() * TIPS.length));
     const interval = setInterval(() => {
       setTipIndex((prev) => (prev + 1) % TIPS.length);
     }, 3500);

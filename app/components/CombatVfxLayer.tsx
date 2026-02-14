@@ -10,6 +10,10 @@ import { resolveVfx, pickPopup, STATUS_VFX } from "@/lib/game/combat-vfx-map";
  * Declarative VFX overlay. Parent sets a `command` prop and
  * this component spawns the correct projectile → impact → popup
  * sequence based on the VFX map.
+ *
+ * VFX elements are rendered via <CombatVfxOverlay side="left|right" />
+ * placed INSIDE each fighter card's relative wrapper so effects
+ * are positioned relative to the card, not the whole battle area.
  * ──────────────────────────────────────────────────────────── */
 
 /* ── Public types ── */
@@ -51,11 +55,12 @@ const VfxSprite = memo(({ el }: { el: VfxElement }) => {
     status: { w: 56, h: 56 },
   };
 
+  /* Positions are now relative to the fighter card container */
   const posMap: Record<VfxElement["kind"], React.CSSProperties> = {
-    projectile: { top: "50%", left: "50%", transform: "translate(-50%, -50%)" },
-    impact: { top: "25%", left: "50%", transform: "translate(-50%, -25%)" },
-    popup: { top: "-10%", left: "50%", transform: "translate(-50%, 0)" },
-    status: { bottom: "20%", left: "50%", transform: "translate(-50%, 0)" },
+    projectile: { top: "40%", left: "50%", transform: "translate(-50%, -50%)" },
+    impact: { top: "30%", left: "50%", transform: "translate(-50%, -50%)" },
+    popup: { top: "10%", left: "50%", transform: "translate(-50%, -50%)" },
+    status: { top: "60%", left: "50%", transform: "translate(-50%, -50%)" },
   };
 
   const zMap: Record<VfxElement["kind"], number> = {
@@ -87,17 +92,45 @@ const VfxSprite = memo(({ el }: { el: VfxElement }) => {
 });
 VfxSprite.displayName = "VfxSprite";
 
-/* ── Main Layer ── */
+/* ── VFX Overlay — one per fighter card ── */
+
+type CombatVfxOverlayProps = {
+  elements: VfxElement[];
+};
+
+const CombatVfxOverlay = memo(({ elements }: CombatVfxOverlayProps) => {
+  if (elements.length === 0) return null;
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-visible"
+      style={{ zIndex: 15 }}
+      aria-hidden="true"
+    >
+      {elements.map((el) => (
+        <VfxSprite key={el.id} el={el} />
+      ))}
+    </div>
+  );
+});
+CombatVfxOverlay.displayName = "CombatVfxOverlay";
+
+/* ── Main Layer (logic only — no render) ── */
 
 type CombatVfxLayerProps = {
   command: VfxCommand | null;
   onScreenShake: () => void;
 };
 
-const CombatVfxLayerInner = ({
+type CombatVfxLayerHandle = {
+  leftElements: VfxElement[];
+  rightElements: VfxElement[];
+};
+
+const useCombatVfx = ({
   command,
   onScreenShake,
-}: CombatVfxLayerProps) => {
+}: CombatVfxLayerProps): CombatVfxLayerHandle => {
   const [leftElements, setLeftElements] = useState<VfxElement[]>([]);
   const [rightElements, setRightElements] = useState<VfxElement[]>([]);
   const timeoutIds = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -266,32 +299,8 @@ const CombatVfxLayerInner = ({
     }
   }, [command, addElement, scheduleTimeout, onScreenShake]);
 
-  return (
-    <>
-      {/* Left fighter VFX overlay */}
-      <div
-        className="pointer-events-none absolute left-0 top-0 h-full w-1/2"
-        style={{ zIndex: 15 }}
-        aria-hidden="true"
-      >
-        {leftElements.map((el) => (
-          <VfxSprite key={el.id} el={el} />
-        ))}
-      </div>
-
-      {/* Right fighter VFX overlay */}
-      <div
-        className="pointer-events-none absolute right-0 top-0 h-full w-1/2"
-        style={{ zIndex: 15 }}
-        aria-hidden="true"
-      >
-        {rightElements.map((el) => (
-          <VfxSprite key={el.id} el={el} />
-        ))}
-      </div>
-    </>
-  );
+  return { leftElements, rightElements };
 };
 
-const CombatVfxLayer = memo(CombatVfxLayerInner);
-export default CombatVfxLayer;
+export { useCombatVfx, CombatVfxOverlay };
+export default CombatVfxOverlay;

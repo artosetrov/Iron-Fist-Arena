@@ -24,7 +24,7 @@ const GlobalError = ({
           <button
             onClick={reset}
             type="button"
-            className="rounded-lg bg-indigo-600 px-6 py-3 font-medium transition-colors hover:bg-indigo-700"
+            className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-3 font-bold uppercase tracking-wider text-white shadow-md shadow-amber-900/30 transition-all hover:from-amber-500 hover:to-orange-500 active:scale-[0.98]"
             aria-label="Try again"
           >
             Try again

@@ -33,7 +33,7 @@ const NotFoundPage = () => {
 
         <Link
           href="/hub"
-          className="inline-flex items-center gap-2 px-8 py-3 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 rounded-xl font-display text-xl shadow-lg shadow-amber-900/40 transition-all duration-200 hover:scale-105"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 px-8 py-3 font-bold uppercase tracking-wider text-white shadow-md shadow-amber-900/30 transition-all hover:from-amber-500 hover:to-orange-500 active:scale-[0.98]"
           aria-label="Вернуться в хаб"
           tabIndex={0}
         >

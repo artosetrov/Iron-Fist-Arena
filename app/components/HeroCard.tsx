@@ -202,19 +202,9 @@ const HpBar = ({ current, max }: HpBarProps) => {
 
 /* ────────────────── Rating Badge ────────────────── */
 
-const CLASS_BADGE_COLOR: Record<string, { border: string; text: string }> = {
-  warrior: { border: "border-red-500/80", text: "text-red-400" },
-  rogue: { border: "border-emerald-500/80", text: "text-emerald-400" },
-  mage: { border: "border-blue-500/80", text: "text-blue-400" },
-  tank: { border: "border-amber-500/80", text: "text-amber-400" },
-};
-
-const DEFAULT_BADGE_COLOR = { border: "border-slate-500/80", text: "text-slate-400" };
-
 const RatingBadge = ({ rating, classKey }: { rating: number; classKey: string }) => {
   const [hovered, setHovered] = useState(false);
   const rank = getRankFromRating(rating);
-  const badgeColor = CLASS_BADGE_COLOR[classKey] ?? DEFAULT_BADGE_COLOR;
   const classIconKey = CLASS_ICON[classKey];
 
   return (
@@ -223,9 +213,11 @@ const RatingBadge = ({ rating, classKey }: { rating: number; classKey: string })
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 ${badgeColor.border} bg-slate-900/90 shadow-lg`}>
-        {classIconKey ? <GameIcon name={classIconKey} size={22} /> : "👤"}
-      </div>
+      {classIconKey ? (
+        <GameIcon name={classIconKey} size={64} className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]" />
+      ) : (
+        <span className="text-2xl drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">👤</span>
+      )}
       {hovered && (
         <div className="pointer-events-none absolute -bottom-7 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[10px] font-medium text-slate-300 shadow-lg">
           {rank} ({rating})
@@ -235,11 +227,58 @@ const RatingBadge = ({ rating, classKey }: { rating: number; classKey: string })
   );
 };
 
+/* ────────────────── Card Variants ────────────────── */
+
+/**
+ * Standardised card variants — single source of truth for sizing & display.
+ *
+ * | Variant   | Where used                              | Container width        |
+ * |-----------|-----------------------------------------|------------------------|
+ * | default   | Arena, Combat select, Dungeon boss       | carousel min(300px,75vw) or w-[280px] |
+ * | compact   | Leaderboard tooltip, small grids         | 200px                  |
+ * | battle    | CombatBattleScreen (fight)               | max-w-[220px]          |
+ */
+export type HeroCardVariant = "default" | "compact" | "battle";
+
+type VariantDefaults = {
+  statSize: "sm" | "md";
+  hideStats: boolean;
+  hideStatLabels: boolean;
+  hideDescription: boolean;
+  fillHeight: boolean;
+};
+
+const VARIANT_DEFAULTS: Record<HeroCardVariant, VariantDefaults> = {
+  default: {
+    statSize: "sm",
+    hideStats: false,
+    hideStatLabels: false,
+    hideDescription: false,
+    fillHeight: false,
+  },
+  compact: {
+    statSize: "sm",
+    hideStats: true,
+    hideStatLabels: true,
+    hideDescription: true,
+    fillHeight: false,
+  },
+  battle: {
+    statSize: "sm",
+    hideStats: false,
+    hideStatLabels: true,
+    hideDescription: true,
+    fillHeight: false,
+  },
+};
+
 /* ────────────────── HeroCard Props ────────────────── */
 
 export type HeroCardProps = {
   /** Card display name */
   name: string;
+  /** Card variant — sets sensible defaults for statSize, hideStats, etc. */
+  variant?: HeroCardVariant;
   /** Class: warrior, rogue, mage, tank */
   className?: string;
   /** Origin: human, orc, skeleton, etc. (for origin images) */
@@ -277,15 +316,15 @@ export type HeroCardProps = {
     isDodging: boolean;
     side: "left" | "right";
   };
-  /** Stat circle size */
+  /** Stat circle size — override variant default */
   statSize?: "sm" | "md";
-  /** Hide stat circles entirely (e.g. on small mobile cards) */
+  /** Hide stat circles entirely — override variant default */
   hideStats?: boolean;
-  /** Hide stat abbreviation labels below circles */
+  /** Hide stat abbreviation labels below circles — override variant default */
   hideStatLabels?: boolean;
   /** Max value for stat circle fill progress (default 100) */
   statMax?: number;
-  /** Hide description text (e.g. on small mobile cards) */
+  /** Hide description text — override variant default */
   hideDescription?: boolean;
   /** Disable hover/click effects */
   disabled?: boolean;
@@ -301,6 +340,7 @@ export type HeroCardProps = {
 
 const HeroCard = memo(({
   name,
+  variant = "default",
   className: cls,
   origin,
   level,
@@ -313,16 +353,23 @@ const HeroCard = memo(({
   icon,
   imageSrc,
   battle,
-  statSize = "md",
-  hideStats = false,
-  hideStatLabels = false,
+  statSize: statSizeOverride,
+  hideStats: hideStatsOverride,
+  hideStatLabels: hideStatLabelsOverride,
   statMax = 100,
-  hideDescription = false,
+  hideDescription: hideDescriptionOverride,
   disabled = false,
   ariaLabel,
-  fillHeight = false,
+  fillHeight: fillHeightOverride,
   children,
 }: HeroCardProps) => {
+  // Merge variant defaults with explicit overrides
+  const vd = VARIANT_DEFAULTS[variant];
+  const statSize = statSizeOverride ?? vd.statSize;
+  const hideStats = hideStatsOverride ?? vd.hideStats;
+  const hideStatLabels = hideStatLabelsOverride ?? vd.hideStatLabels;
+  const hideDescription = hideDescriptionOverride ?? vd.hideDescription;
+  const fillHeight = fillHeightOverride ?? vd.fillHeight;
   const classKey = cls?.toLowerCase() ?? "";
   const frame = CLASS_FRAME_VARS[classKey] ?? DEFAULT_FRAME_VARS;
   const classIconKey = CLASS_ICON[classKey];
@@ -494,22 +541,26 @@ const HeroCard = memo(({
         </div>
       )}
 
-      {/* ═══ Stat circles ═══ */}
+      {/* ═══ Stat bars ═══ */}
       {!hideStats && visibleStats.length > 0 && (
-        <div className="hero-card-stats flex flex-wrap items-center justify-center gap-2 px-2 py-3">
-          {visibleStats.map((s) => (
-            <StatCircle
-              key={s.key}
-              value={(stats as Record<string, number>)[s.key]}
-              icon={s.icon}
-              color={s.color}
-              fillColor={s.fillColor}
-              label={s.label}
-              size={statSize}
-              hideLabel={hideStatLabels}
-              maxValue={statMax}
-            />
-          ))}
+        <div className="hero-card-stats flex flex-col gap-1 px-3 py-2">
+          {visibleStats.map((s) => {
+            const val = (stats as Record<string, number>)[s.key];
+            const pct = Math.max(0, Math.min(100, (val / statMax) * 100));
+            const abbr = STAT_ABBR[s.label] ?? s.label.slice(0, 3).toUpperCase();
+            return (
+              <div key={s.key} className="flex items-center gap-1.5">
+                <span className="w-7 text-[10px] font-bold uppercase tracking-wide text-slate-500">{abbr}</span>
+                <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-slate-800/80">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                    style={{ width: `${pct}%`, backgroundColor: s.fillColor }}
+                  />
+                </div>
+                <span className="w-6 text-right font-display text-[11px] tabular-nums text-white">{val}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 

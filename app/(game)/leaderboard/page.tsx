@@ -83,24 +83,17 @@ const HeroTooltip = ({ state }: { state: NonNullable<TooltipState> }) => {
 
   return createPortal(
     <div
-      className="pointer-events-none fixed z-[9999] animate-in fade-in zoom-in-95 duration-150"
-      style={{ left, top, width: CARD_W }}
+      className="pointer-events-none fixed z-[9999] hero-card-container--compact animate-in fade-in zoom-in-95 duration-150"
+      style={{ left, top }}
     >
       <HeroCard
         name={entry.characterName}
+        variant="compact"
         className={entry.class}
         origin={entry.origin}
         level={entry.level}
         rating={entry.pvpRating}
         hp={{ current: entry.currentHp, max: entry.maxHp }}
-        stats={{
-          strength: entry.strength,
-          agility: entry.agility,
-          vitality: entry.vitality,
-          intelligence: entry.intelligence,
-          luck: entry.luck,
-        }}
-        statSize="sm"
         disabled
       />
     </div>,

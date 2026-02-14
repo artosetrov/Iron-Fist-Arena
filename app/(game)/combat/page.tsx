@@ -111,6 +111,8 @@ type PresetCard = {
   description: string;
   /** Weight applied to player VIT when computing dummy HP */
   vitW: number;
+  /** Temporary image (boss art used as placeholder) */
+  imageSrc: string;
 };
 
 const PRESETS: PresetCard[] = [
@@ -120,6 +122,7 @@ const PRESETS: PresetCard[] = [
     icon: "warrior",
     description: "High STR, moderate VIT. Hits hard but predictable.",
     vitW: 1.0,
+    imageSrc: "/images/bosses/boss-straw-dummy.png",
   },
   {
     id: "rogue",
@@ -127,6 +130,7 @@ const PRESETS: PresetCard[] = [
     icon: "rogue",
     description: "High AGI & LCK. Fast and evasive, but fragile.",
     vitW: 0.6,
+    imageSrc: "/images/bosses/boss-flying-francis.png",
   },
   {
     id: "mage",
@@ -134,6 +138,7 @@ const PRESETS: PresetCard[] = [
     icon: "mage",
     description: "High INT & WIS. Devastating spells, low HP.",
     vitW: 0.7,
+    imageSrc: "/images/bosses/boss-scarecrow-mage.png",
   },
   {
     id: "tank",
@@ -141,6 +146,7 @@ const PRESETS: PresetCard[] = [
     icon: "tank",
     description: "High VIT & END. Extremely tanky but slow.",
     vitW: 1.3,
+    imageSrc: "/images/bosses/boss-barrel-golem.png",
   },
 ];
 
@@ -270,6 +276,7 @@ function CombatContent() {
   const [screen, setScreen] = useState<ScreenState>({ kind: "select" });
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<TrainingStatus | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   /* ── Load character + training status ── */
   useEffect(() => {
@@ -441,35 +448,78 @@ function CombatContent() {
         Choose your opponent:
       </h2>
 
-      {/* ── Mobile scroll (< sm): flip cards ── */}
-      <div className="scrollbar-hide -mx-4 mb-6 flex max-w-[100vw] snap-x snap-mandatory gap-4 overflow-x-auto px-[calc(50vw-140px)] pb-2 sm:hidden">
-        {PRESETS.map((card) => {
-          const dummyLvl = getDummyLevel(character.level);
-          const dummyHp = getDummyHp(character.vitality, card.vitW);
+      {/* ── Opponent carousel (unified for mobile & desktop) ── */}
+      <div className="flex flex-1 items-center">
+        <div className="relative w-full">
+          {/* Navigation arrows */}
+          <button
+            type="button"
+            onClick={() => {
+              const el = carouselRef.current;
+              if (!el) return;
+              const card = el.querySelector<HTMLElement>(".hero-card-container--default");
+              if (!card) return;
+              el.scrollBy({ left: -(card.offsetWidth + 20), behavior: "smooth" });
+            }}
+            aria-label="Previous opponent"
+            className="carousel-nav-btn left-0"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const el = carouselRef.current;
+              if (!el) return;
+              const card = el.querySelector<HTMLElement>(".hero-card-container--default");
+              if (!card) return;
+              el.scrollBy({ left: card.offsetWidth + 20, behavior: "smooth" });
+            }}
+            aria-label="Next opponent"
+            className="carousel-nav-btn right-0"
+          >
+            ›
+          </button>
 
-          return (
-            <div key={card.id} className="w-[280px] flex-shrink-0 snap-center">
-                <HeroCard
+          {/* Cards scroll container */}
+          <div ref={carouselRef} className="arena-carousel px-8 py-4">
+            {PRESETS.map((card) => {
+              const dummyLvl = getDummyLevel(character.level);
+              const dummyHp = getDummyHp(character.vitality, card.vitW);
+
+              return (
+                <div key={card.id} className="hero-card-container--default">
+                  <HeroCard
                     name={card.label}
+                    variant="default"
                     className={card.id}
                     level={dummyLvl}
                     hp={{ current: dummyHp, max: dummyHp }}
+                    imageSrc={card.imageSrc}
                     onClick={() => setFlippedCard(card.id)}
                     ariaLabel={`View ${card.label}`}
                     description={card.description}
                   />
-            </div>
-          );
-        })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* ── Mobile flip-back modal ── */}
+      {/* ── Detail modal (on card click) ── */}
       {flippedCard && (() => {
         const flippedPreset = PRESETS.find((p) => p.id === flippedCard);
         if (!flippedPreset) return null;
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:hidden">
-            <div className="w-full max-w-sm">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+            onClick={() => setFlippedCard(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Training dummy details"
+          >
+            <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
               <TrainingCardBack
                 card={flippedPreset}
                 character={character}
@@ -483,47 +533,6 @@ function CombatContent() {
           </div>
         );
       })()}
-
-      {/* ── Desktop (sm+): flip cards ── */}
-      <div className="hidden sm:mx-auto sm:mb-6 sm:grid sm:gap-4 sm:grid-cols-2 lg:grid-cols-4" style={{ maxWidth: "fit-content" }}>
-        {PRESETS.map((card) => {
-          const dummyLvl = getDummyLevel(character.level);
-          const dummyHp = getDummyHp(character.vitality, card.vitW);
-          const isFlipped = flippedCard === card.id;
-
-          return (
-            <div key={card.id} className="card-flip-container w-[260px]">
-              <div className={`card-flip-inner ${isFlipped ? "flipped" : ""}`}>
-                {/* Front */}
-                <div className="card-flip-front">
-                  <HeroCard
-                    name={card.label}
-                    className={card.id}
-                    level={dummyLvl}
-                    hp={{ current: dummyHp, max: dummyHp }}
-                    onClick={() => setFlippedCard(card.id)}
-                    ariaLabel={`View ${card.label}`}
-                    description={card.description}
-                    fillHeight
-                  />
-                </div>
-                {/* Back */}
-                <div className="card-flip-back">
-                  <TrainingCardBack
-                    card={card}
-                    character={character}
-                    limitReached={limitReached}
-                    fighting={fighting}
-                    error={error}
-                    onTrain={() => handleTrain(card.id)}
-                    onFlipBack={() => setFlippedCard(null)}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
 
       {/* Error (desktop) */}
       {error && !flippedCard && (
