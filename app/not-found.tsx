@@ -3,8 +3,15 @@ import Link from "next/link";
 
 const NotFoundPage = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white px-4">
-      <div className="text-center space-y-6 max-w-lg">
+    <div className="relative min-h-screen flex items-center justify-center text-white px-4 overflow-hidden bg-slate-950">
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-20"
+        style={{ backgroundImage: "url('/images/buildings/Stray City.png')" }}
+        aria-hidden="true"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/50" aria-hidden="true" />
+
+      <div className="relative z-10 text-center space-y-6 max-w-lg">
         <Image
           src="/images/ui/404.png"
           alt="Lost knight holding a crossed-out map with a laughing goblin"

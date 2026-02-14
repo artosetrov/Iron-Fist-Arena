@@ -47,6 +47,7 @@ export async function PATCH(
 
     const character = await prisma.character.findFirst({
       where: { id: characterId, userId: user.id },
+      select: { id: true, origin: true, gold: true },
     });
 
     if (!character) {

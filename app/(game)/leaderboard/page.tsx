@@ -201,7 +201,7 @@ export default function LeaderboardPage() {
           <tbody>
             {data.leaderboard.map((e) => (
               <tr
-                key={`${e.rank}-${e.characterName}`}
+                key={`${e.rank}-${e.characterName}-${e.pvpRating}`}
                 className="border-b border-slate-800/50 text-slate-300 transition hover:bg-slate-800/30"
                 onMouseEnter={(ev) => handleRowMouseEnter(e, ev)}
                 onMouseMove={(ev) => handleRowMouseMove(e, ev)}

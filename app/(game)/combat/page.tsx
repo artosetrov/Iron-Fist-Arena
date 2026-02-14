@@ -3,9 +3,20 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PageHeader from "@/app/components/PageHeader";
-import CombatBattleScreen from "@/app/components/CombatBattleScreen";
-import CombatResultModal from "@/app/components/CombatResultModal";
-import CombatLoadingScreen from "@/app/components/CombatLoadingScreen";
+import dynamic from "next/dynamic";
+
+const CombatBattleScreen = dynamic(
+  () => import("@/app/components/CombatBattleScreen"),
+  { ssr: false },
+);
+const CombatResultModal = dynamic(
+  () => import("@/app/components/CombatResultModal"),
+  { ssr: false },
+);
+const CombatLoadingScreen = dynamic(
+  () => import("@/app/components/CombatLoadingScreen"),
+  { ssr: false },
+);
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
 import { GameButton, PageContainer } from "@/app/components/ui";
@@ -351,12 +362,15 @@ function CombatContent() {
     }
   };
 
+  const closeResultControllerRef = useRef<AbortController | null>(null);
   const handleCloseResult = () => {
     setScreen({ kind: "select" });
     refreshStatus();
     // Reload character to reflect XP/level changes
     if (characterId) {
+      closeResultControllerRef.current?.abort();
       const controller = new AbortController();
+      closeResultControllerRef.current = controller;
       fetch(`/api/characters/${characterId}`, { signal: controller.signal })
         .then((r) => { if (!r.ok) throw new Error("Failed"); return r.json(); })
         .then((data) => { if (!controller.signal.aborted) setCharacter(data); })
@@ -450,21 +464,25 @@ function CombatContent() {
       </div>
 
       {/* ── Mobile flip-back modal ── */}
-      {flippedCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:hidden">
-          <div className="w-full max-w-sm">
-            <TrainingCardBack
-              card={PRESETS.find((p) => p.id === flippedCard) ?? PRESETS[0]}
-              character={character}
-              limitReached={limitReached}
-              fighting={fighting}
-              error={error}
-              onTrain={() => handleTrain(flippedCard)}
-              onFlipBack={() => setFlippedCard(null)}
-            />
+      {flippedCard && (() => {
+        const flippedPreset = PRESETS.find((p) => p.id === flippedCard);
+        if (!flippedPreset) return null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:hidden">
+            <div className="w-full max-w-sm">
+              <TrainingCardBack
+                card={flippedPreset}
+                character={character}
+                limitReached={limitReached}
+                fighting={fighting}
+                error={error}
+                onTrain={() => handleTrain(flippedCard)}
+                onFlipBack={() => setFlippedCard(null)}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Desktop (sm+): flip cards ── */}
       <div className="hidden sm:mx-auto sm:mb-6 sm:grid sm:gap-4 sm:grid-cols-2 lg:grid-cols-4" style={{ maxWidth: "fit-content" }}>

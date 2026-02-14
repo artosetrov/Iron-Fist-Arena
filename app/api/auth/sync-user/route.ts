@@ -7,17 +7,12 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    // #region agent log
-    console.log("[sync-user] POST called");
-    // #endregion
     const supabase = await createServerSupabaseClient();
     const {
       data: { user: authUser },
       error: authError,
     } = await supabase.auth.getUser();
-    // #region agent log
-    console.log("[sync-user] getUser:", { hasUser: !!authUser, userId: authUser?.id, authError: authError?.message ?? null });
-    // #endregion
+
     if (!authUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -40,23 +35,11 @@ export async function POST(request: Request) {
     const uniqueUsername = username || `user_${safeId}`;
     const authProvider = authUser.app_metadata?.provider ?? "email";
 
-    // #region agent log
-    console.log("[sync-user] prisma query:", { userId: authUser.id, uniqueEmail, uniqueUsername });
-    // #endregion
-    let existing;
-    try {
-      existing = await prisma.user.findUnique({
-        where: { id: authUser.id },
-      });
-    } catch (prismaErr) {
-      // #region agent log
-      console.error("[sync-user] prisma findUnique error:", prismaErr instanceof Error ? prismaErr.message : String(prismaErr));
-      // #endregion
-      throw prismaErr;
-    }
-    // #region agent log
-    console.log("[sync-user] existing user:", !!existing);
-    // #endregion
+    const existing = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: { id: true },
+    });
+
     if (existing) {
       try {
         await prisma.user.update({
@@ -107,9 +90,6 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
-    // #region agent log
-    console.error("[sync-user] FATAL:", err instanceof Error ? { message: err.message, stack: err.stack?.slice(0, 500) } : String(err));
-    // #endregion
     console.error("[sync-user]", err);
     const message =
       process.env.NODE_ENV === "development" && err instanceof Error

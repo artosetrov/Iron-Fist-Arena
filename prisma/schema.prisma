@@ -225,6 +225,8 @@ model PvpMatch {
   @@index([player1Id, playedAt(sort: Desc)])
   @@index([player2Id, playedAt(sort: Desc)])
   @@index([seasonNumber, playedAt(sort: Desc)])
+  @@index([matchType, playedAt(sort: Desc)])
+  @@index([winnerId])
   @@map("pvp_matches")
 }
 
@@ -254,6 +256,7 @@ model DungeonRun {
   character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@index([characterId])
+  @@index([characterId, difficulty])
   @@map("dungeon_runs")
 }
 

@@ -54,8 +54,9 @@ export default function HomePage() {
             aria-label="Log In"
             tabIndex={0}
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 2v12M12 14l-2.5 2M12 14l2.5 2" />
+              <path d="M9 14h6M10.5 14v6M13.5 14v6" />
             </svg>
             Enter the Arena
           </Link>
@@ -65,8 +66,9 @@ export default function HomePage() {
             aria-label="Register"
             tabIndex={0}
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 2L4 6v4c0 5.5 3.5 10 8 12 4.5-2 8-6.5 8-12V6L12 2z" />
+              <path d="M12 9v4M10 11h4" />
             </svg>
             Create Account
           </Link>

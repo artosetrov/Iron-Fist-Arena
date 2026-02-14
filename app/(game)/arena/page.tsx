@@ -471,20 +471,24 @@ function ArenaContent() {
           </div>
 
           {/* ── Mobile stat-compare modal ── */}
-          {flippedCard && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:hidden">
-              <div className="w-full max-w-sm">
-                <CardBack
-                  character={character}
-                  opponent={opponents.find((o) => o.id === flippedCard) ?? opponents[0]}
-                  canAfford={canAfford}
-                  fighting={fighting}
-                  onFight={() => handleFight(flippedCard)}
-                  onFlipBack={() => setFlippedCard(null)}
-                />
+          {flippedCard && (() => {
+            const flippedOpponent = opponents.find((o) => o.id === flippedCard);
+            if (!flippedOpponent) return null;
+            return (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 sm:hidden">
+                <div className="w-full max-w-sm">
+                  <CardBack
+                    character={character}
+                    opponent={flippedOpponent}
+                    canAfford={canAfford}
+                    fighting={fighting}
+                    onFight={() => handleFight(flippedCard)}
+                    onFlipBack={() => setFlippedCard(null)}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── Desktop (sm+): flip cards ── */}
           <div className="hidden sm:mx-auto sm:mb-6 sm:grid sm:gap-4 sm:grid-cols-2 lg:grid-cols-3" style={{ maxWidth: "fit-content" }}>

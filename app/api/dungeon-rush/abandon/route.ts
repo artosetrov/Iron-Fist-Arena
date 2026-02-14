@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     // Verify ownership
     const character = await prisma.character.findFirst({
       where: { id: characterId, userId: authUser.id },
+      select: { id: true },
     });
     if (!character) {
       return NextResponse.json(
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
 
     const activeRun = await prisma.dungeonRun.findFirst({
       where: { characterId, difficulty: "dungeon_rush" },
+      select: { id: true },
     });
     if (!activeRun) {
       return NextResponse.json({ message: "No active run to abandon" });

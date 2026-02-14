@@ -57,29 +57,10 @@ type NavItem =
   | { kind: "group"; id: string; label: string; icon: GameIconKey; children: NavChild[] };
 
 const NAV_ITEMS: NavItem[] = [
-  {
-    kind: "group",
-    id: "tavern",
-    label: "TAVERN",
-    icon: "tavern",
-    children: [
-      { href: "/minigames", label: "Lobby", icon: "lobby" },
-      { href: "/minigames/shell-game", label: "Shell Game", icon: "shell-game" },
-      { href: "/minigames/gold-mine", label: "Gold Mine", icon: "gold-mine" },
-      { href: "/minigames/dungeon-rush", label: "Dungeon Rush", icon: "dungeon-rush" },
-    ],
-  },
-  {
-    kind: "group",
-    id: "fights",
-    label: "FIGHTS",
-    icon: "fights",
-    children: [
-      { href: "/arena", label: "Arena", icon: "arena" },
-      { href: "/dungeon", label: "Dungeons", icon: "dungeons" },
-      { href: "/combat", label: "Training", icon: "training" },
-    ],
-  },
+  { kind: "link", href: "/minigames", label: "TAVERN", icon: "tavern" },
+  { kind: "link", href: "/arena", label: "ARENA", icon: "arena" },
+  { kind: "link", href: "/dungeon", label: "DUNGEONS", icon: "dungeons" },
+  { kind: "link", href: "/combat", label: "TRAINING", icon: "training" },
   { kind: "link", href: "/shop", label: "SHOP", icon: "shop" },
   { kind: "link", href: "/leaderboard", label: "LEADERBOARD", icon: "leaderboard" },
 ];
@@ -396,7 +377,7 @@ const GameSidebar = () => {
               {/* Avatar */}
               <Link
                 href={buildHref("/inventory")}
-                className="group relative flex h-[96px] w-[96px] shrink-0 items-center justify-center rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 transition hover:border-indigo-500"
+                className="group relative flex h-[96px] w-[96px] shrink-0 items-center justify-center rounded-xl border-2 border-slate-700 bg-slate-950 transition hover:border-indigo-500"
                 aria-label="Open Inventory"
               >
                 <div className="absolute inset-0 overflow-hidden rounded-[10px]">
@@ -513,10 +494,10 @@ const GameSidebar = () => {
                 <li key={item.href}>
                   <Link
                     href={buildHref(item.href)}
-                    className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-all
+                    className={`group flex items-center gap-3 rounded-lg px-3 py-1.5 text-base font-medium transition-all
                       ${active
-                        ? "border text-white"
-                        : "border border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-800/60 hover:text-white"
+                        ? "border text-white shadow-lg shadow-amber-900/10"
+                        : "border border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:bg-slate-800/80 hover:text-white"
                       }
                     `}
                     style={active ? { borderColor: "var(--ds-nav-active-border)", backgroundColor: "var(--ds-nav-active-bg)" } : undefined}
@@ -524,8 +505,8 @@ const GameSidebar = () => {
                     aria-current={active ? "page" : undefined}
                     tabIndex={0}
                   >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/80 transition group-hover:border-slate-600">
-                      <GameIcon name={item.icon} size={28} />
+                    <span className="flex h-10 w-10 items-center justify-center">
+                      <GameIcon name={item.icon} size={34} />
                     </span>
                     <span className="min-w-0 truncate font-display text-lg font-bold uppercase tracking-wider">{item.label}</span>
                   </Link>
@@ -543,18 +524,18 @@ const GameSidebar = () => {
                 <button
                   type="button"
                   onClick={() => handleToggleGroup(item.id)}
-                  className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-all
+                  className={`group flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-base font-medium transition-all
                     ${groupActive
-                      ? "border text-white"
-                      : "border border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-800/60 hover:text-white"
+                      ? "border text-white shadow-lg shadow-amber-900/10"
+                      : "border border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:bg-slate-800/80 hover:text-white"
                     }
                   `}
                   style={groupActive ? { borderColor: "var(--ds-nav-active-border)", backgroundColor: "var(--ds-nav-active-bg)" } : undefined}
                   aria-expanded={isOpen}
                   aria-label={item.label}
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/80 transition group-hover:border-slate-600">
-                    <GameIcon name={item.icon} size={28} />
+                  <span className="flex h-10 w-10 items-center justify-center">
+                    <GameIcon name={item.icon} size={34} />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-left font-display text-lg font-bold uppercase tracking-wider">{item.label}</span>
                   {/* Chevron */}
@@ -633,13 +614,13 @@ const GameSidebar = () => {
       <div className="border-t border-slate-700/50 p-3 flex items-center justify-between">
         <Link
           href={buildHref("/settings")}
-          className={`flex h-14 w-14 items-center justify-center rounded-lg border text-lg transition
+          className={`flex h-14 w-14 items-center justify-center rounded-lg text-lg transition
             ${isActive("/settings")
               ? "text-white"
-              : "border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+              : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
             }
           `}
-          style={isActive("/settings") ? { borderColor: "var(--ds-nav-active-border)", backgroundColor: "var(--ds-nav-active-bg)" } : undefined}
+          style={isActive("/settings") ? { backgroundColor: "var(--ds-nav-active-bg)" } : undefined}
           aria-label="Settings"
           aria-current={isActive("/settings") ? "page" : undefined}
           title="Settings"
@@ -648,7 +629,7 @@ const GameSidebar = () => {
         </Link>
         <Link
           href="/character"
-          className="flex h-14 w-14 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-800/50 transition hover:border-slate-600 hover:bg-slate-800"
+          className="flex h-14 w-14 items-center justify-center rounded-lg transition hover:bg-slate-800/60"
           aria-label="Switch Character"
           title="Switch Character"
         >

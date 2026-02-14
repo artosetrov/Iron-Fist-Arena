@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { unstable_cache, revalidateTag } from "next/cache";
 import type { DesignTokens } from "@/lib/design-tokens";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +22,19 @@ const verifyAdmin = async () => {
   return dbUser;
 };
 
+const getCachedDesignTokens = unstable_cache(
+  async () => {
+    const row = await prisma.designToken.findUnique({ where: { id: "global" } });
+    return (row?.tokens as Partial<DesignTokens>) ?? {};
+  },
+  ["design-tokens"],
+  { revalidate: 300, tags: ["design-tokens"] },
+);
+
 /* ── GET: load tokens (public — needed by DesignTokenProvider) ── */
 export async function GET() {
   try {
-    const row = await prisma.designToken.findUnique({ where: { id: "global" } });
-    const tokens = (row?.tokens as Partial<DesignTokens>) ?? {};
+    const tokens = await getCachedDesignTokens();
     return NextResponse.json({ tokens });
   } catch (err) {
     console.error("[api/design-tokens GET]", err);
@@ -41,7 +50,10 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try { body = await request.json(); } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const tokens = body.tokens as Partial<DesignTokens>;
     if (!tokens || typeof tokens !== "object") {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
@@ -52,6 +64,8 @@ export async function PUT(request: Request) {
       create: { id: "global", tokens: tokens as object, updatedBy: admin.id },
       update: { tokens: tokens as object, updatedBy: admin.id, updatedAt: new Date() },
     });
+
+    revalidateTag("design-tokens");
 
     return NextResponse.json({ ok: true });
   } catch (err) {

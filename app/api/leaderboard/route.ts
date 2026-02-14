@@ -1,18 +1,13 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { getCurrentSeasonNumber } from "@/lib/db/season";
 import { getRankFromRating } from "@/lib/game/elo";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
-    const season = searchParams.get("season");
-
-    const seasonNumber = season ? parseInt(season, 10) : await getCurrentSeasonNumber();
-
+const getCachedLeaderboard = unstable_cache(
+  async (limit: number, seasonNumber: number) => {
     const characters = await prisma.character.findMany({
       take: limit,
       orderBy: { pvpRating: "desc" },
@@ -42,10 +37,23 @@ export async function GET(request: Request) {
       currentRank: getRankFromRating(c.pvpRating),
     }));
 
-    return NextResponse.json({
-      season: seasonNumber,
-      leaderboard: withRank,
-    });
+    return { season: seasonNumber, leaderboard: withRank };
+  },
+  ["leaderboard"],
+  { revalidate: 30 },
+);
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10)));
+    const season = searchParams.get("season");
+
+    const seasonNumber = season ? parseInt(season, 10) : await getCurrentSeasonNumber();
+
+    const data = await getCachedLeaderboard(limit, seasonNumber);
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error("[api/leaderboard GET]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

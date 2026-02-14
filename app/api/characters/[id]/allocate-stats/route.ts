@@ -38,7 +38,10 @@ export async function POST(
 
     const { id } = await params;
 
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try { body = await request.json(); } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const { stat, mode } = body as { stat: string; mode: "points" | "gold" };
 
     if (!stat || !(VALID_STATS as readonly string[]).includes(stat)) {

@@ -456,8 +456,18 @@ const getPrimaryStat = (item: Item): { label: string; value: number } | null => 
 };
 
 /** Tile-specific image — fills the tile area while keeping aspect ratio */
+/** Stable hue offset derived from a string (catalogId / itemName) */
+const hashStringToHue = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % 360;
+};
+
 const TileImage = ({ item }: { item: Item }) => {
   const itemType = ITEM_TYPE_CONFIG[item.itemType] ?? { label: item.itemType, icon: "accessory" as GameIconKey };
+  const hue = hashStringToHue(item.catalogId ?? item.itemName);
 
   if (item.catalogId && getCatalogItemById(item.catalogId)) {
     return (
@@ -467,6 +477,7 @@ const TileImage = ({ item }: { item: Item }) => {
         fill
         sizes="(max-width: 640px) 25vw, (max-width: 1024px) 20vw, 12.5vw"
         className="object-contain p-1.5"
+        style={{ filter: `hue-rotate(${hue}deg) saturate(1.15)` }}
       />
     );
   }
@@ -480,6 +491,7 @@ const TileImage = ({ item }: { item: Item }) => {
         fill
         sizes="(max-width: 640px) 25vw, (max-width: 1024px) 20vw, 12.5vw"
         className="object-contain p-1.5"
+        style={{ filter: `hue-rotate(${hue}deg) saturate(1.15)` }}
       />
     );
   }

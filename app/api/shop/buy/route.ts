@@ -37,6 +37,7 @@ export async function POST(request: Request) {
 
     const item = await prisma.item.findUnique({
       where: { id: itemId },
+      select: { id: true, buyPrice: true },
     });
     if (!item || item.buyPrice == null) {
       return NextResponse.json({ error: "Item not found or not for sale" }, { status: 404 });

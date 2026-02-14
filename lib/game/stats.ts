@@ -57,11 +57,13 @@ export const getDodgeChance = (agi: number, equipmentBonus: number = 0): number 
   return Math.min(MAX_DODGE, Math.max(0, total));
 };
 
-/** Compute all derived stats from base stats and optional armor values */
+/** Compute all derived stats from base stats and optional equipment values.
+ *  magicResist is stored as display percentage (0–70) from wisdom.
+ *  damage.ts recalculates the raw decimal from wisdom directly. */
 export const computeDerivedStats = (
   base: BaseStats,
   armorValue: number = 0,
-  magicResistValue: number = 0,
+  _magicResistValue: number = 0,
   critEquipmentBonus: number = 0,
   critDmgEquipmentPercent: number = 0,
   dodgeEquipmentBonus: number = 0

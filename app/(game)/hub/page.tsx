@@ -7,7 +7,12 @@ import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
 import GameModal from "@/app/components/ui/GameModal";
 import { WORLD, ARENA_LORE, NPC_QUOTES, HUB_BUILDING_LORE } from "@/lib/game/lore";
-import HubWeatherFx from "@/app/components/HubWeatherFx";
+import dynamic from "next/dynamic";
+
+const HubWeatherFx = dynamic(
+  () => import("@/app/components/HubWeatherFx"),
+  { ssr: false },
+);
 
 /* ────────────────── Constants ────────────────── */
 
@@ -29,6 +34,8 @@ type HubBuilding = {
   left: number;
   /** Glow hitbox as % of background image */
   hitbox: { top: number; left: number; width: number; height: number };
+  /** Tooltip direction: "top" (default), "left", "right" */
+  tooltip?: "top" | "left" | "right";
 };
 
 /**
@@ -47,9 +54,9 @@ const BUILDINGS: HubBuilding[] = [
     description: HUB_BUILDING_LORE.arena.description,
     href: "/arena",
     pinIcon: "/images/buildings/pins/pin-arena.png",
-    top: 18,
-    left: 45,
-    hitbox: { top: 8, left: 30, width: 28, height: 32 },
+    top: 30,
+    left: 48,
+    hitbox: { top: 20, left: 33, width: 28, height: 32 },
   },
   {
     id: "dungeon",
@@ -57,9 +64,10 @@ const BUILDINGS: HubBuilding[] = [
     description: HUB_BUILDING_LORE.dungeon.description,
     href: "/dungeon",
     pinIcon: "/images/buildings/pins/pin-dungeon.png",
-    top: 12,
-    left: 14,
-    hitbox: { top: 2, left: 2, width: 24, height: 28 },
+    top: 15,
+    left: 5,
+    hitbox: { top: 5, left: -7, width: 24, height: 28 },
+    tooltip: "right",
   },
   {
     id: "shop",
@@ -67,9 +75,10 @@ const BUILDINGS: HubBuilding[] = [
     description: HUB_BUILDING_LORE.shop.description,
     href: "/shop",
     pinIcon: "/images/buildings/pins/pin-shop.png",
-    top: 12,
-    left: 80,
-    hitbox: { top: 2, left: 66, width: 28, height: 30 },
+    top: 18,
+    left: 86,
+    hitbox: { top: 8, left: 72, width: 28, height: 30 },
+    tooltip: "left",
   },
   {
     id: "tavern",
@@ -77,9 +86,10 @@ const BUILDINGS: HubBuilding[] = [
     description: HUB_BUILDING_LORE.tavern.description,
     href: "/minigames",
     pinIcon: "/images/buildings/pins/pin-tavern.png",
-    top: 42,
-    left: 14,
-    hitbox: { top: 34, left: 2, width: 24, height: 24 },
+    top: 54,
+    left: 32,
+    hitbox: { top: 46, left: 20, width: 24, height: 24 },
+    tooltip: "right",
   },
   {
     id: "training",
@@ -87,9 +97,10 @@ const BUILDINGS: HubBuilding[] = [
     description: HUB_BUILDING_LORE.training.description,
     href: "/combat",
     pinIcon: "/images/buildings/pins/pin-training.png",
-    top: 38,
+    top: 41,
     left: 78,
-    hitbox: { top: 30, left: 64, width: 28, height: 26 },
+    hitbox: { top: 33, left: 64, width: 28, height: 26 },
+    tooltip: "left",
   },
   {
     id: "leaderboard",
@@ -100,6 +111,7 @@ const BUILDINGS: HubBuilding[] = [
     top: 72,
     left: 10,
     hitbox: { top: 64, left: 0, width: 22, height: 26 },
+    tooltip: "right",
   },
   {
     id: "blacksmith",
@@ -108,8 +120,8 @@ const BUILDINGS: HubBuilding[] = [
     href: "/inventory",
     pinIcon: "/images/buildings/pins/pin-blacksmith.png",
     top: 70,
-    left: 44,
-    hitbox: { top: 62, left: 30, width: 28, height: 28 },
+    left: 62,
+    hitbox: { top: 62, left: 48, width: 28, height: 28 },
   },
   {
     id: "warehouse",
@@ -120,6 +132,7 @@ const BUILDINGS: HubBuilding[] = [
     top: 68,
     left: 82,
     hitbox: { top: 60, left: 68, width: 26, height: 28 },
+    tooltip: "left",
   },
 ];
 
@@ -428,21 +441,55 @@ const HubContent = () => {
                 </div>
 
                 {/* Tooltip */}
-                <div
-                  className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-52 rounded-xl border border-amber-500/30 bg-slate-900/95 px-4 py-3 shadow-xl shadow-amber-900/20 backdrop-blur-sm transition-all duration-200 pointer-events-none ${
-                    isHovered && !isDragging
-                      ? "opacity-100 translate-y-0"
-                      : "opacity-0 translate-y-2"
-                  }`}
-                >
-                  <h3 className="font-display text-sm font-bold text-amber-300">
-                    {b.label}
-                  </h3>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                    {b.description}
-                  </p>
-                  <div className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 h-3 w-3 rotate-45 border-b border-r border-amber-500/30 bg-slate-900/95" />
-                </div>
+                {b.tooltip === "left" ? (
+                  <div
+                    className={`absolute right-full top-1/2 -translate-y-1/2 mr-3 w-52 rounded-xl border border-amber-500/30 bg-slate-900/95 px-4 py-3 shadow-xl shadow-amber-900/20 backdrop-blur-sm transition-all duration-200 pointer-events-none ${
+                      isHovered && !isDragging
+                        ? "opacity-100 translate-x-0"
+                        : "opacity-0 translate-x-2"
+                    }`}
+                  >
+                    <h3 className="font-display text-sm font-bold text-amber-300">
+                      {b.label}
+                    </h3>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                      {b.description}
+                    </p>
+                    <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 h-3 w-3 rotate-45 border-t border-r border-amber-500/30 bg-slate-900/95" />
+                  </div>
+                ) : b.tooltip === "right" ? (
+                  <div
+                    className={`absolute left-full top-1/2 -translate-y-1/2 ml-3 w-52 rounded-xl border border-amber-500/30 bg-slate-900/95 px-4 py-3 shadow-xl shadow-amber-900/20 backdrop-blur-sm transition-all duration-200 pointer-events-none ${
+                      isHovered && !isDragging
+                        ? "opacity-100 translate-x-0"
+                        : "opacity-0 -translate-x-2"
+                    }`}
+                  >
+                    <h3 className="font-display text-sm font-bold text-amber-300">
+                      {b.label}
+                    </h3>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                      {b.description}
+                    </p>
+                    <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 h-3 w-3 rotate-45 border-b border-l border-amber-500/30 bg-slate-900/95" />
+                  </div>
+                ) : (
+                  <div
+                    className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-52 rounded-xl border border-amber-500/30 bg-slate-900/95 px-4 py-3 shadow-xl shadow-amber-900/20 backdrop-blur-sm transition-all duration-200 pointer-events-none ${
+                      isHovered && !isDragging
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-2"
+                    }`}
+                  >
+                    <h3 className="font-display text-sm font-bold text-amber-300">
+                      {b.label}
+                    </h3>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                      {b.description}
+                    </p>
+                    <div className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 h-3 w-3 rotate-45 border-b border-r border-amber-500/30 bg-slate-900/95" />
+                  </div>
+                )}
               </button>
             );
           })}

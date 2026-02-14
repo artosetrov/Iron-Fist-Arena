@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/db";
 import fs from "fs";
 import path from "path";
 
@@ -7,6 +9,14 @@ export const dynamic = "force-dynamic";
 /* ── DEV-ONLY guard ────────────────────────────────────────────────── */
 
 const isDev = process.env.NODE_ENV === "development";
+
+const verifyAdmin = async () => {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true } });
+  return dbUser?.role === "admin";
+};
 const BALANCE_PATH = path.join(process.cwd(), "lib/game/balance.ts");
 
 /* ── Section / field schema ────────────────────────────────────────── */
@@ -414,6 +424,9 @@ export async function GET() {
   }
 
   try {
+    if (!(await verifyAdmin())) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const values = parseBalanceFile();
     const sections = SECTIONS.map((s) => ({
       ...s,
@@ -437,8 +450,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
-    const values: Record<string, unknown> = body.values;
+    if (!(await verifyAdmin())) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    let body: Record<string, unknown>;
+    try { body = await request.json(); } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+    const values = body.values as Record<string, unknown> | undefined;
 
     if (!values || typeof values !== "object") {
       return NextResponse.json({ error: "Missing values object" }, { status: 400 });

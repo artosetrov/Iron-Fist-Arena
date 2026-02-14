@@ -43,6 +43,7 @@ export async function GET(request: Request) {
 
     const character = await prisma.character.findFirst({
       where: { id: characterId, userId: user.id },
+      select: { id: true, level: true },
     });
     if (!character) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -59,6 +60,51 @@ export async function GET(request: Request) {
         catalogId: { not: null },
       },
       orderBy: [{ itemLevel: "asc" }, { rarity: "asc" }, { itemType: "asc" }],
+      select: {
+        id: true,
+        catalogId: true,
+        itemName: true,
+        itemType: true,
+        rarity: true,
+        itemLevel: true,
+        baseStats: true,
+        specialEffect: true,
+        uniquePassive: true,
+        classRestriction: true,
+        setName: true,
+        buyPrice: true,
+        sellPrice: true,
+        description: true,
+        imageUrl: true,
+      },
+    });
+
+    // Limit to MAX_PER_SLOT_RARITY per (itemType + rarity) with daily rotation
+    const seed = getDailySeed();
+    const buckets = new Map<string, typeof allItems>();
+    for (const item of allItems) {
+      const key = `${item.itemType}__${item.rarity}`;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key)!.push(item);
+    }
+
+    const items: typeof allItems = [];
+    for (const bucket of Array.from(buckets.values())) {
+      if (bucket.length <= MAX_PER_SLOT_RARITY) {
+        items.push(...bucket);
+      } else {
+        items.push(...seededShuffle(bucket, seed).slice(0, MAX_PER_SLOT_RARITY));
+      }
+    }
+
+    // Re-sort for consistent display order
+    items.sort((a, b) => {
+      const rarityOrder = ["common", "rare", "epic"];
+      const ra = rarityOrder.indexOf(a.rarity);
+      const rb = rarityOrder.indexOf(b.rarity);
+      if (ra !== rb) return rb - ra;
+      if (a.itemType !== b.itemType) return a.itemType.localeCompare(b.itemType);
+      return a.itemLevel - b.itemLevel;
     });
 
     // Limit to MAX_PER_SLOT_RARITY per (itemType + rarity) with daily rotation

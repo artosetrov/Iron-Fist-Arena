@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { memo, useState, useEffect, useCallback, useRef } from "react";
 
 /* ────────────────── Types ────────────────── */
 
@@ -247,7 +247,7 @@ const GENERATORS: Record<WeatherType, () => Particle[]> = {
 
 /* ────────────────── Component ────────────────── */
 
-const HubWeatherFx = () => {
+const HubWeatherFx = memo(function HubWeatherFx() {
   const [particles, setParticles] = useState<Particle[]>([]);
   const weatherRef = useRef<WeatherType>("clear");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -286,6 +286,6 @@ const HubWeatherFx = () => {
       ))}
     </div>
   );
-};
+});
 
 export default HubWeatherFx;

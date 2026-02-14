@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Image from "next/image";
+import * as Sentry from "@sentry/nextjs";
 
 const GlobalError = ({
   error,
@@ -12,6 +13,7 @@ const GlobalError = ({
 }) => {
   useEffect(() => {
     console.error("[GlobalError]", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

@@ -27,6 +27,7 @@ export async function GET(request: Request) {
 
     const character = await prisma.character.findFirst({
       where: { id: characterId, userId: authUser.id },
+      select: { id: true, pvpRating: true },
     });
     if (!character) {
       return NextResponse.json({ error: "Character not found" }, { status: 404 });

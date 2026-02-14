@@ -15,6 +15,7 @@ async function ensureUserExists(
 ): Promise<void> {
   const existing = await prisma.user.findUnique({
     where: { id: authUserId },
+    select: { id: true },
   });
   if (existing) return;
   const safeId = authUserId.replace(/-/g, "_");
@@ -68,6 +69,41 @@ export async function GET() {
     const characters = await prisma.character.findMany({
       where: { userId: user.id },
       orderBy: { lastPlayed: "desc" },
+      select: {
+        id: true,
+        characterName: true,
+        class: true,
+        origin: true,
+        level: true,
+        currentXp: true,
+        prestigeLevel: true,
+        statPointsAvailable: true,
+        strength: true,
+        agility: true,
+        vitality: true,
+        endurance: true,
+        intelligence: true,
+        wisdom: true,
+        luck: true,
+        charisma: true,
+        gold: true,
+        arenaTokens: true,
+        maxHp: true,
+        currentHp: true,
+        armor: true,
+        magicResist: true,
+        currentStamina: true,
+        maxStamina: true,
+        lastStaminaUpdate: true,
+        pvpRating: true,
+        pvpWins: true,
+        pvpLosses: true,
+        pvpWinStreak: true,
+        pvpLossStreak: true,
+        highestPvpRank: true,
+        lastPlayed: true,
+        createdAt: true,
+      },
     });
     return NextResponse.json({ characters });
   } catch (err) {
@@ -131,6 +167,7 @@ export async function POST(request: Request) {
 
     const existing = await prisma.character.findUnique({
       where: { characterName },
+      select: { id: true },
     });
     if (existing) {
       return NextResponse.json(

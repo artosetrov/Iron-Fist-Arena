@@ -57,6 +57,7 @@ export async function POST(request: Request) {
 
     const character = await prisma.character.findFirst({
       where: { id: characterId, userId: user.id },
+      select: { id: true },
     });
     if (!character) {
       return NextResponse.json(

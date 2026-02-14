@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     // Verify ownership
     const character = await prisma.character.findFirst({
       where: { id: characterId, userId: authUser.id },
+      select: { id: true },
     });
     if (!character) {
       return NextResponse.json(
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
 
     const activeRun = await prisma.dungeonRun.findFirst({
       where: { characterId, difficulty: "dungeon_rush" },
+      select: { id: true, state: true },
     });
 
     if (!activeRun) {
