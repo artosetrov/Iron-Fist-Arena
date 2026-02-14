@@ -328,8 +328,8 @@ export const ARMOR_RANGE: Record<string, Record<Rarity, [number, number]>> = {
    §7  ECONOMY
    ────────────────────────────────────────────────────────────────────── */
 
-/** Starting character resources */
-export const STARTING_GOLD = 150;
+/** GDD §7.1 — Starting gold 500. Reduced to 300 for tighter early-game balance. */
+export const STARTING_GOLD = 300;
 export const STARTING_STAMINA = 100;
 export const STARTING_MAX_STAMINA = 100;
 
@@ -361,14 +361,17 @@ export const SELL_RARITY_MULT: Record<string, number> = {
 export const SELL_BASE_MULT = 10;
 export const SELL_STAT_MULT = 5;
 
-/** GDD §7 — Buy price rarity multipliers (same as sell) */
+/** GDD §7.4 — Buy price: Base_Cost × (1 + Item_Level/10)^1.5 × Rarity_Mult. Base = 100. */
+export const BUY_BASE_COST = 100;
+/** GDD §7.4 — Rarity purchase multipliers (table in GDD) */
 export const BUY_RARITY_PRICE_MULT: Record<string, number> = {
   common: 1,
-  uncommon: 2,
-  rare: 4,
-  epic: 10,
-  legendary: 25,
+  uncommon: 2.5,
+  rare: 6,
+  epic: 15,
+  legendary: 50,
 };
+/** @deprecated Use BUY_BASE_COST + formula (1 + itemLevel/10)^1.5 for new code */
 export const BUY_BASE_MULT = 10;
 
 /** GDD §7.6 — Stat training: cost = floor(BASE * GROWTH^statValue) */
@@ -418,9 +421,9 @@ export const BOSS_ARMOR_FACTOR = 0.8;
 /** Boss index scaling: mult + index * 0.15 */
 export const BOSS_INDEX_SCALING = 0.15;
 
-/** Dungeon gold reward: base + dungeonIndex * perDungeon */
-export const DUNGEON_GOLD_BASE = 30;
-export const DUNGEON_GOLD_PER_DUNGEON = 40;
+/** GDD §7.2 — Dungeon gold: Easy 200–400 clear, 10–20 per enemy. Base + dungeonIndex * perDungeon. */
+export const DUNGEON_GOLD_BASE = 12;
+export const DUNGEON_GOLD_PER_DUNGEON = 35;
 export const DUNGEON_GOLD_BOSS_SCALE = 0.2;
 
 /** Dungeon XP reward */
@@ -428,9 +431,9 @@ export const DUNGEON_XP_BASE = 80;
 export const DUNGEON_XP_PER_DUNGEON = 50;
 export const DUNGEON_XP_BOSS_SCALE = 0.15;
 
-/** Dungeon completion bonus */
-export const DUNGEON_COMPLETION_GOLD_BASE = 300;
-export const DUNGEON_COMPLETION_GOLD_PER_DUNGEON = 200;
+/** GDD §7.2 — Completion: Easy ~150–250, Normal 400–800, Hard 800–1500. */
+export const DUNGEON_COMPLETION_GOLD_BASE = 120;
+export const DUNGEON_COMPLETION_GOLD_PER_DUNGEON = 180;
 export const DUNGEON_COMPLETION_XP_BASE = 600;
 export const DUNGEON_COMPLETION_XP_PER_DUNGEON = 400;
 

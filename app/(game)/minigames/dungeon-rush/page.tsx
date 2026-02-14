@@ -3,11 +3,11 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
-import CombatLootScreen from "@/app/components/CombatLootScreen";
 import PageLoader from "@/app/components/PageLoader";
 import PageHeader from "@/app/components/PageHeader";
 import GameIcon from "@/app/components/ui/GameIcon";
-import { GameButton, PageContainer } from "@/app/components/ui";
+import GameModal from "@/app/components/ui/GameModal";
+import { GameButton } from "@/app/components/ui";
 /* ────────────────── Types ────────────────── */
 
 type Character = {
@@ -121,6 +121,8 @@ const DungeonRushContent = () => {
   const [screen, setScreen] = useState<RushScreen>({ kind: "ready", runId: null, wave: 1 });
 
   const [abandoning, setAbandoning] = useState(false);
+  const [showAbandonModal, setShowAbandonModal] = useState(false);
+  const [rewardsExpanded, setRewardsExpanded] = useState(false);
 
   /* ── Load character + check active run ── */
   const loadCharacter = useCallback(async () => {
@@ -172,11 +174,37 @@ const DungeonRushContent = () => {
         setError(data.error ?? "Error abandoning run");
         return;
       }
+      setShowAbandonModal(false);
       setScreen({ kind: "ready", runId: null, wave: 1 });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
       setAbandoning(false);
+    }
+  };
+
+  const handleAbandonConfirm = () => {
+    void handleAbandon();
+  };
+
+  const handleClaimAndExit = async () => {
+    if (!characterId) return;
+    setError(null);
+    try {
+      const res = await fetch("/api/dungeon-rush/abandon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Error claiming rewards");
+        return;
+      }
+      window.dispatchEvent(new Event("character-updated"));
+      router.push(`/minigames?characterId=${characterId}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
     }
   };
 
@@ -318,6 +346,12 @@ const DungeonRushContent = () => {
      ══════════════════════════════════════════ */
   if (screen.kind === "wave_result") {
     const mobName = screen.fightResult.enemySnapshot?.name ?? "Mob";
+    const playerSnap = screen.fightResult.playerSnapshot;
+    const hpPercent = playerSnap && playerSnap.maxHp > 0
+      ? (playerSnap.currentHp / playerSnap.maxHp) * 100
+      : 100;
+    const isLowHp = hpPercent < 30;
+
     return (
       <div className="flex min-h-full flex-col items-center justify-center p-4 lg:p-6">
         <div className="w-full max-w-md rounded-2xl border border-emerald-700/60 bg-gradient-to-b from-emerald-900/30 to-slate-900/80 p-6 text-center">
@@ -330,6 +364,22 @@ const DungeonRushContent = () => {
           <p className="mt-1 text-xs text-slate-500">
             {mobName} defeated
           </p>
+
+          {/* Player HP after battle */}
+          {playerSnap ? (
+            <div className="mt-3 rounded-lg border border-slate-700/40 bg-slate-800/40 px-3 py-2 text-xs">
+              <span className="text-slate-400">Your HP: </span>
+              <span className={isLowHp ? "font-bold text-amber-400" : "text-slate-200"}>
+                {playerSnap.currentHp}/{playerSnap.maxHp}
+              </span>
+            </div>
+          ) : null}
+
+          {isLowHp ? (
+            <p className="mt-2 rounded-lg border border-amber-600/50 bg-amber-900/30 px-3 py-2 text-sm font-medium text-amber-300" role="alert">
+              Low HP! Consider claiming rewards and exiting.
+            </p>
+          ) : null}
 
           {/* Rewards */}
           <div className="mt-4 flex items-center justify-center gap-6 text-sm">
@@ -350,6 +400,17 @@ const DungeonRushContent = () => {
             Total earned: {screen.fightResult.accumulatedGold} gold, {screen.fightResult.accumulatedXp} XP
           </div>
 
+          {/* Battle stats */}
+          {screen.fightResult.log && screen.fightResult.log.length > 0 ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Rounds: {screen.fightResult.log.length} | Damage dealt:{" "}
+              {screen.fightResult.log.reduce(
+                (sum, e) => sum + (e.actorId === character.id && e.damage != null ? e.damage : 0),
+                0,
+              )}
+            </p>
+          ) : null}
+
           {/* Progress pips */}
           <div className="mt-4 flex items-center justify-center gap-2">
             {Array.from({ length: TOTAL_WAVES }, (_, i) => {
@@ -359,7 +420,7 @@ const DungeonRushContent = () => {
               return (
                 <div
                   key={waveNum}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                  className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold transition-all ${
                     isDone
                       ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/40"
                       : "border border-slate-700 bg-slate-800 text-slate-500"
@@ -372,10 +433,11 @@ const DungeonRushContent = () => {
           </div>
 
           <GameButton
+            size="lg"
             fullWidth
             onClick={handleNextWave}
             aria-label="Next Wave"
-            className="mt-5"
+            className="mt-5 min-h-[48px] transition-transform hover:scale-[1.02] active:scale-[0.98]"
           >
             <span className="inline-flex items-center gap-1.5"><GameIcon name="fights" size={16} /> Next Wave ({(screen.fightResult.nextWave ?? 0)}/{TOTAL_WAVES})</span>
           </GameButton>
@@ -423,26 +485,51 @@ const DungeonRushContent = () => {
             </div>
           ) : null}
 
+          {/* Battle stats */}
+          {screen.fightResult.log && screen.fightResult.log.length > 0 ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Rounds: {screen.fightResult.log.length} | Damage dealt:{" "}
+              {screen.fightResult.log.reduce(
+                (sum, e) => sum + (e.actorId === character.id && e.damage != null ? e.damage : 0),
+                0,
+              )}
+            </p>
+          ) : null}
+
           {/* All pips filled */}
           <div className="mt-4 flex items-center justify-center gap-2">
             {Array.from({ length: TOTAL_WAVES }, (_, i) => (
               <div
                 key={i}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-600 text-xs font-bold text-white shadow-lg shadow-amber-900/40"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-600 text-xs font-bold text-white shadow-lg shadow-amber-900/40"
               >
                 ✓
               </div>
             ))}
           </div>
 
-          <GameButton
-            fullWidth
-            onClick={handleBackToTavern}
-            aria-label="Back to Tavern"
-            className="mt-5"
-          >
-            ← Back to Tavern
-          </GameButton>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <GameButton
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onClick={handleBackToTavern}
+              aria-label="Back to Tavern"
+              className="min-h-[48px] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              ← Back to Tavern
+            </GameButton>
+            <GameButton
+              size="lg"
+              fullWidth
+              onClick={handleStart}
+              disabled={!character || character.currentStamina < STAMINA_COST}
+              aria-label="Play Again"
+              className="min-h-[48px] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span className="inline-flex items-center gap-1.5"><GameIcon name="dungeon-rush" size={16} /> Play Again</span>
+            </GameButton>
+          </div>
         </div>
       </div>
     );
@@ -486,6 +573,17 @@ const DungeonRushContent = () => {
             </p>
           )}
 
+          {/* Battle stats */}
+          {screen.fightResult.log && screen.fightResult.log.length > 0 ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Rounds: {screen.fightResult.log.length} | Damage dealt:{" "}
+              {screen.fightResult.log.reduce(
+                (sum, e) => sum + (e.actorId === character.id && e.damage != null ? e.damage : 0),
+                0,
+              )}
+            </p>
+          ) : null}
+
           {/* Wave progress pips */}
           <div className="mt-4 flex items-center justify-center gap-2">
             {Array.from({ length: TOTAL_WAVES }, (_, i) => {
@@ -496,7 +594,7 @@ const DungeonRushContent = () => {
               return (
                 <div
                   key={waveNum}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+                  className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold ${
                     isDone
                       ? "bg-emerald-600 text-white"
                       : isFailed
@@ -512,10 +610,11 @@ const DungeonRushContent = () => {
 
           <GameButton
             variant="secondary"
+            size="lg"
             fullWidth
             onClick={handleBackToTavern}
             aria-label="Back to Tavern"
-            className="mt-5"
+            className="mt-5 min-h-[48px] transition-transform hover:scale-[1.02] active:scale-[0.98]"
           >
             ← Back to Tavern
           </GameButton>
@@ -562,7 +661,7 @@ const DungeonRushContent = () => {
               return (
                 <div
                   key={waveNum}
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                  className={`flex h-11 w-11 items-center justify-center rounded-full text-xs font-bold transition-all hover:scale-110 hover:shadow-lg ${
                     isDone
                       ? "bg-emerald-600 text-white shadow-md shadow-emerald-900/40"
                       : isCurrent
@@ -622,15 +721,31 @@ const DungeonRushContent = () => {
                   onClick={() => handleFight(screen.runId!, currentWave)}
                   disabled={isFighting || abandoning}
                   aria-label={`Fight Wave ${currentWave}`}
+                  className="min-h-[48px] transition-transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                   {isFighting ? "Fighting..." : <span className="inline-flex items-center gap-1.5"><GameIcon name="fights" size={16} /> Fight Wave {currentWave}</span>}
                 </GameButton>
+                {currentWave >= 2 ? (
+                  <GameButton
+                    variant="ghost"
+                    size="lg"
+                    fullWidth
+                    onClick={handleClaimAndExit}
+                    disabled={isFighting || abandoning}
+                    aria-label="Claim rewards and exit"
+                    className="min-h-[48px]"
+                  >
+                    Claim rewards &amp; Exit
+                  </GameButton>
+                ) : null}
                 <GameButton
                   variant="secondary"
+                  size="lg"
                   fullWidth
-                  onClick={handleAbandon}
+                  onClick={() => setShowAbandonModal(true)}
                   disabled={abandoning || isFighting}
                   aria-label="Abandon Run"
+                  className="min-h-[48px] transition-transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                   {abandoning ? "Abandoning..." : "🚪 Abandon Run"}
                 </GameButton>
@@ -642,7 +757,7 @@ const DungeonRushContent = () => {
                 onClick={handleStart}
                 disabled={isStarting || !canAfford}
                 aria-label="Start Dungeon Rush"
-                className={!canAfford ? "bg-slate-800 text-slate-500" : ""}
+                className={[!canAfford ? "bg-slate-800 text-slate-500" : "", "min-h-[48px] transition-transform hover:scale-[1.02] active:scale-[0.98]"].filter(Boolean).join(" ")}
               >
                 {isStarting
                   ? "Preparing..."
@@ -656,30 +771,83 @@ const DungeonRushContent = () => {
 
         {/* Reward breakdown */}
         <div className="mt-4 rounded-xl border border-slate-700/40 bg-slate-900/40 p-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-            Reward Breakdown
-          </p>
-          <div className="space-y-1.5 text-xs text-slate-400">
-            {Array.from({ length: TOTAL_WAVES }, (_, i) => {
-              const w = i + 1;
-              return (
-                <div key={w} className="flex items-center justify-between">
-                  <span>Wave {w}</span>
-                  <span>
-                    <span className="text-yellow-400">{40 * w}g</span>
-                    {" + "}
-                    <span className="text-blue-400">{20 * w} XP</span>
-                  </span>
-                </div>
-              );
-            })}
-            <div className="flex items-center justify-between border-t border-slate-700/40 pt-1.5 font-bold text-amber-400">
-              <span>Full Clear Bonus</span>
-              <span>+200g</span>
+          <button
+            type="button"
+            onClick={() => setRewardsExpanded((v) => !v)}
+            aria-expanded={hasRun ? true : rewardsExpanded}
+            aria-label={rewardsExpanded || hasRun ? "Hide reward breakdown" : "Show reward breakdown"}
+            className="flex w-full items-center justify-between text-left text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-300"
+          >
+            <span>Reward Breakdown</span>
+            {!hasRun && (
+              <span className="text-slate-400">
+                {rewardsExpanded ? "▼ Hide" : "Show rewards ▶"}
+              </span>
+            )}
+          </button>
+          {(hasRun || rewardsExpanded) ? (
+            <div className="mt-2 space-y-1.5 text-xs text-slate-400">
+              {Array.from({ length: TOTAL_WAVES }, (_, i) => {
+                const w = i + 1;
+                const isDone = hasRun && w < currentWave;
+                const isCurrent = hasRun && w === currentWave;
+                return (
+                  <div
+                    key={w}
+                    className={`flex items-center justify-between ${isDone ? "line-through opacity-60" : ""} ${isCurrent ? "font-bold text-amber-400" : ""}`}
+                  >
+                    <span>Wave {w}</span>
+                    <span>
+                      <span className="text-yellow-400">{40 * w}g</span>
+                      {" + "}
+                      <span className="text-blue-400">{20 * w} XP</span>
+                    </span>
+                  </div>
+                );
+              })}
+              <div className="flex items-center justify-between border-t border-slate-700/40 pt-1.5 font-bold text-amber-400">
+                <span>Full Clear Bonus</span>
+                <span>+200g</span>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
+
+      {/* Abandon run confirmation modal */}
+      <GameModal
+        open={showAbandonModal}
+        onClose={() => setShowAbandonModal(false)}
+        size="sm"
+        title="Abandon run?"
+      >
+        <p className="mb-4 text-sm text-slate-300">
+          Are you sure? You&apos;ll lose your progress and 3 energy.
+        </p>
+        <div className="flex gap-3">
+          <GameButton
+            variant="secondary"
+            size="lg"
+            fullWidth
+            onClick={() => setShowAbandonModal(false)}
+            aria-label="Cancel"
+            className="min-h-[48px]"
+          >
+            Cancel
+          </GameButton>
+          <GameButton
+            variant="danger"
+            size="lg"
+            fullWidth
+            onClick={handleAbandonConfirm}
+            disabled={abandoning}
+            aria-label="Abandon"
+            className="min-h-[48px]"
+          >
+            {abandoning ? "Abandoning..." : "Abandon"}
+          </GameButton>
+        </div>
+      </GameModal>
     </div>
   );
 };

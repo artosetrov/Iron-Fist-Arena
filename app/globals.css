@@ -595,24 +595,38 @@ body {
   z-index: 0;
   display: flex;
   align-items: stretch;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 24px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: 1rem 2rem 0.5rem;
+  padding: 1rem 2rem 0.5rem 0;
 }
 
 .card-carousel::-webkit-scrollbar {
   display: none;
 }
 
-/* ── Dungeon card ── */
+/* When all cards fit, no scroll — shrink to content and center */
+.card-carousel--no-overflow {
+  overflow: visible;
+  justify-content: center;
+  width: max-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* ── Dungeon card (same size as hero cards in carousel) ── */
 .dungeon-card {
   scroll-snap-align: center;
-  flex: 0 0 min(640px, 85vw);
-  min-height: 700px;
+  flex: 0 0 min(300px, 85vw);
+  aspect-ratio: 9 / 14;
+  min-height: 0;
   transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
     box-shadow 0.35s ease;
 }

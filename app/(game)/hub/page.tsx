@@ -7,7 +7,56 @@ import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
 import GameModal from "@/app/components/ui/GameModal";
 import { WORLD, ARENA_LORE, NPC_QUOTES, HUB_BUILDING_LORE } from "@/lib/game/lore";
+import { STARTING_GOLD, STARTING_STAMINA } from "@/lib/game/balance";
 import dynamic from "next/dynamic";
+
+/* ────────────────── Welcome modal snapshot ────────────────── */
+
+const HUB_SNAPSHOT_KEY = "hub_char_snapshot";
+
+type CharSnapshot = {
+  id: string;
+  gold: number;
+  currentStamina: number;
+  level: number;
+  pvpWins: number;
+  pvpLosses: number;
+  pvpRating: number;
+  savedAt: number;
+};
+
+const saveSnapshot = (char: {
+  id: string;
+  gold: number;
+  currentStamina: number;
+  level: number;
+  pvpWins: number;
+  pvpLosses: number;
+  pvpRating: number;
+}) => {
+  try {
+    const snap: CharSnapshot = {
+      ...char,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(HUB_SNAPSHOT_KEY, JSON.stringify(snap));
+  } catch {
+    // ignore
+  }
+};
+
+const loadSnapshot = (): CharSnapshot | null => {
+  try {
+    const raw = localStorage.getItem(HUB_SNAPSHOT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as CharSnapshot;
+  } catch {
+    return null;
+  }
+};
+
+const formatClass = (c: string) =>
+  c.charAt(0).toUpperCase() + c.slice(1).toLowerCase();
 
 const HubWeatherFx = dynamic(
   () => import("@/app/components/HubWeatherFx"),
@@ -208,6 +257,19 @@ const FIRE_GRADIENTS: Record<FirePoint["color"], string> = {
 
 /* ────────────────── Component ────────────────── */
 
+type HubCharacter = {
+  id: string;
+  characterName: string;
+  class: string;
+  level: number;
+  gold: number;
+  currentStamina: number;
+  maxStamina: number;
+  pvpWins: number;
+  pvpLosses: number;
+  pvpRating: number;
+};
+
 const HubContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -221,6 +283,92 @@ const HubContent = () => {
   const [isLoreOpen, setIsLoreOpen] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<HubBuilding | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+
+  const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
+  const [hubCharacter, setHubCharacter] = useState<HubCharacter | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showWelcomeBackModal, setShowWelcomeBackModal] = useState(false);
+  const [welcomeBackDeltas, setWelcomeBackDeltas] = useState<{
+    gold: number;
+    stamina: number;
+    level: number;
+    pvpWins: number;
+    pvpLosses: number;
+    pvpRating: number;
+  } | null>(null);
+
+  /* Fetch welcome status and character; decide which modal to show */
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    Promise.all([
+      fetch("/api/user/welcome", { signal }).then((r) => r.json()),
+      fetch("/api/characters", { signal }).then((r) => r.json()),
+    ])
+      .then(([welcomeRes, charRes]) => {
+        const seen = welcomeRes.hasSeenWelcome === true;
+        const chars = charRes.characters as HubCharacter[] | undefined;
+        const char = chars?.length ? chars[0] : null;
+        setHasSeenWelcome(seen);
+        setHubCharacter(char ?? null);
+        if (!char) return;
+        if (!seen) {
+          setShowWelcomeModal(true);
+          return;
+        }
+        const snap = loadSnapshot();
+        if (snap && snap.id === char.id) {
+          setWelcomeBackDeltas({
+            gold: char.gold - snap.gold,
+            stamina: char.currentStamina - snap.currentStamina,
+            level: char.level - snap.level,
+            pvpWins: char.pvpWins - snap.pvpWins,
+            pvpLosses: char.pvpLosses - snap.pvpLosses,
+            pvpRating: char.pvpRating - snap.pvpRating,
+          });
+        } else {
+          setWelcomeBackDeltas(null);
+        }
+        setShowWelcomeBackModal(true);
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+      });
+    return () => controller.abort();
+  }, []);
+
+  const handleCloseWelcomeModal = useCallback(() => {
+    setShowWelcomeModal(false);
+    fetch("/api/user/welcome", { method: "POST" }).catch(() => {});
+    setHasSeenWelcome(true);
+    if (hubCharacter) {
+      saveSnapshot({
+        id: hubCharacter.id,
+        gold: hubCharacter.gold,
+        currentStamina: hubCharacter.currentStamina,
+        level: hubCharacter.level,
+        pvpWins: hubCharacter.pvpWins,
+        pvpLosses: hubCharacter.pvpLosses,
+        pvpRating: hubCharacter.pvpRating,
+      });
+    }
+  }, [hubCharacter]);
+
+  const handleCloseWelcomeBackModal = useCallback(() => {
+    setShowWelcomeBackModal(false);
+    setWelcomeBackDeltas(null);
+    if (hubCharacter) {
+      saveSnapshot({
+        id: hubCharacter.id,
+        gold: hubCharacter.gold,
+        currentStamina: hubCharacter.currentStamina,
+        level: hubCharacter.level,
+        pvpWins: hubCharacter.pvpWins,
+        pvpLosses: hubCharacter.pvpLosses,
+        pvpRating: hubCharacter.pvpRating,
+      });
+    }
+  }, [hubCharacter]);
 
   /* Detect mobile viewport */
   useEffect(() => {
@@ -430,7 +578,7 @@ const HubContent = () => {
               <button
                 key={b.id}
                 type="button"
-                className="absolute outline-none p-2"
+                className="absolute outline-none p-3 sm:p-2"
                 style={{
                   top: `${b.top}%`,
                   left: `${b.left}%`,
@@ -461,7 +609,7 @@ const HubContent = () => {
                     width={128}
                     height={128}
                     draggable={false}
-                    className="pointer-events-none h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28 lg:h-32 lg:w-32"
+                    className="pointer-events-none h-28 w-28 sm:h-28 sm:w-28 md:h-32 md:w-32 lg:h-36 lg:w-36"
                     sizes="112px"
                   />
                 </div>
@@ -592,6 +740,107 @@ const HubContent = () => {
               ))}
             </ul>
           </section>
+        </div>
+      </GameModal>
+
+      {/* Welcome (first-time) modal */}
+      <GameModal
+        open={showWelcomeModal}
+        onClose={handleCloseWelcomeModal}
+        size="lg"
+        title="Welcome to Stray City"
+      >
+        <div className="space-y-5 text-sm leading-relaxed text-slate-300">
+          {hubCharacter && (
+            <p>
+              Welcome, <span className="font-semibold text-amber-400">{hubCharacter.characterName}</span>{" "}
+              — {formatClass(hubCharacter.class)} of the Iron Fist. Here is what you need to know.
+            </p>
+          )}
+          <section>
+            <h3 className="mb-1 font-display font-bold text-amber-400">
+              Your starting resources
+            </h3>
+            <p>
+              You begin with <span className="font-semibold text-amber-300">{STARTING_GOLD} gold</span> and{" "}
+              <span className="font-semibold text-amber-300">{STARTING_STAMINA} energy</span>. Both are vital:
+              gold buys equipment and upgrades; energy is spent on arena fights, dungeons, and minigames, and it regenerates over time. Use them wisely.
+            </p>
+          </section>
+          <section>
+            <h3 className="mb-2 font-display font-bold text-amber-400">
+              Around the city
+            </h3>
+            <ul className="space-y-2">
+              <li><span className="font-semibold text-slate-200">{HUB_BUILDING_LORE.arena.name}</span> — PvP battles and ranking.</li>
+              <li><span className="font-semibold text-slate-200">{HUB_BUILDING_LORE.dungeon.name}</span> — Dungeons and loot.</li>
+              <li><span className="font-semibold text-slate-200">{HUB_BUILDING_LORE.shop.name}</span> — Buy gear and consumables.</li>
+              <li><span className="font-semibold text-slate-200">{HUB_BUILDING_LORE.training.name}</span> — Train and fight.</li>
+              <li><span className="font-semibold text-slate-200">{HUB_BUILDING_LORE.tavern.name}</span> — Minigames and side activities.</li>
+              <li><span className="font-semibold text-slate-200">{HUB_BUILDING_LORE.blacksmith.name}</span> — Inventory and equipment.</li>
+            </ul>
+          </section>
+          <button
+            type="button"
+            onClick={handleCloseWelcomeModal}
+            className="w-full rounded-xl border border-amber-500/40 bg-gradient-to-b from-amber-600 to-amber-700 px-4 py-3 font-display text-sm font-bold text-white shadow-lg shadow-amber-900/30 transition hover:from-amber-500 hover:to-amber-600 active:scale-[0.98]"
+            aria-label="Let's go"
+          >
+            Let&apos;s go!
+          </button>
+        </div>
+      </GameModal>
+
+      {/* Welcome back (returning) modal */}
+      <GameModal
+        open={showWelcomeBackModal}
+        onClose={handleCloseWelcomeBackModal}
+        size="md"
+        title="Welcome back"
+      >
+        <div className="space-y-4 text-sm">
+          {hubCharacter && (
+            <>
+              <p className="text-slate-300">
+                <span className="font-semibold text-amber-400">{hubCharacter.characterName}</span> — {formatClass(hubCharacter.class)}, Level {hubCharacter.level}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <span className="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-1.5 text-slate-200">
+                  Gold: {hubCharacter.gold}
+                  {welcomeBackDeltas && welcomeBackDeltas.gold !== 0 && (
+                    <span className={welcomeBackDeltas.gold > 0 ? " ml-1 text-emerald-400" : " ml-1 text-red-400"}>
+                      {welcomeBackDeltas.gold > 0 ? "+" : ""}{welcomeBackDeltas.gold}
+                    </span>
+                  )}
+                </span>
+                <span className="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-1.5 text-slate-200">
+                  Energy: {hubCharacter.currentStamina}/{hubCharacter.maxStamina}
+                  {welcomeBackDeltas && welcomeBackDeltas.stamina !== 0 && (
+                    <span className={welcomeBackDeltas.stamina > 0 ? " ml-1 text-emerald-400" : " ml-1 text-red-400"}>
+                      {welcomeBackDeltas.stamina > 0 ? "+" : ""}{welcomeBackDeltas.stamina}
+                    </span>
+                  )}
+                </span>
+                <span className="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-1.5 text-slate-200">
+                  PvP: {hubCharacter.pvpRating} ({hubCharacter.pvpWins}W / {hubCharacter.pvpLosses}L)
+                  {welcomeBackDeltas && (welcomeBackDeltas.pvpWins !== 0 || welcomeBackDeltas.pvpLosses !== 0) && (
+                    <span className="ml-1 text-slate-400">
+                      ({welcomeBackDeltas.pvpWins > 0 ? "+" : ""}{welcomeBackDeltas.pvpWins}W{" "}
+                      {welcomeBackDeltas.pvpLosses > 0 ? "+" : ""}{welcomeBackDeltas.pvpLosses}L)
+                    </span>
+                  )}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseWelcomeBackModal}
+                className="w-full rounded-xl border border-amber-500/40 bg-gradient-to-b from-amber-600 to-amber-700 px-4 py-3 font-display text-sm font-bold text-white shadow-lg shadow-amber-900/30 transition hover:from-amber-500 hover:to-amber-600 active:scale-[0.98]"
+                aria-label="To battle"
+              >
+                To battle!
+              </button>
+            </>
+          )}
         </div>
       </GameModal>
     </div>

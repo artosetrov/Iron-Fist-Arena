@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import HeroCard, { BOSS_IMAGES } from "@/app/components/HeroCard";
+import HeroCard from "@/app/components/HeroCard";
+import { BOSS_NAMES, getBossImagePath } from "@/lib/game/boss-catalog";
 import { useCombatVfx, CombatVfxOverlay, type VfxCommand } from "@/app/components/CombatVfxLayer";
 import { GameButton } from "@/app/components/ui";
 
@@ -137,7 +138,7 @@ const FighterCard = memo(({
         className={cls}
         origin={snapshot.origin}
         level={snapshot.level}
-        imageSrc={BOSS_IMAGES[snapshot.name]}
+        imageSrc={BOSS_NAMES.has(snapshot.name) ? getBossImagePath(snapshot.name) : undefined}
         hp={{ current: currentHp, max: snapshot.maxHp }}
         stats={{
           strength: snapshot.baseStats.strength,

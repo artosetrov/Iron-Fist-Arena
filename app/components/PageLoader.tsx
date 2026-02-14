@@ -82,12 +82,12 @@ const PageLoader = ({ emoji = "⚔️", icon, text = "Loading…" }: PageLoaderP
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/50" aria-hidden="true" />
 
       <div className="relative z-10 flex flex-col items-center gap-5 px-4 text-center">
-        {/* Icon */}
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-amber-900/40 bg-slate-900/80 shadow-lg shadow-amber-950/20">
+        {/* Icon — natural size when custom icon, else emoji */}
+        <div className="flex h-48 w-48 items-center justify-center rounded-full border border-amber-900/40 bg-slate-900/80 shadow-lg shadow-amber-950/20">
           {icon ? (
             <span className="flex items-center justify-center">{icon}</span>
           ) : (
-            <span className="text-2xl">{emoji}</span>
+            <span className="text-6xl">{emoji}</span>
           )}
         </div>
 

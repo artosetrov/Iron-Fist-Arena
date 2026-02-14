@@ -31,7 +31,7 @@ import { updateDailyQuestProgress } from "@/lib/game/quests";
 import { ratingForBossKill, ratingForDungeonComplete, getRankFromRating, rankOrder } from "@/lib/game/elo";
 import {
   BUY_RARITY_PRICE_MULT,
-  BUY_BASE_MULT,
+  BUY_BASE_COST,
   ITEM_LEVEL_VARIANCE_MIN,
   ITEM_LEVEL_VARIANCE_RANGE,
 } from "@/lib/game/balance";
@@ -238,6 +238,9 @@ export async function POST(
           const baseStats = generateItemStats(itemType, rarity);
           const rarityPriceMultiplier = BUY_RARITY_PRICE_MULT[rarity] ?? 1;
 
+          const buyPrice = Math.floor(
+            BUY_BASE_COST * Math.pow(1 + itemLevel / 10, 1.5) * rarityPriceMultiplier
+          );
           item = await tx.item.create({
             data: {
               itemName: generateItemName(itemType, rarity, dungeon.name),
@@ -245,7 +248,7 @@ export async function POST(
               rarity,
               itemLevel,
               baseStats,
-              buyPrice: itemLevel * BUY_BASE_MULT * rarityPriceMultiplier,
+              buyPrice,
             },
           });
         }

@@ -96,8 +96,8 @@ export async function POST(request: Request) {
 
       return {
         ok: true,
-        currentStamina: newStamina,
-        maxStamina,
+        currentStamina: Number(newStamina),
+        maxStamina: Number(maxStamina),
         lastStaminaUpdate: lastStaminaUpdate.toISOString(),
         staminaRestored: Math.min(def.staminaRestore, newStamina - currentStamina),
         remainingQuantity: inv.quantity - 1,

@@ -11,12 +11,13 @@ import StanceSelector from "@/app/components/StanceSelector";
 import type { CombatStance } from "@/lib/game/types";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
-import { BOSS_CATALOG } from "@/lib/game/boss-catalog";
+import { BOSS_CATALOG, getBossImagePath } from "@/lib/game/boss-catalog";
 import { BOSS_ABILITIES } from "@/lib/game/boss-abilities";
 import CardCarousel from "@/app/components/ui/CardCarousel";
 import { getBossStats } from "@/lib/game/dungeon";
 import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
-import { GameButton, GameCard, PageContainer } from "@/app/components/ui";
+import SkillIcon from "@/app/components/ui/SkillIcon";
+import { GameButton, GameCard, GameModal, PageContainer } from "@/app/components/ui";
 
 /* ────────────────── Types ────────────────── */
 
@@ -113,6 +114,23 @@ type FightResult = {
 };
 
 /* ────────────────── Screen state ────────────────── */
+
+/** Active run from GET /api/dungeons (when user already has a run in progress) */
+type ActiveRunInfo = {
+  runId: string;
+  dungeonId: string;
+  state: {
+    runId?: string;
+    characterId?: string;
+    dungeonId?: string;
+    bossIndex?: number;
+    bossName?: string;
+    bossMaxHp?: number;
+    bossCurrentHp?: number;
+    bossStats?: unknown;
+    rewards?: { gold: number; xp: number };
+  };
+};
 
 type DungeonScreen =
   | { kind: "list" }
@@ -281,20 +299,6 @@ const BOSS_AVATARS: Record<string, GameIconKey> = {
   "Archfiend Malachar": "helmet",
 };
 
-/** Boss-specific image paths (override emoji avatars when present) */
-const BOSS_IMAGES: Record<string, string> = {
-  "Straw Dummy": "/images/bosses/boss-straw-dummy.png",
-  "Rusty Automaton": "/images/bosses/boss-rusty-automaton.png",
-  "Barrel Golem": "/images/bosses/boss-barrel-golem.png",
-  "Plank Knight": "/images/bosses/boss-plank-knight.png",
-  "Flying Francis": "/images/bosses/boss-flying-francis.png",
-  "Scarecrow Mage": "/images/bosses/boss-scarecrow-mage.png",
-  "Mud Troll": "/images/bosses/boss-mud-troll.png",
-  "Possessed Mannequin": "/images/bosses/boss-possessed-mannequin.png",
-  "Iron Dummy": "/images/bosses/boss-iron-dummy.png",
-  "Drill Sergeant Grizzle": "/images/bosses/boss-drill-sergeant-grizzle.png",
-};
-
 /* ────────────────── Lore data ────────────────── */
 
 type DungeonLore = {
@@ -455,6 +459,10 @@ function DungeonContent() {
   const [screen, setScreen] = useState<DungeonScreen>({ kind: "list" });
   const [error, setError] = useState<string | null>(null);
   const [selectedBoss, setSelectedBoss] = useState<number | null>(null);
+  const [showBossDetailModal, setShowBossDetailModal] = useState(false);
+  const [activeRun, setActiveRun] = useState<ActiveRunInfo | null>(null);
+  const [showActiveRunModal, setShowActiveRunModal] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
   /* carousel refs removed — handled by CardCarousel */
 
   /* ── Load character + dungeons ── */
@@ -473,6 +481,7 @@ function DungeonContent() {
       const dungeonData = await dungeonRes.json();
       setCharacter(charData);
       setDungeons(dungeonData.dungeons ?? []);
+      setActiveRun(dungeonData.activeRun ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Loading error");
     } finally {
@@ -501,6 +510,16 @@ function DungeonContent() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.error === "You already have an active dungeon run") {
+          const dungeonRes = await fetch(`/api/dungeons?characterId=${characterId}`);
+          if (dungeonRes.ok) {
+            const dungeonData = await dungeonRes.json();
+            setActiveRun(dungeonData.activeRun ?? null);
+            setDungeons(dungeonData.dungeons ?? []);
+          }
+          setShowActiveRunModal(true);
+          return;
+        }
         setError(data.error ?? "Error");
         return;
       }
@@ -644,10 +663,86 @@ function DungeonContent() {
     window.dispatchEvent(new Event("character-updated"));
   };
 
+  const handleContinueActiveRun = () => {
+    if (!activeRun || !dungeons.length) return;
+    const dungeon = dungeons.find((d) => d.id === activeRun.dungeonId);
+    if (!dungeon) return;
+    const s = activeRun.state;
+    const bossIndex = s?.bossIndex ?? 0;
+    const bossEntry = dungeon.bosses[bossIndex];
+    setScreen({
+      kind: "boss",
+      dungeon,
+      runId: activeRun.runId,
+      boss: {
+        name: s?.bossName ?? bossEntry?.name ?? "Boss",
+        description: bossEntry?.description ?? "",
+        hp: s?.bossCurrentHp ?? s?.bossMaxHp ?? 100,
+        maxHp: s?.bossMaxHp ?? 100,
+      },
+    });
+    setShowActiveRunModal(false);
+  };
+
+  const handleAbandonActiveRun = async () => {
+    if (!activeRun || abandoning) return;
+    setAbandoning(true);
+    try {
+      const res = await fetch(`/api/dungeons/run/${activeRun.runId}/abandon`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to end run");
+        return;
+      }
+      setShowActiveRunModal(false);
+      setActiveRun(null);
+      await loadData();
+      window.dispatchEvent(new Event("character-updated"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setAbandoning(false);
+    }
+  };
+
   /* ── Loading ── */
   if (loading || !character) {
     return <PageLoader icon={<GameIcon name="dungeons" size={32} />} text="Loading dungeons…" />;
   }
+
+  /* ── Active run modal (global, so always on top when open) ── */
+  const activeRunModal = showActiveRunModal && (
+    <GameModal
+      open
+      onClose={() => setShowActiveRunModal(false)}
+      title="Active dungeon run"
+      size="sm"
+    >
+      <div className="space-y-4 p-1">
+        <p className="text-sm text-slate-300">
+          You already have an active dungeon run. Continue it or end it to start a new one.
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <GameButton
+            variant="secondary"
+            onClick={handleAbandonActiveRun}
+            disabled={abandoning}
+            aria-label="End dungeon run"
+          >
+            {abandoning ? "Ending…" : "End run"}
+          </GameButton>
+          <GameButton
+            variant="primary"
+            onClick={handleContinueActiveRun}
+            disabled={!activeRun || abandoning}
+            aria-label="Continue dungeon run"
+          >
+            Continue
+          </GameButton>
+        </div>
+      </div>
+    </GameModal>
+  );
 
   /* ══════════════════════════════════════════
      STANCE SELECTION — before boss fight
@@ -728,54 +823,147 @@ function DungeonContent() {
      ══════════════════════════════════════════ */
   if (screen.kind === "boss") {
     const { boss, dungeon } = screen;
-    const hpPercent = Math.round((boss.hp / boss.maxHp) * 100);
+    const bossIndex = dungeon.bossIndex ?? 0;
+    const dungeonImage = DUNGEON_IMAGES[dungeon.id];
+    const bossImageSrc = getBossImagePath(boss.name);
+
+    const hpClamped = Math.max(0, Math.min(boss.maxHp, boss.hp));
+    const hpPct = boss.maxHp > 0 ? Math.max(0, Math.min(100, (hpClamped / boss.maxHp) * 100)) : 0;
+    const hpBarColor =
+      hpPct > 60 ? "from-green-600 to-green-500" : hpPct > 30 ? "from-orange-600 to-orange-500" : "from-red-700 to-red-500";
+
+    const bossAbilitiesCatalogEntry = BOSS_CATALOG.find(
+      (b) => b.dungeonId === dungeon.id && b.bossIndex === bossIndex,
+    );
+    const abilityMap = new Map(BOSS_ABILITIES.map((a) => [a.id, a]));
+    const bossAbilities = bossAbilitiesCatalogEntry
+      ? bossAbilitiesCatalogEntry.abilityIds.map((id) => abilityMap.get(id)).filter(Boolean)
+      : [];
+    const ABILITY_TYPE_COLOR: Record<string, string> = {
+      physical: "text-red-400",
+      magic: "text-blue-400",
+      buff: "text-amber-400",
+    };
 
     return (
-      <div className="flex min-h-full flex-col p-4 lg:p-6">
-        <PageHeader
-          title={`${dungeon.theme.icon} ${dungeon.name}`}
-          leftOnClick={handleBackToList}
-          leftLabel="Back to dungeons"
-          hideClose
-          actions={
-            <div className="w-28 shrink-0">
-              <div className="relative h-6 w-full overflow-hidden rounded-full border border-slate-700 bg-slate-800">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
-                  style={{ width: `${character.maxStamina ? (character.currentStamina / character.maxStamina) * 100 : 0}%` }}
+      <div className="relative min-h-full">
+        {/* Background: dungeon image or gradient, then dark overlay */}
+        <div className="absolute inset-0 bg-slate-900">
+          {dungeonImage ? (
+            <Image
+              src={dungeonImage}
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover"
+              priority
+            />
+          ) : (
+            <div className={`h-full w-full bg-gradient-to-br ${dungeon.theme.gradient}`} />
+          )}
+        </div>
+        <div className="absolute inset-0 bg-slate-950/60" aria-hidden />
+
+        {/* Content */}
+        <div className="relative z-10 flex min-h-full flex-col">
+          <PageHeader
+            title={`${dungeon.theme.icon} ${dungeon.name}`}
+            leftOnClick={handleBackToList}
+            leftLabel="Back to dungeons"
+            hideClose
+            actions={
+              <div className="w-28 shrink-0">
+                <div className="relative h-6 w-full overflow-hidden rounded-full border border-slate-700 bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
+                    style={{ width: `${character.maxStamina ? (character.currentStamina / character.maxStamina) * 100 : 0}%` }}
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center gap-0.5 text-xs font-bold leading-none text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                    <GameIcon name="stamina" size={14} /> {character.currentStamina}/{character.maxStamina}
+                  </span>
+                </div>
+              </div>
+            }
+          />
+
+          <div className="flex flex-1 flex-col items-center justify-center p-4">
+            <p className="mb-2 text-sm text-slate-400">
+              Boss{" "}
+              <span className="font-bold text-white">{bossIndex + 1}</span> / {dungeon.bosses.length}
+            </p>
+
+            {/* Large boss image — no card, no borders; fallback to random other boss image */}
+            <div className="relative flex w-full max-w-2xl justify-center">
+              {bossImageSrc ? (
+                <Image
+                  src={bossImageSrc}
+                  alt={boss.name}
+                  width={1024}
+                  height={1024}
+                  className="max-h-[55vh] w-auto object-contain"
+                  sizes="(max-width: 672px) 100vw, 672px"
                 />
-                <span className="absolute inset-0 flex items-center justify-center gap-0.5 text-xs font-bold leading-none text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-                  <GameIcon name="stamina" size={14} /> {character.currentStamina}/{character.maxStamina}
+              ) : (
+                <div
+                  className="flex max-h-[55vh] min-h-[200px] w-full max-w-md items-center justify-center rounded-xl bg-slate-800/40"
+                  aria-hidden
+                >
+                  <span className="text-8xl">👹</span>
+                </div>
+              )}
+            </div>
+
+            {/* HP bar — same style as HeroCard */}
+            <div className="mt-4 w-full max-w-xs px-2">
+              <div className="relative h-7 w-full overflow-hidden rounded-full border border-slate-600/80 bg-slate-900/80">
+                <div
+                  className={`absolute inset-y-0 left-0 bg-gradient-to-r ${hpBarColor} transition-all duration-500 ease-out`}
+                  style={{ width: `${hpPct}%` }}
+                />
+                <span className="absolute inset-0 flex items-center justify-center font-display text-sm text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                  {hpClamped.toLocaleString()} / {boss.maxHp.toLocaleString()}
                 </span>
               </div>
             </div>
-          }
-        />
 
-        {/* Boss card */}
-        <div className="mb-6 flex flex-col items-center">
-          <p className="mb-3 text-sm text-slate-400">
-            Boss{" "}
-            <span className="font-bold text-white">
-              {(screen.dungeon.bossIndex ?? 0) + 1}
-            </span>{" "}
-            / {dungeon.bosses.length}
-          </p>
-          <div className="hero-card-container--fixed">
-            <HeroCard
-              name={boss.name}
-              variant="default"
-              imageSrc={BOSS_IMAGES[boss.name]}
-              description={boss.description}
-              hp={{ current: boss.hp, max: boss.maxHp }}
-            >
-              {error && <p className="px-3 pb-2 text-sm text-red-400">{error}</p>}
-              <div className="flex justify-center px-3 pb-3">
-                <GameButton onClick={handleFight} disabled={fighting} aria-label="Fight Boss" size="lg">
-                  {fighting ? "Fighting…" : <><GameIcon name="fights" size={16} /> Fight Boss</>}
-                </GameButton>
+            {/* Boss abilities */}
+            {bossAbilities.length > 0 && (
+              <div className="mt-3 flex flex-wrap justify-center gap-4 gap-y-3">
+                {bossAbilities.map((ability) => {
+                  if (!ability) return null;
+                  return (
+                    <div
+                      key={ability.id}
+                      className="flex min-w-[72px] flex-col items-center gap-1"
+                      aria-label={ability.name}
+                    >
+                      <SkillIcon abilityId={ability.id} abilityType={ability.type} size={40} />
+                      <span
+                        className={`text-center text-sm font-medium ${ABILITY_TYPE_COLOR[ability.type] ?? "text-slate-400"}`}
+                      >
+                        {ability.name}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            </HeroCard>
+            )}
+
+            {error && (
+              <p className="mt-3 text-center text-sm text-red-400" role="alert">
+                {error}
+              </p>
+            )}
+
+            <GameButton
+              onClick={handleFight}
+              disabled={fighting}
+              aria-label="Start duel"
+              size="xl"
+              className="mt-6"
+            >
+              {fighting ? "FIGHTING…" : "START DUEL"}
+            </GameButton>
           </div>
         </div>
       </div>
@@ -855,102 +1043,6 @@ function DungeonContent() {
       ? getBossStats(character.level, activeBoss as Parameters<typeof getBossStats>[1])
       : null;
 
-    /** Render boss abilities + loot children for HeroCard */
-    const renderBossCardChildren = (bossIdx: number, locked: boolean) => {
-      if (locked) return null;
-      const drops = getBossPossibleDrops(dungeonIndex, bossIdx);
-      return (
-        <>
-          {/* Boss Abilities */}
-          {(() => {
-            const catalogEntry = BOSS_CATALOG.find(
-              (b) => b.dungeonId === dungeon.id && b.bossIndex === bossIdx,
-            );
-            if (!catalogEntry) return null;
-            const abilityMap = new Map(BOSS_ABILITIES.map((a) => [a.id, a]));
-            const abilities = catalogEntry.abilityIds
-              .map((id) => abilityMap.get(id))
-              .filter(Boolean);
-            if (abilities.length === 0) return null;
-
-            const TYPE_ICON: Record<string, GameIconKey> = {
-              physical: "fights",
-              magic: "charisma",
-              buff: "endurance",
-            };
-            const TYPE_COLOR: Record<string, string> = {
-              physical: "text-red-400",
-              magic: "text-blue-400",
-              buff: "text-amber-400",
-            };
-
-            return (
-              <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 px-3 pb-2">
-                {abilities.map((ability) => {
-                  if (!ability) return null;
-                  return (
-                    <span
-                      key={ability.id}
-                      className={`inline-flex items-center gap-1 text-[11px] font-medium ${TYPE_COLOR[ability.type] ?? "text-slate-400"}`}
-                      title={[
-                        ability.type === "buff"
-                          ? ability.selfBuff
-                            ? Object.entries(ability.selfBuff).map(([k, v]) => `+${Math.round(v * 100)}% ${k}`).join(", ")
-                            : ability.dodgeBonus ? `+${ability.dodgeBonus}% dodge` : "buff"
-                          : `${ability.multiplier}x${ability.hits && ability.hits > 1 ? ` ×${ability.hits}` : ""}`,
-                        ability.status ? `${Math.round(ability.status.chance * 100)}% ${ability.status.type}` : null,
-                        ability.armorBreak ? `-${Math.round(ability.armorBreak * 100)}% armor` : null,
-                        ability.critBonus ? `+${ability.critBonus}% crit` : null,
-                        `CD ${ability.cooldown}`,
-                      ].filter(Boolean).join(" · ")}
-                    >
-                      <GameIcon name={TYPE_ICON[ability.type] ?? "dungeons"} size={14} />
-                      {ability.name}
-                    </span>
-                  );
-                })}
-              </div>
-            );
-          })()}
-
-          {/* Possible Loot */}
-          <div className="flex flex-wrap items-center justify-center gap-1.5 px-3 pb-3">
-            {drops.map((drop, i) => {
-              const rarityBorder: Record<string, string> = {
-                common: "border-slate-400",
-                uncommon: "border-green-500",
-                rare: "border-blue-500",
-                epic: "border-purple-500",
-                legendary: "border-amber-500",
-              };
-              const rarityBg: Record<string, string> = {
-                common: "bg-slate-800/60",
-                uncommon: "bg-green-950/60",
-                rare: "bg-blue-950/60",
-                epic: "bg-purple-950/60",
-                legendary: "bg-amber-950/60",
-              };
-              return (
-                <div
-                  key={i}
-                  className={`flex h-11 w-11 items-center justify-center rounded-md border-2 transition-all hover:brightness-125 ${rarityBorder[drop.rarity] ?? "border-slate-400"} ${rarityBg[drop.rarity] ?? "bg-slate-800/60"}`}
-                  title={`${drop.name} — ${drop.rarity} ${drop.slot}`}
-                >
-                  <GameIcon name={SLOT_ICON[drop.slot] ?? "chest"} size={24} />
-                </div>
-              );
-            })}
-            <div
-              className="flex h-11 w-11 items-center justify-center rounded-md border-2 border-yellow-700/40 bg-yellow-900/30 transition-all hover:brightness-125"
-              title={`Gold ~${20 + dungeonIndex * 30 + Math.floor((20 + dungeonIndex * 30) * bossIdx * 0.2)}g`}
-            >
-              <GameIcon name="gold" size={24} />
-            </div>
-          </div>
-        </>
-      );
-    };
-
     /** Render fight button / status for a boss */
     const renderFightAction = (bossIdx: number) => {
       const bDefeated = bossIdx < dungeon.bossIndex;
@@ -1010,12 +1102,14 @@ function DungeonContent() {
     /* handleScrollBossCarousel removed — handled by CardCarousel */
 
     return (
-      <div className="flex min-h-full flex-col p-4 lg:p-6">
-        <PageHeader
-          title={`${dungeon.theme.icon} ${dungeon.name}`}
-          leftOnClick={() => { setSelectedBoss(null); handleBackToList(); }}
-          leftLabel="Back to dungeons"
-        />
+      <>
+        {activeRunModal}
+        <div className="flex min-h-full flex-col p-4 lg:p-6">
+          <PageHeader
+            title={`${dungeon.theme.icon} ${dungeon.name}`}
+            leftOnClick={() => { setSelectedBoss(null); handleBackToList(); }}
+            leftLabel="Back to dungeons"
+          />
 
         {/* Stamina bar — click to go to potions shop */}
         <Link
@@ -1091,7 +1185,7 @@ function DungeonContent() {
                     variant="compact"
                     level={boss.level}
                     icon={locked ? "🔒" : undefined}
-                    imageSrc={!locked ? BOSS_IMAGES[boss.name] : undefined}
+                    imageSrc={!locked ? getBossImagePath(boss.name) : undefined}
                     description={
                       locked
                         ? "Defeat the previous boss to reveal this enemy."
@@ -1102,11 +1196,10 @@ function DungeonContent() {
                         ? { current: stats.maxHp, max: stats.maxHp }
                         : undefined
                     }
+                    hideStats
                     hideDescription={false}
                     disabled={locked}
-                  >
-                    {renderBossCardChildren(boss.index, locked)}
-                  </HeroCard>
+                  />
 
                   {renderFightAction(boss.index)}
                 </div>
@@ -1192,7 +1285,7 @@ function DungeonContent() {
                         <div
                           className={`
                             relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl shadow-md
-                            ${!locked && BOSS_IMAGES[boss.name]
+                            ${!locked && getBossImagePath(boss.name)
                               ? "bg-transparent"
                               : defeated
                                 ? "bg-gradient-to-br from-green-800 to-green-900"
@@ -1204,10 +1297,10 @@ function DungeonContent() {
                             }
                           `}
                         >
-                          {locked ? "🔒" : BOSS_IMAGES[boss.name] ? (
+                          {locked ? "🔒" : getBossImagePath(boss.name) ? (
                             <div className="h-full w-full overflow-hidden rounded-xl">
                               <Image
-                                src={BOSS_IMAGES[boss.name]}
+                                src={getBossImagePath(boss.name)!}
                                 alt={boss.name}
                                 width={1024}
                                 height={1024}
@@ -1275,14 +1368,21 @@ function DungeonContent() {
               )}
             </div>
 
-            {/* Boss HeroCard */}
-            <div className="hero-card-container--fixed">
+            {/* Boss HeroCard — click to open detail modal */}
+            <div
+              className={`hero-card-container--fixed ${!isBossLocked ? "cursor-pointer" : ""}`}
+              role={!isBossLocked ? "button" : undefined}
+              tabIndex={!isBossLocked ? 0 : undefined}
+              aria-label={!isBossLocked ? `${activeBoss.name} — view details` : undefined}
+              onClick={() => !isBossLocked && setShowBossDetailModal(true)}
+              onKeyDown={(e) => !isBossLocked && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setShowBossDetailModal(true))}
+            >
               <HeroCard
                 name={isBossLocked ? "???" : activeBoss.name}
                 variant="default"
                 level={activeBoss.level}
                 icon={isBossLocked ? "🔒" : undefined}
-                imageSrc={!isBossLocked ? BOSS_IMAGES[activeBoss.name] : undefined}
+                imageSrc={!isBossLocked ? getBossImagePath(activeBoss.name) : undefined}
                 description={
                   isBossLocked
                     ? "Defeat the previous boss to reveal this enemy."
@@ -1293,24 +1393,9 @@ function DungeonContent() {
                     ? { current: bossPreviewStats.maxHp, max: bossPreviewStats.maxHp }
                     : undefined
                 }
-                stats={
-                  bossPreviewStats
-                    ? {
-                        strength: bossPreviewStats.strength,
-                        agility: bossPreviewStats.agility,
-                        intelligence: bossPreviewStats.intelligence,
-                        vitality: bossPreviewStats.vitality,
-                        endurance: bossPreviewStats.endurance,
-                        wisdom: bossPreviewStats.wisdom,
-                        luck: bossPreviewStats.luck,
-                        charisma: bossPreviewStats.charisma,
-                      }
-                    : undefined
-                }
+                hideStats
                 disabled={isBossLocked}
-              >
-                {renderBossCardChildren(selectedBossIndex, isBossLocked)}
-              </HeroCard>
+              />
             </div>
 
             {/* Error */}
@@ -1318,11 +1403,216 @@ function DungeonContent() {
               <p className="mt-3 mb-3 text-sm text-red-400" role="alert">{error}</p>
             )}
 
-            {/* Fight button — only for current boss */}
-            {renderFightAction(selectedBossIndex)}
+            {/* Fight button — same width as hero card (280px) */}
+            <div className="w-[280px]">
+              {renderFightAction(selectedBossIndex)}
+            </div>
+
+            {/* Boss detail modal */}
+            <GameModal
+              open={showBossDetailModal}
+              onClose={() => setShowBossDetailModal(false)}
+              title={isBossLocked ? "???" : activeBoss.name}
+              size="lg"
+            >
+              <div className="space-y-4">
+                <div className="relative flex items-start gap-4">
+                  {!isBossLocked && (
+                    <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl">
+                      <Image
+                        src={getBossImagePath(activeBoss.name)}
+                        alt={activeBoss.name}
+                        fill
+                        className="object-cover object-center"
+                        sizes="96px"
+                      />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    {!isBossLocked && (
+                      <>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Описание
+                        </p>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                          {activeBoss.description}
+                        </p>
+                      </>
+                    )}
+                    {isBossLocked && (
+                      <p className="text-sm text-slate-500">
+                        Defeat the previous boss to reveal this enemy.
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <span>Level {activeBoss.level}</span>
+                      <span>·</span>
+                      <span>Boss {selectedBossIndex + 1}/{dungeon.bosses.length}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {!isBossLocked && bossPreviewStats && (
+                  <>
+                    <div>
+                      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Characteristics</p>
+                      <div className="hero-card-stats flex flex-col gap-1 px-0 py-0">
+                        {[
+                          { key: "STR", val: bossPreviewStats.strength, fillColor: "#ef4444" },
+                          { key: "AGI", val: bossPreviewStats.agility, fillColor: "#10b981" },
+                          { key: "INT", val: bossPreviewStats.intelligence, fillColor: "#3b82f6" },
+                          { key: "VIT", val: bossPreviewStats.vitality, fillColor: "#ec4899" },
+                          { key: "END", val: bossPreviewStats.endurance, fillColor: "#f97316" },
+                          { key: "WIS", val: bossPreviewStats.wisdom, fillColor: "#6366f1" },
+                          { key: "LCK", val: bossPreviewStats.luck, fillColor: "#f59e0b" },
+                          { key: "CHA", val: bossPreviewStats.charisma, fillColor: "#a855f7" },
+                        ].map(({ key, val, fillColor }) => {
+                          const statMax = 100;
+                          const pct = Math.max(0, Math.min(100, (val / statMax) * 100));
+                          return (
+                            <div key={key} className="flex items-center gap-1.5">
+                              <span className="w-7 text-[10px] font-bold uppercase tracking-wide text-slate-500">{key}</span>
+                              <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-slate-800/80">
+                                <div
+                                  className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                                  style={{ width: `${pct}%`, backgroundColor: fillColor }}
+                                />
+                              </div>
+                              <span className="w-6 text-right font-display text-[11px] tabular-nums text-white">{val}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500">HP {bossPreviewStats.maxHp}</p>
+                    </div>
+
+                    {(() => {
+                      const catalogEntry = BOSS_CATALOG.find(
+                        (b) => b.dungeonId === dungeon.id && b.bossIndex === selectedBossIndex,
+                      );
+                      if (!catalogEntry) return null;
+                      const abilityMap = new Map(BOSS_ABILITIES.map((a) => [a.id, a]));
+                      const abilities = catalogEntry.abilityIds
+                        .map((id) => abilityMap.get(id))
+                        .filter(Boolean);
+                      if (abilities.length === 0) return null;
+                      const TYPE_COLOR: Record<string, string> = {
+                        physical: "text-red-400",
+                        magic: "text-blue-400",
+                        buff: "text-amber-400",
+                      };
+                      const formatAbilityDescription = (a: (typeof BOSS_ABILITIES)[number]): string => {
+                        const parts: string[] = [];
+                        if (a.type === "buff") {
+                          if (a.selfBuff && Object.keys(a.selfBuff).length > 0) {
+                            parts.push(Object.entries(a.selfBuff).map(([k, v]) => `+${Math.round(v * 100)}% ${k}`).join(", "));
+                          }
+                          if (a.dodgeBonus != null) parts.push(`+${a.dodgeBonus}% dodge${a.dodgeBonusTurns ? ` ${a.dodgeBonusTurns} turns` : ""}`);
+                          if (a.status) parts.push(`${Math.round(a.status.chance * 100)}% ${a.status.type} ${a.status.duration}t`);
+                        } else {
+                          parts.push(`${a.multiplier}x${a.hits && a.hits > 1 ? ` ×${a.hits}` : ""} ${a.type}`);
+                          if (a.status) parts.push(`${Math.round(a.status.chance * 100)}% ${a.status.type} ${a.status.duration}t`);
+                          if (a.armorBreak) parts.push(`-${Math.round(a.armorBreak * 100)}% armor`);
+                          if (a.critBonus) parts.push(`+${a.critBonus}% crit`);
+                        }
+                        parts.push(`CD ${a.cooldown}`);
+                        return parts.filter(Boolean).join(" · ");
+                      };
+                      return (
+                        <div>
+                          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Abilities</p>
+                          <ul className="space-y-4 text-sm">
+                            {abilities.map((ability) => (
+                              <li
+                                key={ability!.id}
+                                className={`flex gap-3 ${TYPE_COLOR[ability!.type] ?? "text-slate-300"}`}
+                              >
+                                <SkillIcon
+                                  abilityId={ability!.id}
+                                  abilityType={ability!.type}
+                                  size={44}
+                                  className="h-11 w-11 shrink-0 rounded-md border-2 border-slate-600 bg-slate-800/60 object-cover"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-semibold text-white">{ability!.name}</p>
+                                  <p className="mt-0.5 text-xs text-slate-400">
+                                    {formatAbilityDescription(ability!)}
+                                  </p>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })()}
+
+                    {(() => {
+                      const drops = getBossPossibleDrops(dungeonIndex, selectedBossIndex);
+                      const goldEstimate = 20 + dungeonIndex * 30 + Math.floor((20 + dungeonIndex * 30) * selectedBossIndex * 0.2);
+                      const slotLabel: Record<string, string> = {
+                        weapon: "Weapon",
+                        helmet: "Helmet",
+                        chest: "Chest",
+                        gloves: "Gloves",
+                        boots: "Boots",
+                        legs: "Legs",
+                        necklace: "Necklace",
+                        ring: "Ring",
+                        accessory: "Accessory",
+                      };
+                      const rarityLabel: Record<string, string> = {
+                        common: "Common — primary stat +15–30",
+                        uncommon: "Uncommon — primary +20–40, secondary possible",
+                        rare: "Rare — 2–3 stats, higher rolls",
+                        epic: "Epic — 3–4 stats, set bonuses",
+                        legendary: "Legendary — 4+ stats, unique effect",
+                      };
+                      return (
+                        <div>
+                          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Possible drops</p>
+                          <ul className="space-y-4 text-sm">
+                            {drops.map((drop, i) => (
+                              <li key={i} className="flex gap-3">
+                                <div
+                                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-slate-800/60"
+                                  aria-hidden
+                                >
+                                  <GameIcon name={SLOT_ICON[drop.slot] ?? "chest"} size={28} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-semibold text-white">{drop.name}</p>
+                                  <p className="mt-0.5 text-xs text-slate-400">
+                                    {slotLabel[drop.slot] ?? drop.slot} · {rarityLabel[drop.rarity] ?? drop.rarity}
+                                  </p>
+                                </div>
+                              </li>
+                            ))}
+                            <li className="flex gap-3">
+                              <div
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-slate-800/60"
+                                aria-hidden
+                              >
+                                <GameIcon name="gold" size={28} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-white">Gold</p>
+                                <p className="mt-0.5 text-xs text-slate-400">
+                                  ~{goldEstimate}g reward for defeating this boss
+                                </p>
+                              </div>
+                            </li>
+                          </ul>
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+              </div>
+            </GameModal>
           </div>
         </div>
       </div>
+      </>
     );
   }
 
@@ -1333,6 +1623,7 @@ function DungeonContent() {
 
   return (
     <PageContainer>
+      {activeRunModal}
       <PageHeader title="Dungeons" />
 
       {/* Error */}

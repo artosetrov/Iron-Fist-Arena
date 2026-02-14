@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FormInput from "@/app/components/FormInput";
 import HeroCard from "@/app/components/HeroCard";
+import { getBossImagePath } from "@/lib/game/boss-catalog";
 import PageLoader from "@/app/components/PageLoader";
 import GameIcon from "@/app/components/ui/GameIcon";
 import {
@@ -213,7 +214,7 @@ const PREVIEW_BOSS_PROPS = {
   name: "Iron Dummy",
   level: 15,
   hp: { current: 2800, max: 3500 } as const,
-  imageSrc: "/images/bosses/boss-iron-dummy.png",
+  imageSrc: getBossImagePath("Iron Dummy"),
   description: "A relentless training construct",
   stats: { strength: 40, agility: 15, intelligence: 10, endurance: 35, luck: 5 },
 } as const;
@@ -251,7 +252,7 @@ const HeroCardPreview = () => (
             name="Drill Sergeant Grizzle"
             level={25}
             hp={{ current: 4200, max: 6000 }}
-            imageSrc="/images/bosses/boss-drill-sergeant-grizzle.png"
+            imageSrc={getBossImagePath("Drill Sergeant Grizzle")}
             description="The toughest drill instructor"
             stats={PREVIEW_BOSS_PROPS.stats}
             statSize="sm"

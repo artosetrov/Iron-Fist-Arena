@@ -23,6 +23,7 @@ import { GameButton, GameModal, PageContainer } from "@/app/components/ui";
 import GameIcon from "@/app/components/ui/GameIcon";
 import type { GameIconKey } from "@/app/components/ui/GameIcon";
 import CardCarousel from "@/app/components/ui/CardCarousel";
+import { getBossImagePath } from "@/lib/game/boss-catalog";
 import {
   collectBattleAssets,
   preloadImages,
@@ -128,7 +129,7 @@ const PRESETS: PresetCard[] = [
     icon: "warrior",
     description: "High STR, moderate VIT. Hits hard but predictable.",
     vitW: 1.0,
-    imageSrc: "/images/bosses/boss-straw-dummy.png",
+    imageSrc: getBossImagePath("Straw Dummy"),
   },
   {
     id: "rogue",
@@ -136,7 +137,7 @@ const PRESETS: PresetCard[] = [
     icon: "rogue",
     description: "High AGI & LCK. Fast and evasive, but fragile.",
     vitW: 0.6,
-    imageSrc: "/images/bosses/boss-flying-francis.png",
+    imageSrc: getBossImagePath("Flying Francis"),
   },
   {
     id: "mage",
@@ -144,7 +145,7 @@ const PRESETS: PresetCard[] = [
     icon: "mage",
     description: "High INT & WIS. Devastating spells, low HP.",
     vitW: 0.7,
-    imageSrc: "/images/bosses/boss-scarecrow-mage.png",
+    imageSrc: getBossImagePath("Scarecrow Mage"),
   },
   {
     id: "tank",
@@ -152,7 +153,7 @@ const PRESETS: PresetCard[] = [
     icon: "tank",
     description: "High VIT & END. Extremely tanky but slow.",
     vitW: 1.3,
-    imageSrc: "/images/bosses/boss-barrel-golem.png",
+    imageSrc: getBossImagePath("Barrel Golem"),
   },
 ];
 
@@ -419,7 +420,7 @@ function CombatContent() {
   };
 
   if (loading || !character) {
-    return <PageLoader icon={<GameIcon name="training" size={32} />} text="Loading Training Arena…" />;
+    return <PageLoader icon={<GameIcon name="training" size={128} />} text="Loading Training Arena…" />;
   }
 
   /* ── Loading screen (preloading VFX assets + waiting for API) ── */
@@ -468,11 +469,11 @@ function CombatContent() {
               <div
                 key={i}
                 className={`h-2 w-2 rounded-full transition-colors ${
-                  i >= status.used
+                  i < status.remaining
                     ? "bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.4)]"
                     : "bg-slate-700/50 ring-1 ring-slate-600/50"
                 }`}
-                aria-label={i >= status.used ? "Available" : "Used"}
+                aria-label={i < status.remaining ? "Available" : "Used"}
               />
             ))}
           </div>
@@ -646,7 +647,7 @@ function CombatContent() {
 
 export default function CombatPage() {
   return (
-    <Suspense fallback={<PageLoader icon={<GameIcon name="training" size={32} />} text="Loading Training Arena…" />}>
+    <Suspense fallback={<PageLoader icon={<GameIcon name="training" size={128} />} text="Loading Training Arena…" />}>
       <CombatContent />
     </Suspense>
   );

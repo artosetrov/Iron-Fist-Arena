@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import PageHeader from "@/app/components/PageHeader";
@@ -22,6 +22,7 @@ import {
 } from "@/lib/game/weapon-affinity";
 import { GameButton, PageContainer } from "@/app/components/ui";
 import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
+import { flyItemToSidebar } from "@/lib/game/fly-item-to-sidebar";
 
 /* ────────────────── Constants ────────────────── */
 
@@ -562,6 +563,8 @@ const ItemDetailModal = ({
   characterClass?: string;
   onClose: () => void;
 }) => {
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const [isFlying, setIsFlying] = useState(false);
   const rarity = RARITY_CONFIG[item.rarity] ?? RARITY_CONFIG.common;
   const itemType = ITEM_TYPE_CONFIG[item.itemType] ?? { label: item.itemType, icon: "accessory" as GameIconKey };
   const stats = item.baseStats ?? {};
@@ -569,6 +572,28 @@ const ItemDetailModal = ({
   const isBuying = buying === item.id;
   const primaryStat = getPrimaryStat(item);
   const itemClass = getItemClass(item);
+
+  const handleBuyClick = useCallback(() => {
+    if (!canAfford || isBuying || isFlying) return;
+    const container = imageContainerRef.current;
+    const rect = container?.getBoundingClientRect();
+    const catalogItem = item.catalogId ? getCatalogItemById(item.catalogId) : null;
+    const imageSrc =
+      catalogItem
+        ? getItemImagePath(catalogItem)
+        : (container?.querySelector("img") as HTMLImageElement | null)?.currentSrc ?? null;
+
+    if (!rect || !imageSrc) {
+      onBuy(item.id);
+      onClose();
+      return;
+    }
+    setIsFlying(true);
+    flyItemToSidebar(rect, imageSrc, () => {
+      onBuy(item.id);
+      onClose();
+    });
+  }, [canAfford, isBuying, isFlying, item.catalogId, item.id, onBuy, onClose]);
 
   const isAffinityWeapon = (() => {
     if (item.itemType !== "weapon" || !characterClass) return false;
@@ -630,7 +655,10 @@ const ItemDetailModal = ({
             </p>
           </div>
           {/* Item icon on right */}
-          <div className="flex h-44 w-44 shrink-0 items-center justify-center">
+          <div
+            ref={imageContainerRef}
+            className="flex h-44 w-44 shrink-0 items-center justify-center"
+          >
             <ItemImage item={item} size={176} />
           </div>
         </div>
@@ -753,13 +781,13 @@ const ItemDetailModal = ({
           </div>
           <GameButton
             variant={canAfford ? "primary" : "secondary"}
-            onClick={() => onBuy(item.id)}
-            disabled={!canAfford || isBuying}
+            onClick={handleBuyClick}
+            disabled={!canAfford || isBuying || isFlying}
             aria-label={`Buy ${item.itemName}`}
             tabIndex={0}
             className="w-full justify-center"
           >
-            {isBuying ? (
+            {isBuying || isFlying ? (
               <span className="flex items-center gap-2">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 Buying...
@@ -869,10 +897,27 @@ const ConsumableDetailModal = ({
   buying: string | null;
   onClose: () => void;
 }) => {
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const [isFlying, setIsFlying] = useState(false);
   const isBuying = buying === consumable.type;
   const atMaxStack = ownedQty >= consumable.maxStack;
   const currencyIconKey: GameIconKey = consumable.currency === "gold" ? "gold" : "gems";
   const canBuy = canAfford && !atMaxStack;
+
+  const handleBuyClick = useCallback(() => {
+    if (!canBuy || isBuying || isFlying) return;
+    const rect = imageContainerRef.current?.getBoundingClientRect();
+    if (!rect) {
+      onBuy(consumable.type);
+      onClose();
+      return;
+    }
+    setIsFlying(true);
+    flyItemToSidebar(rect, getConsumableImagePath(consumable.type), () => {
+      onBuy(consumable.type);
+      onClose();
+    });
+  }, [canBuy, isBuying, isFlying, consumable.type, onBuy, onClose]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -923,7 +968,10 @@ const ConsumableDetailModal = ({
             </p>
           </div>
           {/* Potion image on right */}
-          <div className="flex h-44 w-44 shrink-0 items-center justify-center">
+          <div
+            ref={imageContainerRef}
+            className="flex h-44 w-44 shrink-0 items-center justify-center"
+          >
             <Image
               src={getConsumableImagePath(consumable.type)}
               alt={consumable.name}
@@ -983,13 +1031,13 @@ const ConsumableDetailModal = ({
           </div>
           <GameButton
             variant={canBuy ? "primary" : "secondary"}
-            onClick={() => onBuy(consumable.type)}
-            disabled={!canBuy || isBuying}
+            onClick={handleBuyClick}
+            disabled={!canBuy || isBuying || isFlying}
             aria-label={`Buy ${consumable.name}`}
             tabIndex={0}
             className="w-full justify-center"
           >
-            {isBuying ? (
+            {isBuying || isFlying ? (
               <span className="flex items-center gap-2">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 Buying...
@@ -1184,7 +1232,7 @@ function ShopContent() {
 
   /* ── Loading state ── */
   if (loading || !character) {
-    return <PageLoader emoji="🪙" text="Loading shop…" />;
+    return <PageLoader icon={<GameIcon name="shop" size={128} />} text="Loading shop…" />;
   }
 
   return (
@@ -1471,7 +1519,7 @@ function ShopContent() {
 
 export default function ShopPage() {
   return (
-    <Suspense fallback={<PageLoader emoji="🪙" text="Loading shop…" />}>
+    <Suspense fallback={<PageLoader icon={<GameIcon name="shop" size={128} />} text="Loading shop…" />}>
       <ShopContent />
     </Suspense>
   );

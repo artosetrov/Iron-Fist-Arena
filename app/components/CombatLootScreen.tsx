@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import GameIcon from "@/app/components/ui/GameIcon";
 import type { GameIconKey } from "@/app/components/ui/GameIcon";
-import { ORIGIN_IMAGE, BOSS_IMAGES } from "@/app/components/HeroCard";
+import { ORIGIN_IMAGE } from "@/app/components/HeroCard";
+import { BOSS_NAMES, getBossImagePath } from "@/lib/game/boss-catalog";
 import { GameButton } from "@/app/components/ui";
 
 /* ────────────────── Types ────────────────── */
@@ -101,10 +102,10 @@ const CombatLootScreen = ({
 
         {/* Enemy avatar */}
         <div className="flex flex-col items-center px-6 pt-5">
-          <div className={`relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl ${BOSS_IMAGES[enemy.name] ? "bg-transparent" : "border border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900"}`}>
-            {BOSS_IMAGES[enemy.name] ? (
+          <div className={`relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl ${BOSS_NAMES.has(enemy.name) ? "bg-transparent" : "border border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900"}`}>
+            {BOSS_NAMES.has(enemy.name) ? (
               <Image
-                src={BOSS_IMAGES[enemy.name]}
+                src={getBossImagePath(enemy.name)}
                 alt={enemy.name}
                 width={1024}
                 height={1024}

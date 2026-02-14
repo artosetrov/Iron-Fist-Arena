@@ -527,10 +527,10 @@ function ArenaContent() {
       {/* Opponent cards */}
       {loadingOpponents ? (
         <div className="flex items-center justify-center py-16">
-          <div className="relative mx-auto h-10 w-10">
+          <div className="relative mx-auto h-12 w-12">
             <div className="absolute inset-0 animate-spin rounded-full border-2 border-slate-700 border-t-indigo-400" />
             <div className="absolute inset-1.5 animate-spin rounded-full border-2 border-slate-700 border-t-purple-400" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
-            <span className="absolute inset-0 flex items-center justify-center"><GameIcon name="arena" size={20} /></span>
+            <span className="absolute inset-0 flex items-center justify-center"><GameIcon name="arena" size={24} /></span>
           </div>
         </div>
       ) : opponents.length === 0 ? (
@@ -600,15 +600,15 @@ function ArenaContent() {
             );
           })()}
 
-          {/* Refresh button under cards */}
-          <div className="flex justify-center">
+          {/* Refresh button under cards — width matches one card */}
+          <div className="mt-6 flex justify-center">
             <button
               type="button"
               onClick={loadOpponents}
               disabled={loadingOpponents}
               aria-label="Refresh opponents"
               tabIndex={0}
-              className="group flex items-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/50 px-4 py-2 font-display text-base font-medium uppercase tracking-wider text-slate-400 transition-all hover:border-slate-600 hover:bg-slate-800/80 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="group flex min-h-[48px] w-[min(300px,85vw)] items-center justify-center gap-3 rounded-lg border border-slate-700/60 bg-slate-800/50 px-4 py-2.5 text-base font-medium text-slate-400 transition-all hover:border-slate-600 hover:bg-slate-800/80 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               <GameIcon name="switch-char" size={20} />
               Refresh

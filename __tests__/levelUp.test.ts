@@ -15,7 +15,7 @@ describe("checkLevelUp", () => {
     const result = checkLevelUp({ level: 1, currentXp: needed });
     expect(result.newLevel).toBe(2);
     expect(result.statPointsGained).toBe(5);
-    expect(result.goldGained).toBe(200); // 100 * 2
+    expect(result.goldGained).toBe(100); // 50 * 2 (early-level cap)
   });
 
   it("handles multiple level ups", () => {
@@ -58,7 +58,7 @@ describe("applyLevelUp", () => {
     });
     expect(result.level).toBe(2);
     expect(result.statPointsAvailable).toBe(5);
-    expect(result.gold).toBe(100 + 200); // 100 existing + 100*2 from levelup
+    expect(result.gold).toBe(100 + 100); // 100 existing + 50*2 (early-level gold)
     expect(result.currentHp).toBe(100); // full heal
   });
 

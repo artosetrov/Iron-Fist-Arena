@@ -866,6 +866,56 @@ Loot:
 - 500 XP
 ```
 
+### 5.4.1 Boss descriptions (flavour text)
+
+Each boss has a short **description** (flavour text) shown in the boss detail modal and on the dungeon boss card. Descriptions are defined in:
+
+- **`lib/game/boss-catalog.ts`** — `BossCatalogEntry.description` for every boss (dungeonId + bossIndex).
+- **`lib/game/dungeon-data.ts`** — each dungeon’s `bosses[]` is built with the same description via the `boss()` helper (which takes `description` as an argument; can be kept in sync with boss-catalog for a single source of truth).
+
+In the UI, the boss detail modal (GameModal) displays this description in the top block next to the boss portrait. Example: *"Tiny, glowing, toxic."* (Fungal Grotto boss). Keep descriptions short (one sentence), atmospheric, and consistent with the dungeon theme.
+
+### 5.4.2 Boss Abilities
+
+Dungeon bosses use **20 unique abilities** (implementation: `lib/game/boss-abilities.ts`, catalog: `lib/game/boss-catalog.ts`). Each boss has a fixed set by ID: dungeons 1–5 use 3 abilities per boss, dungeons 6–10 use 4. Below: full list with in-game descriptions and icon generation prompts (project style: 2D hand-painted cartoon fantasy, thick outlines, no UI/text).
+
+#### Physical (7)
+
+| Skill | ID | Description | Icon prompt |
+|-------|-----|-------------|-------------|
+| **Crushing Blow** | boss_crushing_blow | Heavy blow that breaks defense. High physical damage, reduces target armor by 30% for one hit. CD 4. | Fist or hammer coming down, impact lines, cracked shield/armor. Square icon, transparent background. |
+| **Tail Swipe** | boss_tail_swipe | Double tail strike. Two quick hits with moderate multiplier. CD 3. | Stylized tail in motion, swipe arc, two impact stars/slashes. |
+| **Frenzy** | boss_frenzy | Series of three fast strikes. Slightly lower per hit, high total damage. CD 5. | Three claws/fists in sequence, motion lines, red/orange accent. |
+| **Ground Slam** | boss_ground_slam | Ground slam that stuns nearby. High damage, 25% chance to stun for 1 turn. CD 5. | Fist/foot hitting ground, shockwave semicircle, stun stars. |
+| **Impale** | boss_impale | Precise piercing strike that causes bleeding. Good damage, 35% chance to bleed for 3 turns. CD 4. | Single sharp claw/spear tip, blood drop, piercing motion. |
+| **Charge** | boss_charge | Rush forward at full force. Very high damage, only if boss acts first in the turn. CD 6. | Monster silhouette in charge pose, speed lines, dust cloud. |
+| **Rend** | boss_rend | Tearing attack with higher crit. Moderate damage, 40% bleed for 3 turns, +10% crit chance. CD 3. | Three parallel claw slashes, blood droplets, crit spark. |
+
+#### Magic (7)
+
+| Skill | ID | Description | Icon prompt |
+|-------|-----|-------------|-------------|
+| **Shadow Bolt** | boss_shadow_bolt | Dark magic projectile. High magic damage, 20% chance to weaken for 2 turns. CD 3. | Dark purple/black energy orb with purple glow, subtle skull/shadow accent. |
+| **Frost Breath** | boss_frost_breath | Breath of cold. Magic damage, 30% chance to slow for 2 turns. CD 4. | Cone of frost or snowflake burst, icy blue and white, cold mist. |
+| **Fire Wave** | boss_fire_wave | Double wave of fire. Two magic fire hits, 25% chance to burn for 3 turns. CD 4. | Two overlapping flame waves/semicircles, orange and red, embers. |
+| **Poison Cloud** | boss_poison_cloud | Poison cloud. Moderate magic damage, 45% chance to poison for 4 turns. CD 5. | Green toxic cloud/bubble, skull or hazard symbol inside, droplets. |
+| **Life Drain** | boss_life_drain | Drains life from target and heals the boss. Damage to target plus 100% regen on boss for 2 turns. CD 5. | Red/purple tendril or beam from target to heart, vampiric motif. |
+| **Chain Lightning** | boss_chain_lightning | Lightning strikes multiple times. Three magic hits with 15% chance to stun for 1 turn. CD 5. | Zigzag lightning splitting into 2–3 branches, yellow and white. |
+| **Arcane Burst** | boss_arcane_burst | Single powerful magic burst. Very high magic damage, no extra effects. CD 6. | Central glowing orb with runes/stars, explosion outward. |
+
+#### Buff / Utility (6)
+
+| Skill | ID | Description | Icon prompt |
+|-------|-----|-------------|-------------|
+| **Enrage** | boss_enrage | Boss flies into rage and boosts own strength. No damage; +35% strength to self. CD 7. | Red aura/flames around fist or monster head, anger lines. |
+| **Stone Skin** | boss_stone_skin | Skin hardens like stone. No damage; +60% armor for several turns. CD 6. | Shield or skin with stone texture and cracks, gray and brown. |
+| **Dark Shield** | boss_dark_shield | Wraps boss in dark protection. No damage; +50% magic resistance. CD 6. | Dark purple/black shield with violet glow, rune or eye. |
+| **Regeneration** | boss_regeneration | Activates health recovery. No damage; boss gains +8% regen. CD 7. | Green plus or heart with soft glow, leaves or sparkles. |
+| **Battle Roar** | boss_battle_roar | Stunning roar: buffs boss and frightens target. +20% strength to self, 20% chance to stun target for 1 turn. CD 6. | Open mouth or roar symbol, sound waves, stun stars. |
+| **Haste** | boss_haste | Sudden speed boost. No damage; boss gains +35% dodge for 3 turns. CD 7. | Boot or wing with speed lines, wind or motion blur. |
+
+**Icon style:** 2D hand-painted cartoon fantasy RPG, thick clean black outlines, exaggerated proportions, soft gradient shading, vibrant but slightly muted colors. Fantasy prop object, strong silhouette, bold outline, minimal small details, soft shading, game-ready asset. Format: PNG 1024×1024, transparent background. Save to e.g. `public/images/skills/` or equivalent per project structure.
+
 ## 5.5 Level Scaling
 
 ```

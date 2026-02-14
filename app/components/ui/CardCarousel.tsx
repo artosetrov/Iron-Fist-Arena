@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 /* ── Types ── */
 
@@ -18,6 +18,11 @@ type CardCarouselProps = {
   ariaLabelNext?: string;
 };
 
+const checkOverflow = (el: HTMLDivElement | null): boolean => {
+  if (!el) return true;
+  return el.scrollWidth > el.clientWidth;
+};
+
 /* ── Component ── */
 
 const CardCarousel = ({
@@ -29,6 +34,19 @@ const CardCarousel = ({
   ariaLabelNext = "Next",
 }: CardCarouselProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [hasOverflow, setHasOverflow] = useState(true);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const update = () => setHasOverflow(checkOverflow(el));
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [children]);
 
   const handleScroll = useCallback(
     (direction: "left" | "right") => {
@@ -46,30 +64,33 @@ const CardCarousel = ({
   );
 
   return (
-    <div className="flex flex-1 items-start">
-      <div className={`relative w-full ${className ?? ""}`}>
-        {/* Left arrow */}
-        <button
-          type="button"
-          onClick={() => handleScroll("left")}
-          aria-label={ariaLabelPrev}
-          className="carousel-nav-btn left-0"
-        >
-          ‹
-        </button>
+    <div className="flex items-center justify-center">
+      <div className={`relative ${className ?? "w-full"}`}>
+        {hasOverflow && (
+          <>
+            <button
+              type="button"
+              onClick={() => handleScroll("left")}
+              aria-label={ariaLabelPrev}
+              className="carousel-nav-btn left-0"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={() => handleScroll("right")}
+              aria-label={ariaLabelNext}
+              className="carousel-nav-btn right-0"
+            >
+              ›
+            </button>
+          </>
+        )}
 
-        {/* Right arrow */}
-        <button
-          type="button"
-          onClick={() => handleScroll("right")}
-          aria-label={ariaLabelNext}
-          className="carousel-nav-btn right-0"
+        <div
+          ref={scrollRef}
+          className={hasOverflow ? "card-carousel" : "card-carousel card-carousel--no-overflow"}
         >
-          ›
-        </button>
-
-        {/* Scroll container */}
-        <div ref={scrollRef} className="card-carousel">
           {children}
         </div>
       </div>

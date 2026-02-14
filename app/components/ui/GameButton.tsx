@@ -10,7 +10,7 @@ type GameButtonVariant =
   | "ghost"
   | "action";
 
-type GameButtonSize = "sm" | "md" | "lg";
+type GameButtonSize = "sm" | "md" | "lg" | "xl";
 
 type GameButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: GameButtonVariant;
@@ -23,6 +23,7 @@ const SIZE_CLASSES: Record<GameButtonSize, string> = {
   sm: "px-3 py-1.5 text-xs",
   md: "px-4 py-2.5 text-sm",
   lg: "px-6 py-3 text-base",
+  xl: "px-12 py-6 text-xl",
 };
 
 const VARIANT_CLASSES: Record<GameButtonVariant, string> = {
@@ -76,7 +77,7 @@ const GameButton = forwardRef<HTMLButtonElement, GameButtonProps>(
         ref={ref}
         disabled={disabled}
         className={[
-          "inline-flex items-center justify-center rounded-xl font-bold uppercase tracking-wider transition-all",
+          "inline-flex items-center justify-center rounded-xl font-display font-bold uppercase tracking-wider transition-all",
           SIZE_CLASSES[size],
           VARIANT_CLASSES[variant],
           fullWidth && "w-full",

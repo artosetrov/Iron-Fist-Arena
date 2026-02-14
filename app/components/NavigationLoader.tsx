@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
+import PageLoader from "./PageLoader";
 
 /* ────────────────────────────────────────────────────────────
  * NavigationLoader
@@ -68,22 +69,12 @@ export const NavigationLoaderProvider = ({ children }: NavigationLoaderProviderP
 const ShimmerOverlay = () => {
   return (
     <div
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6 bg-slate-950"
+      className="fixed inset-0 z-[9999] bg-slate-950"
       role="status"
       aria-live="polite"
       aria-label="Loading"
     >
-      {/* Shimmer skeleton blocks */}
-      <div className="flex flex-col items-center gap-4">
-        <div className="h-20 w-20 animate-shimmer-sweep rounded-full overflow-hidden" />
-        <div className="h-4 w-32 animate-shimmer-sweep rounded overflow-hidden" />
-        <div className="mt-2 flex flex-col gap-2">
-          <div className="h-3 w-48 animate-shimmer-sweep rounded overflow-hidden" />
-          <div className="h-3 w-40 animate-shimmer-sweep rounded overflow-hidden" />
-          <div className="h-3 w-36 animate-shimmer-sweep rounded overflow-hidden" />
-        </div>
-      </div>
-      <p className="text-xs text-slate-500">Entering the arena…</p>
+      <PageLoader emoji="⚔️" text="Entering the arena…" />
     </div>
   );
 };

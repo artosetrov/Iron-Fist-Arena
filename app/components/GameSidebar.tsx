@@ -71,19 +71,25 @@ const ADMIN_HREF = "/admin";
 /* ────────────────── Stamina Hook ────────────────── */
 
 const useStaminaRealtime = (current: number, max: number, lastUpdate: string) => {
-  const [stamina, setStamina] = useState(current);
+  const numCurrent = Number(current);
+  const numMax = Number(max);
+  const [stamina, setStamina] = useState(numCurrent);
   const [nextIn, setNextIn] = useState<number | null>(null);
 
   useEffect(() => {
     const last = new Date(lastUpdate).getTime();
+    if (Number.isNaN(last)) {
+      setStamina(numCurrent);
+      return;
+    }
 
     const tick = () => {
       const now = Date.now();
       const minutesPassed = (now - last) / (60 * 1000);
       const regenerated = Math.floor(minutesPassed / STAMINA_REGEN_MINUTES);
-      const newCurrent = Math.min(max, current + regenerated);
+      const newCurrent = Math.min(numMax, numCurrent + regenerated);
       setStamina(newCurrent);
-      if (newCurrent >= max) {
+      if (newCurrent >= numMax) {
         setNextIn(null);
         return;
       }
@@ -94,7 +100,7 @@ const useStaminaRealtime = (current: number, max: number, lastUpdate: string) =>
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [current, max, lastUpdate]);
+  }, [numCurrent, numMax, lastUpdate]);
 
   return { stamina, nextIn };
 };
@@ -295,16 +301,22 @@ const GameSidebar = () => {
         });
         const data = await res.json();
         if (res.ok) {
-          // Update character stamina locally using server values
-          setCharacter((c) =>
-            c
-              ? {
-                  ...c,
-                  currentStamina: data.currentStamina ?? c.currentStamina,
-                  lastStaminaUpdate: data.lastStaminaUpdate ?? new Date().toISOString(),
-                }
-              : null
-          );
+          const newStamina = Number(data.currentStamina);
+          const newLastUpdate =
+            typeof data.lastStaminaUpdate === "string"
+              ? data.lastStaminaUpdate
+              : new Date().toISOString();
+          if (Number.isFinite(newStamina)) {
+            setCharacter((c) =>
+              c
+                ? {
+                    ...c,
+                    currentStamina: newStamina,
+                    lastStaminaUpdate: newLastUpdate,
+                  }
+                : null
+            );
+          }
           // Update consumable inventory
           setConsumables((prev) =>
             prev
@@ -333,8 +345,8 @@ const GameSidebar = () => {
   /* ────── Sidebar content (shared between desktop & mobile) ────── */
   const sidebarContent = (
     <div className="flex h-full flex-col">
-      {/* Character card */}
-      <div className="border-b border-slate-700/50 p-4">
+      {/* Character card — target for shop "fly to avatar" purchase animation */}
+      <div className="border-b border-slate-700/50 p-4" data-fly-target="sidebar-avatar">
         {loading ? (
           <div className="flex items-center gap-3">
             <div className="h-14 w-14 animate-pulse rounded-xl bg-slate-800" />

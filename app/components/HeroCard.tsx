@@ -3,6 +3,7 @@
 import { memo, useState } from "react";
 import Image from "next/image";
 import { getRankFromRating } from "@/lib/game/elo";
+import { BOSS_NAMES, getBossImagePath } from "@/lib/game/boss-catalog";
 import GameIcon from "@/app/components/ui/GameIcon";
 import type { GameIconKey } from "@/app/components/ui/GameIcon";
 
@@ -28,19 +29,6 @@ export const ORIGIN_IMAGE: Record<string, string> = {
   skeleton: "/images/origins/Avatar/origin-skeleton_avatar_1.png",
   demon: "/images/origins/Avatar/origin-demon_avatar_1.png",
   dogfolk: "/images/origins/Avatar/origin-dogfolk_avatar_1.png",
-};
-
-export const BOSS_IMAGES: Record<string, string> = {
-  "Straw Dummy": "/images/bosses/boss-straw-dummy.png",
-  "Rusty Automaton": "/images/bosses/boss-rusty-automaton.png",
-  "Barrel Golem": "/images/bosses/boss-barrel-golem.png",
-  "Plank Knight": "/images/bosses/boss-plank-knight.png",
-  "Flying Francis": "/images/bosses/boss-flying-francis.png",
-  "Scarecrow Mage": "/images/bosses/boss-scarecrow-mage.png",
-  "Mud Troll": "/images/bosses/boss-mud-troll.png",
-  "Possessed Mannequin": "/images/bosses/boss-possessed-mannequin.png",
-  "Iron Dummy": "/images/bosses/boss-iron-dummy.png",
-  "Drill Sergeant Grizzle": "/images/bosses/boss-drill-sergeant-grizzle.png",
 };
 
 /* ────────────────── Card Frame Colors (CSS var driven) ────────────────── */
@@ -376,8 +364,9 @@ const HeroCard = memo(({
   const customIcon = icon; // custom emoji string passed via prop
 
   // Determine which image to show
-  const resolvedImage = imageSrc ?? BOSS_IMAGES[name] ?? (origin ? ORIGIN_IMAGE[origin] : undefined);
-  const isBossImage = Boolean(imageSrc || BOSS_IMAGES[name]);
+  const resolvedImage =
+    imageSrc ?? (BOSS_NAMES.has(name) ? getBossImagePath(name) : undefined) ?? (origin ? ORIGIN_IMAGE[origin] : undefined);
+  const isBossImage = Boolean(imageSrc || (BOSS_NAMES.has(name) && getBossImagePath(name)));
   const isOriginImage = !isBossImage && Boolean(origin && ORIGIN_IMAGE[origin]);
   // #region agent log
   fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'HeroCard.tsx:resolveImage',message:'HeroCard image resolve',data:{name,variant,cls:classKey,origin,level,rating,resolvedImage,isBossImage,isOriginImage,hasHp:!!hp,hasStats:!!stats},timestamp:Date.now(),hypothesisId:'H1-H2-image'})}).catch(()=>{});

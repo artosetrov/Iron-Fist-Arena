@@ -5,7 +5,10 @@ import {
   GOLD_PER_LEVEL_MULT,
 } from "./balance";
 
-/** GDD §3 - Level up: +5 stat points, +1 skill every 5 levels, 100*level gold, full HP restore */
+/** GDD §3 — Level up: +5 stat points, +1 skill every 5 levels, gold, full HP. Early levels (2–5) get reduced gold for balance. */
+const EARLY_LEVEL_CAP = 5;
+const EARLY_LEVEL_GOLD_MULT = 50;
+
 export const checkLevelUp = (params: {
   level: number;
   currentXp: number;
@@ -21,7 +24,11 @@ export const checkLevelUp = (params: {
     level++;
     statPointsGained += STAT_POINTS_PER_LEVEL;
     if (level % SKILL_POINT_INTERVAL === 0) skillPointsGained += 1;
-    goldGained += GOLD_PER_LEVEL_MULT * level;
+    const goldThisLevel =
+      level <= EARLY_LEVEL_CAP
+        ? EARLY_LEVEL_GOLD_MULT * level
+        : GOLD_PER_LEVEL_MULT * level;
+    goldGained += goldThisLevel;
     xpNeeded = xpForLevel(level);
   }
 

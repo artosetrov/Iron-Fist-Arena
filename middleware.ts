@@ -65,7 +65,7 @@ export async function middleware(request: NextRequest) {
       return redirectTo("/login", { redirect: pathname });
     }
 
-    if (!isApi && isAuthPath(pathname) && user) {
+    if (!isApi && pathname === "/login" && user) {
       return redirectTo("/hub");
     }
 

@@ -796,3 +796,10 @@ export const getBossCatalogEntry = (
   dungeonId: string,
   bossIndex: number,
 ): BossCatalogEntry | undefined => catalogMap.get(`${dungeonId}:${bossIndex}`);
+
+/** All boss names (for checking if a name is a known boss). */
+export const BOSS_NAMES = new Set(BOSS_CATALOG.map((b) => b.name));
+
+/** Canonical image path for a boss by name. Convention: boss-{kebab-case(name)}.png in /images/bosses/. */
+export const getBossImagePath = (name: string): string =>
+  `/images/bosses/boss-${name.toLowerCase().replace(/\s+/g, "-")}.png`;

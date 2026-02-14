@@ -1790,15 +1790,21 @@ function InventoryContent() {
             if (resData.remainingQuantity <= 0) return null;
             return { ...prev, quantity: resData.remainingQuantity };
           });
-          // Update character stamina in data
+          // Update character stamina in data (ensure number so UI and hooks don't get strings)
           setData((prev) => {
             if (!prev) return prev;
+            const newStamina = Number(resData.currentStamina);
+            if (!Number.isFinite(newStamina)) return prev;
+            const newLastUpdate =
+              typeof resData.lastStaminaUpdate === "string"
+                ? resData.lastStaminaUpdate
+                : prev.character.lastStaminaUpdate;
             return {
               ...prev,
               character: {
                 ...prev.character,
-                currentStamina: resData.currentStamina ?? prev.character.currentStamina,
-                lastStaminaUpdate: resData.lastStaminaUpdate ?? prev.character.lastStaminaUpdate,
+                currentStamina: newStamina,
+                lastStaminaUpdate: newLastUpdate,
               },
             };
           });

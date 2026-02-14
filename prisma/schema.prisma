@@ -17,10 +17,11 @@ model User {
   gems          Int       @default(0)
   premiumUntil  DateTime? @map("premium_until")
   createdAt     DateTime  @default(now()) @map("created_at")
-  lastLogin     DateTime  @default(now()) @map("last_login")
-  role          String    @default("player")
-  isBanned      Boolean   @default(false) @map("is_banned")
-  banReason     String?   @map("ban_reason")
+  lastLogin       DateTime  @default(now()) @map("last_login")
+  hasSeenWelcome  Boolean   @default(false) @map("has_seen_welcome")
+  role            String    @default("player")
+  isBanned        Boolean   @default(false) @map("is_banned")
+  banReason       String?   @map("ban_reason")
 
   characters Character[]
 
