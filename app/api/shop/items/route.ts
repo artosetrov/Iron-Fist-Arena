@@ -107,34 +107,6 @@ export async function GET(request: Request) {
       return a.itemLevel - b.itemLevel;
     });
 
-    // Limit to MAX_PER_SLOT_RARITY per (itemType + rarity) with daily rotation
-    const seed = getDailySeed();
-    const buckets = new Map<string, typeof allItems>();
-    for (const item of allItems) {
-      const key = `${item.itemType}__${item.rarity}`;
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key)!.push(item);
-    }
-
-    const items: typeof allItems = [];
-    for (const bucket of Array.from(buckets.values())) {
-      if (bucket.length <= MAX_PER_SLOT_RARITY) {
-        items.push(...bucket);
-      } else {
-        items.push(...seededShuffle(bucket, seed).slice(0, MAX_PER_SLOT_RARITY));
-      }
-    }
-
-    // Re-sort for consistent display order
-    items.sort((a, b) => {
-      const rarityOrder = ["common", "rare", "epic"];
-      const ra = rarityOrder.indexOf(a.rarity);
-      const rb = rarityOrder.indexOf(b.rarity);
-      if (ra !== rb) return rb - ra;
-      if (a.itemType !== b.itemType) return a.itemType.localeCompare(b.itemType);
-      return a.itemLevel - b.itemLevel;
-    });
-
     return NextResponse.json({ items });
   } catch (error) {
     console.error("[api/shop/items GET]", error);
