@@ -86,6 +86,7 @@ type CharacterData = {
   statPointsAvailable: number;
   currentStamina: number;
   maxStamina: number;
+  lastStaminaUpdate?: string;
   stats: CharStats;
   derived: DerivedStats;
 };

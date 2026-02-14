@@ -428,3 +428,54 @@ export const QUEST_POOL = [
   { questType: "pvp_win_high_hp", target: 1, rewardGold: 250, rewardXp: 0, rewardGems: 35 },
 ] as const;
 export const DAILY_QUEST_COUNT = 3;
+
+/* ──────────────────────────────────────────────────────────────────────
+   GOLD MINE (Idle Minigame) — GDD Appendix C
+   ────────────────────────────────────────────────────────────────────── */
+
+/** Reward: 100 + level × 3 per cycle */
+export const GOLD_MINE_BASE_REWARD = 100;
+export const GOLD_MINE_LEVEL_MULT = 3;
+
+/** Cycle duration: 30 min base, 15 min VIP */
+export const GOLD_MINE_DURATION_MS = 30 * 60 * 1000;
+export const GOLD_MINE_VIP_DURATION_MS = 15 * 60 * 1000;
+
+/** Slots: 1 free, max 5 total */
+export const GOLD_MINE_FREE_SLOTS = 1;
+export const GOLD_MINE_MAX_SLOTS = 5;
+
+/** Gem costs */
+export const GOLD_MINE_SLOT_COST_GEMS = 50;
+export const GOLD_MINE_BOOST_COST_GEMS = 25;
+
+/* ──────────────────────────────────────────────────────────────────────
+   TRAINING DUMMY — GDD §3.4
+   ────────────────────────────────────────────────────────────────────── */
+
+/** XP = 20 + level × 5 */
+export const TRAINING_XP_BASE = 20;
+export const TRAINING_XP_PER_LEVEL = 5;
+
+/** Dummy level = player_level + 2, stats = player × 0.6 */
+export const TRAINING_DUMMY_LEVEL_OFFSET = 2;
+export const TRAINING_DUMMY_STAT_MULT = 0.6;
+
+/** Max trainings per day (reset 00:00 UTC) */
+export const TRAINING_MAX_DAILY = 10;
+
+/* ──────────────────────────────────────────────────────────────────────
+   DUNGEON RUSH — GDD Appendix C (5 waves)
+   ────────────────────────────────────────────────────────────────────── */
+
+export const RUSH_WAVES = 5;
+
+/** Mob stats = boss base × 0.55 × waveScale */
+export const RUSH_MOB_STAT_MULT = 0.55;
+
+/** Rewards per wave (scaled by wave number) */
+export const RUSH_XP_PER_WAVE = 30;
+export const RUSH_GOLD_PER_WAVE = 20;
+
+/** Bonus for clearing all 5 waves */
+export const RUSH_FULL_CLEAR_BONUS = 100;
