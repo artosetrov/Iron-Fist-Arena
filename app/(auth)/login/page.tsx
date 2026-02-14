@@ -44,13 +44,15 @@ const LoginForm = () => {
       }
 
       // Check if user has any characters — if not, send to onboarding
-      startNavigation?.();
       try {
         const charRes = await fetch("/api/characters");
         const charData = await charRes.json();
         const hasCharacters = (charData.characters?.length ?? 0) > 0;
-        router.push(hasCharacters ? redirect : "/onboarding");
+        const target = hasCharacters ? redirect : "/onboarding";
+        startNavigation ? startNavigation() : setLoading(true);
+        router.push(target);
       } catch {
+        startNavigation ? startNavigation() : setLoading(true);
         router.push(redirect);
       }
       router.refresh();

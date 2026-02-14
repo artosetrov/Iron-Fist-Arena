@@ -380,9 +380,6 @@ function ArenaContent() {
       const res = await fetch(`/api/pvp/opponents?characterId=${characterId}`, { signal: controller.signal });
       const data = await res.json();
       if (res.ok) {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'arena/page.tsx:loadOpponents',message:'API response opponents',data:{count:data.opponents?.length,opponents:data.opponents?.map((o:Record<string,unknown>)=>({id:o.id,characterName:o.characterName,class:o.class,origin:o.origin,level:o.level,pvpRating:o.pvpRating,strength:o.strength,agility:o.agility,vitality:o.vitality,intelligence:o.intelligence,luck:o.luck}))},timestamp:Date.now(),hypothesisId:'H4-data'})}).catch(()=>{});
-        // #endregion
         setOpponents(data.opponents ?? []);
       } else {
         setError(data.error ?? "Failed to load opponents");

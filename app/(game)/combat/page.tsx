@@ -468,11 +468,11 @@ function CombatContent() {
               <div
                 key={i}
                 className={`h-2 w-2 rounded-full transition-colors ${
-                  i < status.remaining
+                  i >= status.used
                     ? "bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.4)]"
                     : "bg-slate-700/50 ring-1 ring-slate-600/50"
                 }`}
-                aria-label={i < status.remaining ? "Available" : "Used"}
+                aria-label={i >= status.used ? "Available" : "Used"}
               />
             ))}
           </div>
