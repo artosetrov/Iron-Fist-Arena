@@ -578,7 +578,7 @@ const CharacterPageInner = () => {
       {!fromOnboarding && (
         <Link
           href="/hub"
-          className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+          className="fixed right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white lg:right-6 lg:top-6"
           aria-label="Back to Hub"
           tabIndex={0}
         >

@@ -219,6 +219,17 @@ const HubContent = () => {
   const dragState = useRef({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0, pointerId: 0 });
   const [hoveredBuilding, setHoveredBuilding] = useState<string | null>(null);
   const [isLoreOpen, setIsLoreOpen] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState<HubBuilding | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  /* Detect mobile viewport */
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 768px)");
+    const handleChange = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener("change", handleChange);
+    return () => mql.removeEventListener("change", handleChange);
+  }, []);
 
   /* Center scroll on mount */
   useEffect(() => {
@@ -286,38 +297,52 @@ const HubContent = () => {
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!isDragging) return;
       setIsDragging(false);
+      hasDragged.current = false;
       scrollRef.current?.releasePointerCapture(e.pointerId);
     },
     [isDragging],
   );
 
   const handleBuildingClick = useCallback(
-    (href: string) => {
+    (building: HubBuilding) => {
       if (hasDragged.current) return;
-      router.push(buildHref(href));
+      if (isMobile) {
+        setSelectedBuilding(building);
+        return;
+      }
+      router.push(buildHref(building.href));
     },
-    [router, buildHref],
+    [router, buildHref, isMobile],
   );
+
+  const handleMobileEnter = useCallback(() => {
+    if (!selectedBuilding) return;
+    router.push(buildHref(selectedBuilding.href));
+    setSelectedBuilding(null);
+  }, [router, buildHref, selectedBuilding]);
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
       {/* PageHeader overlay */}
       <div className="absolute inset-x-0 top-0 z-20 p-4 lg:p-6">
         <PageHeader
-          title="Hub"
+          title={WORLD.cityName}
           hideClose
           actions={
             <button
               type="button"
               onClick={() => setIsLoreOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-slate-800/60"
               aria-label="World Info"
               tabIndex={0}
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <circle cx="12" cy="12" r="10" />
-                <path strokeLinecap="round" d="M12 16v-4m0-4h.01" />
-              </svg>
+              <Image
+                src="/images/ui/icon-world-info.png"
+                alt="World Info"
+                width={32}
+                height={32}
+                className="h-8 w-8 object-contain"
+              />
             </button>
           }
         />
@@ -405,15 +430,16 @@ const HubContent = () => {
               <button
                 key={b.id}
                 type="button"
-                className="absolute outline-none"
+                className="absolute outline-none p-2"
                 style={{
                   top: `${b.top}%`,
                   left: `${b.left}%`,
                   transform: "translate(-50%, -50%)",
                   cursor: isDragging ? "grabbing" : "pointer",
                   zIndex: isHovered ? 30 : 10,
+                  touchAction: "manipulation",
                 }}
-                onClick={() => handleBuildingClick(b.href)}
+                onClick={() => handleBuildingClick(b)}
                 onMouseEnter={() => setHoveredBuilding(b.id)}
                 onMouseLeave={() => setHoveredBuilding(null)}
                 onFocus={() => setHoveredBuilding(b.id)}
@@ -495,6 +521,27 @@ const HubContent = () => {
           })}
         </div>
       </div>
+
+      {/* Mobile building popup */}
+      <GameModal
+        open={!!selectedBuilding}
+        onClose={() => setSelectedBuilding(null)}
+        size="sm"
+        title={selectedBuilding?.label}
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-relaxed text-slate-300">
+            {selectedBuilding?.description}
+          </p>
+          <button
+            type="button"
+            onClick={handleMobileEnter}
+            className="w-full rounded-xl border border-amber-500/40 bg-gradient-to-b from-amber-600 to-amber-700 px-4 py-3 font-display text-sm font-bold text-white shadow-lg shadow-amber-900/30 transition hover:from-amber-500 hover:to-amber-600 active:scale-[0.98]"
+          >
+            Enter
+          </button>
+        </div>
+      </GameModal>
 
       {/* Lore Modal */}
       <GameModal

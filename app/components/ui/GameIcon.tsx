@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export type GameIconKey =
   /* Resources */
-  | "gold" | "gems" | "pvp-rating" | "stamina-timer" | "stamina" | "xp"
+  | "gold" | "gems" | "pvp-rating" | "wins" | "losses" | "stamina-timer" | "stamina" | "xp"
   /* Navigation */
   | "tavern" | "lobby" | "shell-game" | "gold-mine" | "dungeon-rush"
   | "fights" | "arena" | "dungeons" | "training" | "shop" | "leaderboard"
@@ -26,6 +26,8 @@ export const GAME_ICON_MAP: Record<GameIconKey, string> = {
   gold: `${I}/icon-gold.png`,
   gems: `${I}/icon-gems.png`,
   "pvp-rating": `${I}/icon-pvp-rating.png`,
+  wins: `${I}/icon-wins.png`,
+  losses: `${I}/icon-losses.png`,
   "stamina-timer": `${I}/icon-stamina-timer.png`,
   stamina: `${I}/icon-stamina.png`,
   xp: `${I}/icon-xp.png`,

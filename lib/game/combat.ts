@@ -5,6 +5,8 @@ import type {
   CombatResult,
   StatusEffectType,
   CharacterOrigin,
+  BodyZone,
+  CombatStance,
 } from "./types";
 import type { AbilityDef } from "./abilities";
 import { getAbilitiesForClass, getAbilityById } from "./abilities";
@@ -17,8 +19,11 @@ import {
   ARMOR_BREAK_MULT,
   RESIST_CHANCE_CAP,
   ENEMY_SKILL_USE_CHANCE,
+  ZONE_DAMAGE_MULT,
+  BODY_ZONES,
 } from "./balance";
 import { hasCheatDeath, getCheatDeathChance } from "./origins";
+import { resolveHitZone, calcBlockReduction, defaultStance } from "./body-zones";
 
 /** Apply damage to combatant. Returns actual damage dealt. Zero is valid for buffs.
  *  Supports Sewer Shadow "Cheating Death" passive — 5% chance to survive at 1 HP. */
@@ -50,11 +55,19 @@ const toSnapshot = (s: CombatantState): CombatantSnapshot => ({
   baseStats: { ...s.baseStats },
 });
 
-/** Get effective armor considering armor_break status */
+/** Get effective armor considering armor_break status (total / legacy) */
 const getEffectiveArmor = (state: CombatantState): number => {
   const hasArmorBreak = state.statusEffects.some((s) => s.type === "armor_break");
   if (hasArmorBreak) return Math.floor(state.armor * ARMOR_BREAK_MULT);
   return state.armor;
+};
+
+/** Get effective zone armor considering armor_break status */
+const getEffectiveZoneArmor = (state: CombatantState, zone: BodyZone): number => {
+  const base = state.zoneArmor[zone] ?? 0;
+  const hasArmorBreak = state.statusEffects.some((s) => s.type === "armor_break");
+  if (hasArmorBreak) return Math.floor(base * ARMOR_BREAK_MULT);
+  return base;
 };
 
 /** Get effective dodge chance considering dodge bonus buffs */
@@ -336,8 +349,33 @@ export const runCombat = (
     const critChance = Math.min(50, attacker.derived.critChance + critBonus);
     const isCrit = rollCrit(critChance);
 
-    // Use effective armor (considering armor_break)
-    const effectiveArmor = getEffectiveArmor(target);
+    // ── Body Zone Resolution (physical attacks only) ──
+    // Abilities with targetZone always hit that zone; aoeZones skip zone resolution.
+    // Magic damage bypasses zones entirely (no block, no zone mult).
+    let hitZone: BodyZone | undefined;
+    let blockRed = 0;
+    let zoneDmgMult = 1.0;
+
+    if (isPhysical && skillMult > 0) {
+      const abilityTargetZone = ability?.targetZone as BodyZone | undefined;
+      const isAoe = ability?.aoeZones === true;
+
+      if (!isAoe) {
+        hitZone = abilityTargetZone ?? resolveHitZone(attacker.stance);
+        zoneDmgMult = ZONE_DAMAGE_MULT[hitZone];
+
+        // Block reduction (abilities with ignoresBlock bypass)
+        if (!(ability?.ignoresBlock)) {
+          blockRed = calcBlockReduction(hitZone, target.stance);
+        }
+      }
+      // AoE: no specific zone, no block, zoneDmgMult stays 1.0
+    }
+
+    // Use zone-specific armor for physical, total armor as fallback
+    const effectiveArmor = hitZone
+      ? getEffectiveZoneArmor(target, hitZone)
+      : getEffectiveArmor(target);
 
     if (isPhysical && skillMult > 0) {
       damage = calcPhysicalDamage({
@@ -347,8 +385,15 @@ export const runCombat = (
         skillMultiplier: skillMult,
         isCrit,
         critDamageMult: attacker.derived.critDamageMult,
+        zoneDamageMult: zoneDmgMult,
       });
+
+      // Apply block reduction after damage calc
+      if (blockRed > 0) {
+        damage = Math.max(1, Math.floor(damage * (1 - blockRed)));
+      }
     } else if (spellMult > 0) {
+      // Magic bypasses zones — no zone mult, no block
       damage = calcMagicDamage({
         attackerInt: attacker.baseStats.intelligence,
         defenderWis: target.baseStats.wisdom,
@@ -370,7 +415,15 @@ export const runCombat = (
 
     const { actual, cheatedDeath } = applyDamage(target, damage);
 
-    let message = `${attacker.name} ${effectiveAction === "basic" ? "attacks" : effectiveAction}: ${actual} damage${isCrit ? " (crit)" : ""}.`;
+    // Build descriptive message with zone info
+    const zoneLabel = hitZone ? hitZone.toUpperCase() : undefined;
+    const blockPct = blockRed > 0 ? Math.round(blockRed * 100) : 0;
+    let message = `${attacker.name} ${effectiveAction === "basic" ? "attacks" : effectiveAction}`;
+    if (zoneLabel) message += ` → ${zoneLabel}`;
+    message += `: ${actual} damage`;
+    if (isCrit) message += " (crit)";
+    if (blockPct > 0) message += ` [blocked -${blockPct}%]`;
+    message += ".";
     if (cheatedDeath) {
       message += ` ${target.name} cheated death! (1 HP)`;
     }
@@ -382,6 +435,9 @@ export const runCombat = (
       action: effectiveAction,
       damage: actual,
       crit: isCrit,
+      bodyZone: hitZone,
+      blocked: blockRed > 0,
+      blockReduction: blockRed > 0 ? blockRed : undefined,
       message,
     });
     stampHp(attacker, target);
@@ -538,6 +594,10 @@ export const buildCombatantState = (params: {
   armor?: number;
   /** Aggregated equipment stats (ATK, DEF, HP, CRIT, SPEED, ARMOR) */
   equipmentBonuses?: EquipmentBonuses;
+  /** Combat stance (attack zones + block allocation). Falls back to defaultStance(). */
+  stance?: CombatStance;
+  /** Per-zone armor from equipped items. Falls back to even split of total armor. */
+  zoneArmor?: Record<BodyZone, number>;
 }): CombatantState => {
   const {
     id,
@@ -555,6 +615,8 @@ export const buildCombatantState = (params: {
     charisma,
     armor = 0,
     equipmentBonuses,
+    stance,
+    zoneArmor,
   } = params;
 
   const eqATK = equipmentBonuses?.ATK ?? 0;
@@ -581,6 +643,15 @@ export const buildCombatantState = (params: {
   const totalArmor = armor + eqARMOR;
   const derived = computeDerivedStats(baseStats, totalArmor, 0, eqCRIT);
   const maxHp = derived.maxHp + eqHP;
+
+  // Compute per-zone armor: use provided zoneArmor or split total evenly
+  const effectiveZoneArmor: Record<BodyZone, number> = zoneArmor ?? {
+    head: Math.floor(totalArmor / BODY_ZONES.length),
+    torso: Math.floor(totalArmor / BODY_ZONES.length),
+    waist: Math.floor(totalArmor / BODY_ZONES.length),
+    legs: Math.floor(totalArmor / BODY_ZONES.length),
+  };
+
   return {
     id,
     name,
@@ -595,5 +666,7 @@ export const buildCombatantState = (params: {
     magicResist: derived.magicResist,
     statusEffects: [],
     abilityCooldowns: {},
+    stance: stance ?? defaultStance(),
+    zoneArmor: effectiveZoneArmor,
   };
 };

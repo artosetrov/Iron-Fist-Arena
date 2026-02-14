@@ -41,6 +41,11 @@ export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname;
     const isApi = pathname.startsWith("/api");
 
+    // #region agent log
+    if (!isApi && (isGamePath(pathname) || isAuthPath(pathname) || pathname === '/auth/callback')) {
+      fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:authCheck',message:'Middleware auth check',data:{pathname,hasUser:!!user,userId:user?.id??null,isGame:isGamePath(pathname),isAuth:isAuthPath(pathname),cookieNames:request.cookies.getAll().map((c:{name:string})=>c.name)},timestamp:Date.now(),hypothesisId:'A,E'})}).catch(()=>{});
+    }
+    // #endregion
 
     /* ── Helper: redirect while preserving Supabase session cookies ── */
     const redirectTo = (destination: string, searchParams?: Record<string, string>) => {

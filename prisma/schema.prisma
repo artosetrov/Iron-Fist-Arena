@@ -54,10 +54,15 @@ model Character {
   currentHp      Int   @default(100) @map("current_hp")
   armor          Int   @default(0)
   magicResist    Int   @default(0) @map("magic_resist")
+  combatStance   Json? @map("combat_stance")
 
   currentStamina     Int      @default(100) @map("current_stamina")
   maxStamina         Int      @default(100) @map("max_stamina")
   lastStaminaUpdate  DateTime @default(now()) @map("last_stamina_update")
+
+  bonusTrainings     Int      @default(0) @map("bonus_trainings")
+  bonusTrainingsDate DateTime? @map("bonus_trainings_date") @db.Date
+  bonusTrainingsBuys Int      @default(0) @map("bonus_trainings_buys")
 
   pvpRating      Int    @default(0) @map("pvp_rating")
   pvpWins        Int    @default(0) @map("pvp_wins")

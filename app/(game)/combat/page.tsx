@@ -19,9 +19,10 @@ const CombatLoadingScreen = dynamic(
 );
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
-import { GameButton, PageContainer } from "@/app/components/ui";
+import { GameButton, GameModal, PageContainer } from "@/app/components/ui";
 import GameIcon from "@/app/components/ui/GameIcon";
 import type { GameIconKey } from "@/app/components/ui/GameIcon";
+import CardCarousel from "@/app/components/ui/CardCarousel";
 import {
   collectBattleAssets,
   preloadImages,
@@ -100,6 +101,11 @@ type TrainingStatus = {
   used: number;
   remaining: number;
   max: number;
+  baseMax: number;
+  bonus: number;
+  buys: number;
+  maxBuys: number;
+  buyCostGems: number;
 };
 
 /* ────────────────── Preset cards data ────────────────── */
@@ -276,7 +282,9 @@ function CombatContent() {
   const [screen, setScreen] = useState<ScreenState>({ kind: "select" });
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<TrainingStatus | null>(null);
-  const carouselRef = useRef<HTMLDivElement>(null);
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  const [buyingExtra, setBuyingExtra] = useState(false);
+  const [buyError, setBuyError] = useState<string | null>(null);
 
   /* ── Load character + training status ── */
   useEffect(() => {
@@ -313,6 +321,31 @@ function CombatContent() {
       /* silent */
     }
   }, [characterId]);
+
+  /* ── Buy extra training sessions ── */
+  const handleBuyExtra = async () => {
+    if (!character || buyingExtra) return;
+    setBuyError(null);
+    setBuyingExtra(true);
+
+    try {
+      const res = await fetch("/api/combat/buy-extra", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: character.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Purchase failed");
+      }
+      setStatus(data.status);
+      setShowBuyModal(false);
+    } catch (e) {
+      setBuyError(e instanceof Error ? e.message : "Purchase failed");
+    } finally {
+      setBuyingExtra(false);
+    }
+  };
 
   /* Ref to prevent double-fire during loading */
   const loadingRef = useRef(false);
@@ -418,18 +451,28 @@ function CombatContent() {
       </p>
 
       {status && (
-        <div className="mx-auto mb-4 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-1.5">
+        <button
+          type="button"
+          onClick={() => { if (limitReached) setShowBuyModal(true); }}
+          className={`mx-auto mb-4 flex items-center gap-2 rounded-xl border bg-slate-800/60 px-3 py-1.5 transition-colors ${
+            limitReached
+              ? "cursor-pointer border-amber-600/60 hover:border-amber-500 hover:bg-slate-800/80"
+              : "cursor-default border-slate-700"
+          }`}
+          aria-label={limitReached ? "Buy extra training sessions" : `${status.remaining} of ${status.max} training sessions remaining`}
+          tabIndex={limitReached ? 0 : -1}
+        >
           <span className="text-xs text-slate-400">Today:</span>
           <div className="flex gap-1">
             {Array.from({ length: status.max }, (_, i) => (
               <div
                 key={i}
                 className={`h-2 w-2 rounded-full transition-colors ${
-                  i < status.used
-                    ? "bg-amber-500"
-                    : "bg-slate-700"
+                  i < status.remaining
+                    ? "bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.4)]"
+                    : "bg-slate-700/50 ring-1 ring-slate-600/50"
                 }`}
-                aria-label={i < status.used ? "Used" : "Available"}
+                aria-label={i < status.remaining ? "Available" : "Used"}
               />
             ))}
           </div>
@@ -440,7 +483,10 @@ function CombatContent() {
           >
             {status.remaining}/{status.max}
           </span>
-        </div>
+          {limitReached && (
+            <span className="ml-0.5 text-xs text-amber-500">💎</span>
+          )}
+        </button>
       )}
 
       {/* Choose an opponent */}
@@ -449,63 +495,28 @@ function CombatContent() {
       </h2>
 
       {/* ── Opponent carousel (unified for mobile & desktop) ── */}
-      <div className="flex flex-1 items-center">
-        <div className="relative w-full">
-          {/* Navigation arrows */}
-          <button
-            type="button"
-            onClick={() => {
-              const el = carouselRef.current;
-              if (!el) return;
-              const card = el.querySelector<HTMLElement>(".hero-card-container--default");
-              if (!card) return;
-              el.scrollBy({ left: -(card.offsetWidth + 20), behavior: "smooth" });
-            }}
-            aria-label="Previous opponent"
-            className="carousel-nav-btn left-0"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const el = carouselRef.current;
-              if (!el) return;
-              const card = el.querySelector<HTMLElement>(".hero-card-container--default");
-              if (!card) return;
-              el.scrollBy({ left: card.offsetWidth + 20, behavior: "smooth" });
-            }}
-            aria-label="Next opponent"
-            className="carousel-nav-btn right-0"
-          >
-            ›
-          </button>
+      <CardCarousel ariaLabelPrev="Previous opponent" ariaLabelNext="Next opponent">
+        {PRESETS.map((card) => {
+          const dummyLvl = getDummyLevel(character.level);
+          const dummyHp = getDummyHp(character.vitality, card.vitW);
 
-          {/* Cards scroll container */}
-          <div ref={carouselRef} className="arena-carousel px-8 py-4">
-            {PRESETS.map((card) => {
-              const dummyLvl = getDummyLevel(character.level);
-              const dummyHp = getDummyHp(character.vitality, card.vitW);
-
-              return (
-                <div key={card.id} className="hero-card-container--default">
-                  <HeroCard
-                    name={card.label}
-                    variant="default"
-                    className={card.id}
-                    level={dummyLvl}
-                    hp={{ current: dummyHp, max: dummyHp }}
-                    imageSrc={card.imageSrc}
-                    onClick={() => setFlippedCard(card.id)}
-                    ariaLabel={`View ${card.label}`}
-                    description={card.description}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+          return (
+            <div key={card.id} className="hero-card-container--default">
+              <HeroCard
+                name={card.label}
+                variant="default"
+                className={card.id}
+                level={dummyLvl}
+                hp={{ current: dummyHp, max: dummyHp }}
+                imageSrc={card.imageSrc}
+                onClick={() => setFlippedCard(card.id)}
+                ariaLabel={`View ${card.label}`}
+                description={card.description}
+              />
+            </div>
+          );
+        })}
+      </CardCarousel>
 
       {/* ── Detail modal (on card click) ── */}
       {flippedCard && (() => {
@@ -567,6 +578,66 @@ function CombatContent() {
           trainingRewards={screen.result.rewards}
         />
       )}
+
+      {/* Buy extra training sessions modal */}
+      <GameModal
+        open={showBuyModal}
+        onClose={() => { setShowBuyModal(false); setBuyError(null); }}
+        title="Extra Training"
+        size="sm"
+      >
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 ring-2 ring-amber-500/30">
+            <span className="text-2xl">⚔️</span>
+          </div>
+
+          <p className="text-center text-sm text-slate-300">
+            You&apos;ve used all your daily training sessions!
+            <br />
+            Buy <span className="font-bold text-amber-400">+5 extra sessions</span> to keep training.
+          </p>
+
+          {status && (
+            <div className="flex items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-800/50 px-4 py-2.5 text-xs">
+              <div className="text-slate-400">
+                Purchases today: <span className="font-bold text-white">{status.buys}/{status.maxBuys}</span>
+              </div>
+              <div className="h-4 w-px bg-slate-700" />
+              <div className="text-slate-400">
+                Cost: <span className="font-bold text-purple-400">{status.buyCostGems} 💎</span>
+              </div>
+            </div>
+          )}
+
+          {buyError && (
+            <p className="text-center text-sm text-red-400">{buyError}</p>
+          )}
+
+          <div className="flex w-full gap-2">
+            <GameButton
+              variant="secondary"
+              fullWidth
+              onClick={() => { setShowBuyModal(false); setBuyError(null); }}
+              aria-label="Cancel"
+            >
+              Cancel
+            </GameButton>
+            <GameButton
+              variant="primary"
+              fullWidth
+              onClick={handleBuyExtra}
+              disabled={buyingExtra || (status !== null && status.buys >= status.maxBuys)}
+              aria-label="Buy extra training sessions"
+            >
+              {buyingExtra
+                ? "Buying…"
+                : status && status.buys >= status.maxBuys
+                  ? "Sold Out"
+                  : <>Buy for {status?.buyCostGems ?? 30} 💎</>}
+            </GameButton>
+          </div>
+        </div>
+      </GameModal>
     </PageContainer>
   );
 }

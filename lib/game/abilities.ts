@@ -25,19 +25,25 @@ export interface AbilityDef {
   /** If target HP% < this, auto-crit (e.g. 0.3) */
   executeThreshold?: number;
   cooldown: number;
+  /** Body zone: ability always hits this zone (overrides stance) */
+  targetZone?: string;
+  /** Ability ignores defender's block allocation */
+  ignoresBlock?: boolean;
+  /** Ability hits all zones (AoE) — no zone mult, no block */
+  aoeZones?: boolean;
 }
 
 export const ABILITIES: Record<CharacterClass, AbilityDef[]> = {
   warrior: [
     { id: "heavy_strike", name: "Heavy Strike", unlockLevel: 5, type: "physical", multiplier: 2, status: { chance: 0.15, duration: 1, type: "stun" }, cooldown: 3 },
     { id: "battle_cry", name: "Battle Cry", unlockLevel: 10, type: "buff", multiplier: 0, selfBuff: { str: 0.3 }, cooldown: 6 },
-    { id: "whirlwind", name: "Whirlwind", unlockLevel: 15, type: "physical", multiplier: 1.5, hits: 2, cooldown: 4 },
-    { id: "titan_slam", name: "Titan's Slam", unlockLevel: 20, type: "physical", multiplier: 3.5, armorBreak: 0.5, cooldown: 5 },
+    { id: "whirlwind", name: "Whirlwind", unlockLevel: 15, type: "physical", multiplier: 1.5, hits: 2, cooldown: 4, aoeZones: true },
+    { id: "titan_slam", name: "Titan's Slam", unlockLevel: 20, type: "physical", multiplier: 3.5, armorBreak: 0.5, cooldown: 5, targetZone: "head" },
   ],
   rogue: [
     { id: "quick_strike", name: "Quick Strike", unlockLevel: 5, type: "physical", multiplier: 1.6, critBonus: 20, cooldown: 2 },
     { id: "shadow_step", name: "Shadow Step", unlockLevel: 10, type: "buff", multiplier: 0, dodgeBonus: 50, dodgeBonusTurns: 2, cooldown: 5 },
-    { id: "backstab", name: "Backstab", unlockLevel: 15, type: "physical", multiplier: 2.5, firstStrikeOnly: true, cooldown: 3 },
+    { id: "backstab", name: "Backstab", unlockLevel: 15, type: "physical", multiplier: 2.5, firstStrikeOnly: true, cooldown: 3, targetZone: "waist", ignoresBlock: true },
     { id: "assassinate", name: "Assassinate", unlockLevel: 20, type: "physical", multiplier: 4, executeThreshold: 0.3, cooldown: 6 },
   ],
   mage: [
@@ -47,7 +53,7 @@ export const ABILITIES: Record<CharacterClass, AbilityDef[]> = {
     { id: "meteor_storm", name: "Meteor Storm", unlockLevel: 20, type: "magic", multiplier: 3.8, cooldown: 6 },
   ],
   tank: [
-    { id: "shield_bash", name: "Shield Bash", unlockLevel: 5, type: "physical", multiplier: 1.4, cooldown: 2 },
+    { id: "shield_bash", name: "Shield Bash", unlockLevel: 5, type: "physical", multiplier: 1.4, cooldown: 2, targetZone: "head" },
     { id: "iron_wall", name: "Iron Wall", unlockLevel: 10, type: "buff", multiplier: 0, selfBuff: { armor: 0.8 }, cooldown: 6 },
     { id: "counter_strike", name: "Counter Strike", unlockLevel: 15, type: "physical", multiplier: 1.2, cooldown: 4 },
     { id: "immovable_object", name: "Immovable Object", unlockLevel: 20, type: "buff", multiplier: 0, selfBuff: { resist: 0.6 }, cooldown: 8 },

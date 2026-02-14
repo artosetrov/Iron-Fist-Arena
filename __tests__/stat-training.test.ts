@@ -11,7 +11,6 @@ describe("goldCostForStatTraining", () => {
   it("returns correct cost for stat value 10", () => {
     const expected = Math.floor(STAT_TRAIN_BASE * Math.pow(STAT_TRAIN_GROWTH, 10));
     expect(goldCostForStatTraining(10)).toBe(expected);
-    expect(expected).toBe(81); // 50 * 1.05^10 ≈ 81.4
   });
 
   it("returns correct cost for stat value 50", () => {

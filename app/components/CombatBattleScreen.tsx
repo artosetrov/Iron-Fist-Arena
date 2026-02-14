@@ -20,6 +20,12 @@ type CombatLogEntry = {
   message: string;
   actorHpAfter?: number;
   targetHpAfter?: number;
+  /** Body zone hit */
+  bodyZone?: string;
+  /** Whether hit was blocked */
+  blocked?: boolean;
+  /** Block damage reduction (0-0.75) */
+  blockReduction?: number;
 };
 
 type CombatantSnapshot = {
@@ -156,6 +162,13 @@ type LogEntryRowProps = {
   playerId: string;
 };
 
+const ZONE_BADGE_COLOR: Record<string, string> = {
+  head: "bg-red-900/40 text-red-300",
+  torso: "bg-amber-900/40 text-amber-300",
+  waist: "bg-purple-900/40 text-purple-300",
+  legs: "bg-emerald-900/40 text-emerald-300",
+};
+
 const LogEntryRow = ({ entry, playerName, enemyName, playerId }: LogEntryRowProps) => {
   const isPlayerActor = entry.actorId === playerId;
   const actorName = isPlayerActor ? playerName : enemyName;
@@ -172,11 +185,25 @@ const LogEntryRow = ({ entry, playerName, enemyName, playerId }: LogEntryRowProp
     ? ` [${actorName}: ${entry.actorHpAfter} HP | ${isPlayerActor ? enemyName : actorName === enemyName ? playerName : enemyName}: ${entry.targetHpAfter} HP]`
     : "";
 
+  const zoneBadge = entry.bodyZone ? (
+    <span className={`ml-1 inline-block rounded px-1 py-0.5 text-[9px] font-bold uppercase ${ZONE_BADGE_COLOR[entry.bodyZone] ?? "bg-slate-700 text-slate-300"}`}>
+      {entry.bodyZone}
+    </span>
+  ) : null;
+
+  const blockBadge = entry.blocked && entry.blockReduction ? (
+    <span className="ml-1 inline-block rounded bg-blue-900/40 px-1 py-0.5 text-[9px] font-bold text-blue-300">
+      BLK -{Math.round(entry.blockReduction * 100)}%
+    </span>
+  ) : null;
+
   return (
     <div className="flex gap-2 text-[11px] leading-relaxed">
       <span className="shrink-0 font-mono text-slate-600">{entry.turn}.</span>
       <span className={colorClass}>
         {entry.message}
+        {zoneBadge}
+        {blockBadge}
         {entry.crit && <span className="ml-1 text-amber-400">CRIT!</span>}
       </span>
       {hpInfo && (
@@ -364,8 +391,11 @@ const CombatBattleScreen = ({
           const tid = setTimeout(() => { timeoutIds.current.delete(tid); setShakingRight(false); }, 400);
           timeoutIds.current.add(tid);
         }
+        // Build floating text with zone label
+        const zoneTag = entry.bodyZone ? `${entry.bodyZone.toUpperCase()} ` : "";
+        const blockTag = entry.blocked ? " BLK" : "";
         spawnFloat(
-          entry.damage.toString(),
+          `${zoneTag}${entry.damage}${blockTag}`,
           targetSide,
           !!entry.crit,
           false,

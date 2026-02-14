@@ -10,12 +10,17 @@ const ORIGIN_IMAGE: Record<string, string> = {
   dogfolk: "/images/origins/Avatar/origin-dogfolk_avatar_1.png",
 };
 
+type CharacterAvatarData = {
+  avatarSrc: string | null;
+  level: number | null;
+};
+
 /**
- * Fetches character origin and returns avatar image path.
- * Used in preloaders to show character avatar instead of emoji.
+ * Fetches character origin and returns avatar image path + level.
+ * Used in PageHeader / preloaders to show character avatar with level badge.
  */
-const useCharacterAvatar = (characterId: string | null): string | null => {
-  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+const useCharacterAvatar = (characterId: string | null): CharacterAvatarData => {
+  const [data, setData] = useState<CharacterAvatarData>({ avatarSrc: null, level: null });
 
   useEffect(() => {
     if (!characterId) return;
@@ -23,15 +28,17 @@ const useCharacterAvatar = (characterId: string | null): string | null => {
     fetch(`/api/characters/${characterId}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((char) => {
-        if (char?.origin && ORIGIN_IMAGE[char.origin]) {
-          setAvatarSrc(ORIGIN_IMAGE[char.origin]);
-        }
+        if (!char) return;
+        setData({
+          avatarSrc: char.origin && ORIGIN_IMAGE[char.origin] ? ORIGIN_IMAGE[char.origin] : null,
+          level: char.level ?? null,
+        });
       })
       .catch(() => {});
     return () => controller.abort();
   }, [characterId]);
 
-  return avatarSrc;
+  return data;
 };
 
 export default useCharacterAvatar;

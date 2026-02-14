@@ -1,5 +1,16 @@
 export type CharacterClass = "warrior" | "rogue" | "mage" | "tank";
 
+/* ── Body Zone Combat System ── */
+
+export type BodyZone = "head" | "torso" | "waist" | "legs";
+
+export interface CombatStance {
+  /** 1-2 zones to target with attacks */
+  attackZones: BodyZone[];
+  /** Block point allocation across zones (sum must equal MAX_BLOCK_POINTS = 3) */
+  blockAllocation: Record<BodyZone, number>;
+}
+
 export type CharacterOrigin =
   | "human"
   | "orc"
@@ -66,6 +77,10 @@ export interface CombatantState {
   abilityCooldowns: Record<string, number>;
   /** Boss-specific ability IDs (from boss-catalog). Undefined for players. */
   bossAbilityIds?: string[];
+  /** Body zone combat stance (attack targets + block allocation) */
+  stance: CombatStance;
+  /** Per-zone armor values computed from equipped items */
+  zoneArmor: Record<BodyZone, number>;
 }
 
 export interface CombatLogEntry {
@@ -83,6 +98,12 @@ export interface CombatLogEntry {
   /** HP snapshot after this action */
   actorHpAfter?: number;
   targetHpAfter?: number;
+  /** Body zone hit by this attack */
+  bodyZone?: BodyZone;
+  /** Whether the hit landed on a blocked zone */
+  blocked?: boolean;
+  /** Block damage reduction applied (0-0.75) */
+  blockReduction?: number;
 }
 
 export interface CombatantSnapshot {

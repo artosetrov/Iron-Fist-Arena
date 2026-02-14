@@ -379,6 +379,9 @@ const HeroCard = memo(({
   const resolvedImage = imageSrc ?? BOSS_IMAGES[name] ?? (origin ? ORIGIN_IMAGE[origin] : undefined);
   const isBossImage = Boolean(imageSrc || BOSS_IMAGES[name]);
   const isOriginImage = !isBossImage && Boolean(origin && ORIGIN_IMAGE[origin]);
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'HeroCard.tsx:resolveImage',message:'HeroCard image resolve',data:{name,variant,cls:classKey,origin,level,rating,resolvedImage,isBossImage,isOriginImage,hasHp:!!hp,hasStats:!!stats},timestamp:Date.now(),hypothesisId:'H1-H2-image'})}).catch(()=>{});
+  // #endregion
 
   // Battle animations
   const shakeClass = battle?.isShaking ? "animate-combat-shake" : "";

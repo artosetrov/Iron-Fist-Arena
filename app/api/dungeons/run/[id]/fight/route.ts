@@ -3,8 +3,10 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { runCombat, buildCombatantState } from "@/lib/game/combat";
-import { aggregateEquipmentStats } from "@/lib/game/equipment-stats";
+import { aggregateEquipmentStats, aggregateZoneArmor } from "@/lib/game/equipment-stats";
 import type { DungeonRunState } from "@/app/api/dungeons/start/route";
+import { validateStance, defaultStance, generateBossStance } from "@/lib/game/body-zones";
+import type { CombatStance } from "@/lib/game/types";
 import {
   getDungeonById,
   getBossStats,
@@ -58,6 +60,22 @@ export async function POST(
     }
 
     const { id: runId } = await params;
+
+    // Parse optional stance from request body
+    let stanceInput: CombatStance | undefined;
+    try {
+      const body = await request.json();
+      if (body?.stance) {
+        const stanceErr = validateStance(body.stance);
+        if (stanceErr) {
+          return NextResponse.json({ error: `Invalid stance: ${stanceErr}` }, { status: 400 });
+        }
+        stanceInput = body.stance as CombatStance;
+      }
+    } catch {
+      // No body or invalid JSON is fine — stance is optional
+    }
+
     const run = await prisma.dungeonRun.findFirst({
       where: { id: runId },
       include: {
@@ -82,8 +100,13 @@ export async function POST(
       );
     }
 
-    // Build player combatant with equipment bonuses
+    // Resolve player stance: from request body → saved in DB → default
+    const playerStance: CombatStance =
+      stanceInput ?? (character.combatStance as CombatStance | null) ?? defaultStance();
+
+    // Build player combatant with equipment bonuses + zone armor
     const playerEqStats = aggregateEquipmentStats(character.equipment ?? [], character.class);
+    const playerZoneArmor = aggregateZoneArmor(character.equipment ?? []);
     const playerState = buildCombatantState({
       id: character.id,
       name: character.characterName,
@@ -100,9 +123,14 @@ export async function POST(
       charisma: character.charisma,
       armor: character.armor,
       equipmentBonuses: playerEqStats,
+      stance: playerStance,
+      zoneArmor: playerZoneArmor,
     });
 
-    // Build boss combatant
+    // Build boss combatant with generated stance
+    const catalogEntry = getBossCatalogEntry(state.dungeonId, state.bossIndex);
+    const bossStance = generateBossStance();
+
     const bs = state.bossStats;
     const enemyState = buildCombatantState({
       id: "boss",
@@ -118,12 +146,12 @@ export async function POST(
       luck: bs.luck,
       charisma: bs.charisma,
       armor: bs.armor,
+      stance: bossStance,
     });
     enemyState.currentHp = state.bossCurrentHp;
     enemyState.maxHp = bs.maxHp;
 
     // Attach boss abilities from catalog
-    const catalogEntry = getBossCatalogEntry(state.dungeonId, state.bossIndex);
     if (catalogEntry) {
       enemyState.bossAbilityIds = catalogEntry.abilityIds;
     }

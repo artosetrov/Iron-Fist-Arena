@@ -91,7 +91,7 @@ export const DUNGEONS: DungeonDefinition[] = [
     id: "desecrated_catacombs",
     name: "Desecrated Catacombs",
     subtitle: "Where the dead refuse to rest",
-    minLevel: 5,
+    minLevel: 3,
     staminaCost: 12,
     prevDungeonId: "training_camp",
     theme: {
@@ -121,7 +121,7 @@ export const DUNGEONS: DungeonDefinition[] = [
     id: "fungal_grotto",
     name: "Fungal Grotto",
     subtitle: "The spores whisper secrets",
-    minLevel: 10,
+    minLevel: 5,
     staminaCost: 14,
     prevDungeonId: "desecrated_catacombs",
     theme: {
@@ -151,7 +151,7 @@ export const DUNGEONS: DungeonDefinition[] = [
     id: "scorched_mines",
     name: "Scorched Mines",
     subtitle: "Heat rises from below",
-    minLevel: 15,
+    minLevel: 8,
     staminaCost: 16,
     prevDungeonId: "fungal_grotto",
     theme: {
@@ -181,7 +181,7 @@ export const DUNGEONS: DungeonDefinition[] = [
     id: "frozen_abyss",
     name: "Frozen Abyss",
     subtitle: "Where even fire freezes",
-    minLevel: 20,
+    minLevel: 12,
     staminaCost: 18,
     prevDungeonId: "scorched_mines",
     theme: {
@@ -211,7 +211,7 @@ export const DUNGEONS: DungeonDefinition[] = [
     id: "realm_of_light",
     name: "Realm of Light",
     subtitle: "Where light burns brighter than fire",
-    minLevel: 25,
+    minLevel: 16,
     staminaCost: 20,
     prevDungeonId: "frozen_abyss",
     theme: {
@@ -241,7 +241,7 @@ export const DUNGEONS: DungeonDefinition[] = [
     id: "shadow_realm",
     name: "Shadow Realm",
     subtitle: "Where the darkness stares back",
-    minLevel: 30,
+    minLevel: 21,
     staminaCost: 22,
     prevDungeonId: "realm_of_light",
     theme: {
@@ -271,7 +271,7 @@ export const DUNGEONS: DungeonDefinition[] = [
     id: "clockwork_citadel",
     name: "Clockwork Citadel",
     subtitle: "Gears never stop turning",
-    minLevel: 35,
+    minLevel: 27,
     staminaCost: 24,
     prevDungeonId: "shadow_realm",
     theme: {
@@ -301,7 +301,7 @@ export const DUNGEONS: DungeonDefinition[] = [
     id: "abyssal_depths",
     name: "Abyssal Depths",
     subtitle: "Beneath the world, something waits",
-    minLevel: 40,
+    minLevel: 33,
     staminaCost: 26,
     prevDungeonId: "clockwork_citadel",
     theme: {
@@ -331,7 +331,7 @@ export const DUNGEONS: DungeonDefinition[] = [
     id: "infernal_throne",
     name: "Infernal Throne",
     subtitle: "The final descent into madness",
-    minLevel: 45,
+    minLevel: 40,
     staminaCost: 30,
     prevDungeonId: "abyssal_depths",
     theme: {

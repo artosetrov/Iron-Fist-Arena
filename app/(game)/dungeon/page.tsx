@@ -1,16 +1,19 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import PageHeader from "@/app/components/PageHeader";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatLootScreen from "@/app/components/CombatLootScreen";
+import StanceSelector from "@/app/components/StanceSelector";
+import type { CombatStance } from "@/lib/game/types";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
 import { BOSS_CATALOG } from "@/lib/game/boss-catalog";
 import { BOSS_ABILITIES } from "@/lib/game/boss-abilities";
+import CardCarousel from "@/app/components/ui/CardCarousel";
 import { getBossStats } from "@/lib/game/dungeon";
 import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
 import { GameButton, GameCard, PageContainer } from "@/app/components/ui";
@@ -116,6 +119,12 @@ type DungeonScreen =
   | { kind: "detail"; dungeon: DungeonInfo }
   | {
       kind: "boss";
+      dungeon: DungeonInfo;
+      runId: string;
+      boss: { name: string; description: string; hp: number; maxHp: number };
+    }
+  | {
+      kind: "stance";
       dungeon: DungeonInfo;
       runId: string;
       boss: { name: string; description: string; hp: number; maxHp: number };
@@ -446,8 +455,7 @@ function DungeonContent() {
   const [screen, setScreen] = useState<DungeonScreen>({ kind: "list" });
   const [error, setError] = useState<string | null>(null);
   const [selectedBoss, setSelectedBoss] = useState<number | null>(null);
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const bossCarouselRef = useRef<HTMLDivElement>(null);
+  /* carousel refs removed — handled by CardCarousel */
 
   /* ── Load character + dungeons ── */
   const loadData = useCallback(async () => {
@@ -517,16 +525,28 @@ function DungeonContent() {
     }
   };
 
-  /* ── Fight boss ── */
-  const handleFight = async () => {
+  /* ── Fight boss → go to stance screen first ── */
+  const handleFight = () => {
     if (screen.kind !== "boss" || fighting) return;
+    setError(null);
+    setScreen({
+      kind: "stance",
+      dungeon: screen.dungeon,
+      runId: screen.runId,
+      boss: screen.boss,
+    });
+  };
+
+  /* ── Stance confirmed → actually fight boss ── */
+  const handleDungeonStanceConfirm = async (stance: CombatStance) => {
+    if (screen.kind !== "stance" || fighting) return;
     setError(null);
     setFighting(true);
     try {
       const res = await fetch(`/api/dungeons/run/${screen.runId}/fight`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ stance }),
       });
       const data = (await res.json()) as FightResult;
 
@@ -540,6 +560,16 @@ function DungeonContent() {
     } finally {
       setFighting(false);
     }
+  };
+
+  /* ── Save stance as default ── */
+  const handleSaveDungeonStance = async (stance: CombatStance) => {
+    if (!characterId) return;
+    await fetch(`/api/characters/${characterId}/stance`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stance }),
+    });
   };
 
   /* Process fight result */
@@ -620,6 +650,39 @@ function DungeonContent() {
   }
 
   /* ══════════════════════════════════════════
+     STANCE SELECTION — before boss fight
+     ══════════════════════════════════════════ */
+  if (screen.kind === "stance") {
+    return (
+      <PageContainer>
+        <PageHeader title="Dungeons" />
+        <div className="flex min-h-[60vh] flex-col items-center justify-center p-4 lg:p-6">
+          <p className="mb-4 text-center text-sm text-slate-400">
+            Preparing to fight <span className="font-bold text-amber-300">{screen.boss.name}</span>
+          </p>
+          <StanceSelector
+            onConfirm={handleDungeonStanceConfirm}
+            onSaveDefault={handleSaveDungeonStance}
+            onBack={() =>
+              setScreen({
+                kind: "boss",
+                dungeon: screen.dungeon,
+                runId: screen.runId,
+                boss: screen.boss,
+              })
+            }
+            loading={fighting}
+            confirmLabel="Fight Boss!"
+          />
+          {error && (
+            <p className="mt-2 text-center text-sm text-red-400">{error}</p>
+          )}
+        </div>
+      </PageContainer>
+    );
+  }
+
+  /* ══════════════════════════════════════════
      BATTLE SCREEN — animated combat
      ══════════════════════════════════════════ */
   if (screen.kind === "battle" && screen.fightResult.playerSnapshot && screen.fightResult.enemySnapshot) {
@@ -669,34 +732,25 @@ function DungeonContent() {
 
     return (
       <div className="flex min-h-full flex-col p-4 lg:p-6">
-        {/* Header */}
-        <div className="relative mb-6 flex items-center">
-          <button
-            type="button"
-            onClick={handleBackToList}
-            aria-label="Back to dungeons"
-            className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="absolute inset-x-0 text-center font-display text-2xl font-bold uppercase text-white">
-            {dungeon.theme.icon} {dungeon.name}
-          </h1>
-          <div className="flex-1" />
-          <div className="relative z-10 w-28 shrink-0">
-            <div className="relative h-6 w-full overflow-hidden rounded-full border border-slate-700 bg-slate-800">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
-                style={{ width: `${character.maxStamina ? (character.currentStamina / character.maxStamina) * 100 : 0}%` }}
-              />
-              <span className="absolute inset-0 flex items-center justify-center gap-0.5 text-xs font-bold leading-none text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-                <GameIcon name="stamina" size={14} /> {character.currentStamina}/{character.maxStamina}
-              </span>
+        <PageHeader
+          title={`${dungeon.theme.icon} ${dungeon.name}`}
+          leftOnClick={handleBackToList}
+          leftLabel="Back to dungeons"
+          hideClose
+          actions={
+            <div className="w-28 shrink-0">
+              <div className="relative h-6 w-full overflow-hidden rounded-full border border-slate-700 bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
+                  style={{ width: `${character.maxStamina ? (character.currentStamina / character.maxStamina) * 100 : 0}%` }}
+                />
+                <span className="absolute inset-0 flex items-center justify-center gap-0.5 text-xs font-bold leading-none text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                  <GameIcon name="stamina" size={14} /> {character.currentStamina}/{character.maxStamina}
+                </span>
+              </div>
             </div>
-          </div>
-        </div>
+          }
+        />
 
         {/* Boss card */}
         <div className="mb-6 flex flex-col items-center">
@@ -953,49 +1007,15 @@ function DungeonContent() {
       return { boss, locked, stats };
     };
 
-    /** Scroll mobile boss carousel */
-    const handleScrollBossCarousel = (direction: "left" | "right") => {
-      const el = bossCarouselRef.current;
-      if (!el) return;
-      const card = el.querySelector<HTMLElement>(".hero-card-container--fixed");
-      if (!card) return;
-      const scrollAmount = card.offsetWidth + 12;
-      el.scrollBy({ left: direction === "right" ? scrollAmount : -scrollAmount, behavior: "smooth" });
-    };
+    /* handleScrollBossCarousel removed — handled by CardCarousel */
 
     return (
       <div className="flex min-h-full flex-col p-4 lg:p-6">
-        {/* Top bar: Back + dungeon name + close */}
-        <div className="relative mb-2 flex items-center">
-          <button
-            type="button"
-            onClick={() => { setSelectedBoss(null); handleBackToList(); }}
-            aria-label="Back to dungeons"
-            tabIndex={0}
-            className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="absolute inset-x-0 text-center">
-            <h1 className="font-display text-xl font-bold uppercase text-white lg:text-2xl">
-              {dungeon.theme.icon} {dungeon.name}
-            </h1>
-            <p className="text-[10px] text-slate-500">{dungeon.subtitle}</p>
-          </div>
-          <div className="flex-1" />
-          <div className="relative z-10">
-            <Link
-              href="/hub"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-              aria-label="Back to Hub"
-              tabIndex={0}
-            >
-              ✕
-            </Link>
-          </div>
-        </div>
+        <PageHeader
+          title={`${dungeon.theme.icon} ${dungeon.name}`}
+          leftOnClick={() => { setSelectedBoss(null); handleBackToList(); }}
+          leftLabel="Back to dungeons"
+        />
 
         {/* Stamina bar — click to go to potions shop */}
         <Link
@@ -1041,85 +1061,58 @@ function DungeonContent() {
 
         {/* ═══════════ MOBILE: Boss card carousel ═══════════ */}
         <div className="flex flex-1 flex-col lg:hidden">
-          <div className="relative w-full">
-            {/* Nav arrows */}
-            <button
-              type="button"
-              onClick={() => handleScrollBossCarousel("left")}
-              aria-label="Previous boss"
-              className="carousel-nav-btn left-0"
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              onClick={() => handleScrollBossCarousel("right")}
-              aria-label="Next boss"
-              className="carousel-nav-btn right-0"
-            >
-              ›
-            </button>
+          <CardCarousel ariaLabelPrev="Previous boss" ariaLabelNext="Next boss">
+            {dungeon.bosses.map((boss) => {
+              const { locked, stats } = getBossCardProps(boss.index);
+              const defeated = boss.index < dungeon.bossIndex;
+              const current = boss.index === dungeon.bossIndex && !dungeon.completed;
 
-            {/* Scroll container */}
-            <div
-              ref={bossCarouselRef}
-              className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto px-[calc(50%-140px)] pb-4"
-            >
-              {dungeon.bosses.map((boss) => {
-                const { locked, stats } = getBossCardProps(boss.index);
-                const defeated = boss.index < dungeon.bossIndex;
-                const current = boss.index === dungeon.bossIndex && !dungeon.completed;
-
-                return (
-                  <div
-                    key={boss.index}
-                    className="hero-card-container--fixed flex-shrink-0 snap-center"
-                  >
-                    {/* Status badge */}
-                    <div className="mb-2 flex items-center justify-center gap-2">
-                      <p className="text-xs font-bold text-slate-400">
-                        Boss {boss.index + 1}/{dungeon.bosses.length} · Lv.{boss.level}
-                      </p>
-                      {defeated && (
-                        <span className="rounded-full bg-green-900/40 px-2 py-0.5 text-[10px] font-bold text-green-400">
-                          ✓ Defeated
-                        </span>
-                      )}
-                      {current && (
-                        <span className="flex animate-pulse items-center gap-1 rounded-full bg-amber-900/40 px-2 py-0.5 text-[10px] font-bold text-amber-400">
-                          <GameIcon name="fights" size={12} /> Current
-                        </span>
-                      )}
-                    </div>
-
-                    <HeroCard
-                      name={locked ? "???" : boss.name}
-                      variant="compact"
-                      level={boss.level}
-                      icon={locked ? "🔒" : undefined}
-                      imageSrc={!locked ? BOSS_IMAGES[boss.name] : undefined}
-                      description={
-                        locked
-                          ? "Defeat the previous boss to reveal this enemy."
-                          : boss.description
-                      }
-                      hp={
-                        stats
-                          ? { current: stats.maxHp, max: stats.maxHp }
-                          : undefined
-                      }
-                      hideDescription={false}
-                      disabled={locked}
-                    >
-                      {renderBossCardChildren(boss.index, locked)}
-                    </HeroCard>
-
-                    {renderFightAction(boss.index)}
+              return (
+                <div key={boss.index} className="hero-card-container--default">
+                  {/* Status badge */}
+                  <div className="mb-2 flex items-center justify-center gap-2">
+                    <p className="text-xs font-bold text-slate-400">
+                      Boss {boss.index + 1}/{dungeon.bosses.length} · Lv.{boss.level}
+                    </p>
+                    {defeated && (
+                      <span className="rounded-full bg-green-900/40 px-2 py-0.5 text-[10px] font-bold text-green-400">
+                        ✓ Defeated
+                      </span>
+                    )}
+                    {current && (
+                      <span className="flex animate-pulse items-center gap-1 rounded-full bg-amber-900/40 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+                        <GameIcon name="fights" size={12} /> Current
+                      </span>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
+
+                  <HeroCard
+                    name={locked ? "???" : boss.name}
+                    variant="compact"
+                    level={boss.level}
+                    icon={locked ? "🔒" : undefined}
+                    imageSrc={!locked ? BOSS_IMAGES[boss.name] : undefined}
+                    description={
+                      locked
+                        ? "Defeat the previous boss to reveal this enemy."
+                        : boss.description
+                    }
+                    hp={
+                      stats
+                        ? { current: stats.maxHp, max: stats.maxHp }
+                        : undefined
+                    }
+                    hideDescription={false}
+                    disabled={locked}
+                  >
+                    {renderBossCardChildren(boss.index, locked)}
+                  </HeroCard>
+
+                  {renderFightAction(boss.index)}
+                </div>
+              );
+            })}
+          </CardCarousel>
 
           {/* Error */}
           {error && (
@@ -1336,13 +1329,7 @@ function DungeonContent() {
   /* ══════════════════════════════════════════
      LIST — dungeon carousel (S&F style)
      ══════════════════════════════════════════ */
-  const handleScrollCarousel = (direction: "left" | "right") => {
-    const el = carouselRef.current;
-    if (!el) return;
-    const cardWidth = el.querySelector<HTMLElement>(".dungeon-card")?.offsetWidth ?? 640;
-    const scrollAmount = cardWidth + 20;
-    el.scrollBy({ left: direction === "right" ? scrollAmount : -scrollAmount, behavior: "smooth" });
-  };
+  /* handleScrollCarousel removed — handled by CardCarousel */
 
   return (
     <PageContainer>
@@ -1354,28 +1341,11 @@ function DungeonContent() {
       )}
 
       {/* Dungeon carousel */}
-      <div className="flex flex-1 items-center">
-        <div className="relative w-full">
-          {/* Navigation arrows */}
-          <button
-            type="button"
-            onClick={() => handleScrollCarousel("left")}
-            aria-label="Previous dungeon"
-            className="carousel-nav-btn left-2"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            onClick={() => handleScrollCarousel("right")}
-            aria-label="Next dungeon"
-            className="carousel-nav-btn right-2"
-          >
-            ›
-          </button>
-
-          {/* Cards scroll container */}
-          <div ref={carouselRef} className="dungeon-carousel px-8 py-4">
+      <CardCarousel
+        cardSelector=".dungeon-card"
+        ariaLabelPrev="Previous dungeon"
+        ariaLabelNext="Next dungeon"
+      >
           {dungeons.map((dungeon) => {
             const progressPercent = Math.round(
               (dungeon.bossIndex / dungeon.bosses.length) * 100
@@ -1428,19 +1398,28 @@ function DungeonContent() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
 
                 {/* Lock overlay */}
-                {isLocked && (
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/60">
-                    <span className="text-6xl">🔒</span>
-                    <span className="text-sm font-medium text-slate-400">
-                      Lv. {dungeon.minLevel}+ required
-                    </span>
-                    {dungeon.prevDungeonId && (
-                      <span className="text-xs text-slate-500">
-                        Complete previous dungeon
-                      </span>
-                    )}
-                  </div>
-                )}
+                {isLocked && (() => {
+                  const needsLevel = character.level < dungeon.minLevel;
+                  const prevDungeon = dungeon.prevDungeonId
+                    ? dungeons.find((d) => d.id === dungeon.prevDungeonId)
+                    : null;
+                  const needsPrevComplete = !!prevDungeon && !prevDungeon.completed;
+                  return (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/60">
+                      <span className="text-6xl">🔒</span>
+                      {needsLevel && (
+                        <span className="text-sm font-medium text-slate-400">
+                          Lv. {dungeon.minLevel}+ required
+                        </span>
+                      )}
+                      {needsPrevComplete && (
+                        <span className="text-xs text-slate-500">
+                          Complete {prevDungeon.name} first
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Completed badge */}
                 {dungeon.completed && (
@@ -1510,9 +1489,7 @@ function DungeonContent() {
               </button>
             );
           })}
-        </div>
-        </div>
-      </div>
+      </CardCarousel>
     </PageContainer>
   );
 }

@@ -13,6 +13,7 @@ import {
   TRAINING_DUMMY_STAT_MULT,
 } from "@/lib/game/balance";
 import type { CharacterClass, CharacterOrigin } from "@prisma/client";
+import { startOfTodayUTC } from "@/lib/game/date-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +28,6 @@ const DUMMY_CLASS_WEIGHTS: Record<string, {
   rogue:   { class: "rogue",   name: "Training Dummy — Rogue",   strW: 0.8, agiW: 1.4, vitW: 0.6, endW: 0.5, intW: 0.3, wisW: 0.3, lckW: 1.2, chaW: 0.3 },
   mage:    { class: "mage",    name: "Training Dummy — Mage",    strW: 0.3, agiW: 0.6, vitW: 0.7, endW: 0.3, intW: 1.5, wisW: 1.0, lckW: 0.5, chaW: 0.3 },
   tank:    { class: "tank",    name: "Training Dummy — Tank",     strW: 0.7, agiW: 0.4, vitW: 1.3, endW: 1.2, intW: 0.3, wisW: 0.5, lckW: 0.3, chaW: 0.3 },
-};
-
-/** Get start of today (UTC) */
-const startOfTodayUTC = (): Date => {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 };
 
 export async function POST(request: Request) {
@@ -147,10 +142,22 @@ export async function POST(request: Request) {
     /* ── Persist in a transaction (daily limit check is INSIDE to prevent race conditions) ── */
     const todayStart = startOfTodayUTC();
     const txResult = await prisma.$transaction(async (tx) => {
+      /* Re-fetch character for bonus trainings (inside tx for consistency) */
+      const charBonus = await tx.character.findUnique({
+        where: { id: character.id },
+        select: { bonusTrainings: true, bonusTrainingsDate: true },
+      });
+
+      const isToday =
+        charBonus?.bonusTrainingsDate &&
+        charBonus.bonusTrainingsDate.getTime() === todayStart.getTime();
+      const bonus = isToday ? (charBonus?.bonusTrainings ?? 0) : 0;
+      const totalMax = TRAINING_MAX_DAILY + bonus;
+
       const todayCount = await tx.trainingSession.count({
         where: { characterId: character.id, playedAt: { gte: todayStart } },
       });
-      if (todayCount >= TRAINING_MAX_DAILY) {
+      if (todayCount >= totalMax) {
         return { limitReached: true as const, remaining: 0 };
       }
 
@@ -177,7 +184,7 @@ export async function POST(request: Request) {
         });
       }
 
-      return { limitReached: false as const, remaining: TRAINING_MAX_DAILY - todayCount - 1 };
+      return { limitReached: false as const, remaining: totalMax - todayCount - 1 };
     });
 
     if (txResult.limitReached) {

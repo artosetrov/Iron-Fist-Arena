@@ -14,7 +14,7 @@ const randomVariance = (): number =>
 /**
  * GDD §2.1 Physical damage:
  * Base = (STR * skillMult) - (DefENDER_END * 0.5)
- * Effective = Base * (1 - armorReduction) * critMult * variance
+ * Effective = Base * (1 - armorReduction) * critMult * variance * zoneDamageMult
  */
 export const calcPhysicalDamage = (params: {
   attackerStr: number;
@@ -23,6 +23,8 @@ export const calcPhysicalDamage = (params: {
   skillMultiplier: number;
   isCrit: boolean;
   critDamageMult: number;
+  /** Body zone damage multiplier (head 1.3, torso 1.0, waist 0.9, legs 0.8). Default 1.0. */
+  zoneDamageMult?: number;
 }): number => {
   const {
     attackerStr,
@@ -31,6 +33,7 @@ export const calcPhysicalDamage = (params: {
     skillMultiplier,
     isCrit,
     critDamageMult,
+    zoneDamageMult = 1.0,
   } = params;
   const base = Math.max(
     1,
@@ -39,7 +42,7 @@ export const calcPhysicalDamage = (params: {
   const armorReduction = getArmorReduction(defenderArmor);
   const critMult = isCrit ? critDamageMult : 1;
   const variance = randomVariance();
-  return Math.max(1, Math.floor(base * (1 - armorReduction) * critMult * variance));
+  return Math.max(1, Math.floor(base * (1 - armorReduction) * critMult * variance * zoneDamageMult));
 };
 
 /**

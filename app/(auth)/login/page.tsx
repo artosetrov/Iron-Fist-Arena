@@ -7,6 +7,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import PageLoader from "@/app/components/PageLoader";
 import FormInput from "@/app/components/FormInput";
+import { useNavigationLoader } from "@/app/components/NavigationLoader";
 import { GameButton } from "@/app/components/ui";
 
 /* ────────────────── Login Form ────────────────── */
@@ -18,6 +19,7 @@ const LoginForm = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
+  const { startNavigation } = useNavigationLoader() ?? {};
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/hub";
 
@@ -42,6 +44,7 @@ const LoginForm = () => {
       }
 
       // Check if user has any characters — if not, send to onboarding
+      startNavigation?.();
       try {
         const charRes = await fetch("/api/characters");
         const charData = await charRes.json();
@@ -126,14 +129,34 @@ const LoginForm = () => {
               autoComplete="email"
               placeholder="warrior@arena.com"
             />
-            <FormInput
-              label="Password"
-              type="password"
-              value={password}
-              onChange={setPassword}
-              autoComplete="current-password"
-              placeholder="••••••••"
-            />
+            <div>
+              <FormInput
+                label="Password"
+                type="password"
+                value={password}
+                onChange={setPassword}
+                autoComplete="current-password"
+                placeholder="••••••••"
+              />
+              <div className="mt-1.5 text-right">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-amber-500 transition hover:text-amber-400"
+                  tabIndex={0}
+                  aria-label="Forgot password?"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
+
+            {searchParams.get("message") === "password_reset" && (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-center">
+                <p className="text-xs text-emerald-400" role="status">
+                  Password successfully reset. Sign in with your new password.
+                </p>
+              </div>
+            )}
 
             {error && (
               <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-center">

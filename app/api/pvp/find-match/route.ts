@@ -13,10 +13,12 @@ import {
 } from "@/lib/game/progression";
 import { applyLevelUp } from "@/lib/game/levelUp";
 import { updateDailyQuestProgress } from "@/lib/game/quests";
-import { aggregateEquipmentStats } from "@/lib/game/equipment-stats";
+import { aggregateEquipmentStats, aggregateZoneArmor } from "@/lib/game/equipment-stats";
 import { PVP_MATCHMAKING_RATING_RANGE } from "@/lib/game/balance";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type { CharacterClass, CharacterOrigin } from "@prisma/client";
+import { validateStance, defaultStance, generateRandomStance } from "@/lib/game/body-zones";
+import type { CombatStance } from "@/lib/game/types";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +46,17 @@ export async function POST(request: Request) {
     }
     const characterId = body.characterId as string;
     const opponentId = body.opponentId as string | undefined;
+    const stanceInput = body.stance as CombatStance | undefined;
     if (!characterId) {
       return NextResponse.json({ error: "characterId required" }, { status: 400 });
+    }
+
+    // Validate stance if provided
+    if (stanceInput) {
+      const stanceErr = validateStance(stanceInput);
+      if (stanceErr) {
+        return NextResponse.json({ error: `Invalid stance: ${stanceErr}` }, { status: 400 });
+      }
     }
 
     const character = await prisma.character.findFirst({
@@ -107,7 +118,12 @@ export async function POST(request: Request) {
       );
     }
 
+    // Resolve player stance: from request body → saved in DB → default
+    const playerStance: CombatStance =
+      stanceInput ?? (character.combatStance as CombatStance | null) ?? defaultStance();
+
     const playerEqStats = aggregateEquipmentStats(character.equipment ?? [], character.class);
+    const playerZoneArmor = aggregateZoneArmor(character.equipment ?? []);
     const playerState = buildCombatantState({
       id: character.id,
       name: character.characterName,
@@ -124,9 +140,16 @@ export async function POST(request: Request) {
       charisma: character.charisma,
       armor: character.armor,
       equipmentBonuses: playerEqStats,
+      stance: playerStance,
+      zoneArmor: playerZoneArmor,
     });
 
+    // Resolve opponent stance: saved in DB → random
+    const opponentStance: CombatStance =
+      (opponent.combatStance as CombatStance | null) ?? generateRandomStance();
+
     const opponentEqStats = aggregateEquipmentStats(opponent.equipment ?? [], opponent.class);
+    const opponentZoneArmor = aggregateZoneArmor(opponent.equipment ?? []);
     const opponentState = buildCombatantState({
       id: opponent.id,
       name: opponent.characterName,
@@ -143,6 +166,8 @@ export async function POST(request: Request) {
       charisma: opponent.charisma,
       armor: opponent.armor,
       equipmentBonuses: opponentEqStats,
+      stance: opponentStance,
+      zoneArmor: opponentZoneArmor,
     });
 
     const result = runCombat(playerState, opponentState, []);

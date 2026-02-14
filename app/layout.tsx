@@ -4,6 +4,7 @@ import { Inter, Bangers, MedievalSharp } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import DesignTokenProvider from "./components/DesignTokenProvider";
+import { NavigationLoaderProvider } from "./components/NavigationLoader";
 import "./globals.css";
 
 const inter = Inter({
@@ -45,7 +46,7 @@ export default function RootLayout({
         </Suspense>
       </head>
       <body className="font-sans min-h-screen antialiased">
-        {children}
+        <NavigationLoaderProvider>{children}</NavigationLoaderProvider>
         <Analytics />
         <SpeedInsights />
       </body>

@@ -6,11 +6,14 @@ import Image from "next/image";
 import PageHeader from "@/app/components/PageHeader";
 import CombatBattleScreen from "@/app/components/CombatBattleScreen";
 import CombatResultModal from "@/app/components/CombatResultModal";
+import StanceSelector from "@/app/components/StanceSelector";
+import type { CombatStance } from "@/lib/game/types";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard, { CLASS_ICON, ORIGIN_IMAGE } from "@/app/components/HeroCard";
 import GameIcon from "@/app/components/ui/GameIcon";
 import GameModal from "@/app/components/ui/GameModal";
 import { GameButton, PageContainer } from "@/app/components/ui";
+import CardCarousel from "@/app/components/ui/CardCarousel";
 
 /* ────────────────── Types ────────────────── */
 
@@ -78,6 +81,9 @@ type CombatLogEntry = {
   actorHpAfter?: number;
   targetHpAfter?: number;
   statusTicks?: { type: string; damage?: number; healed?: number }[];
+  bodyZone?: string;
+  blocked?: boolean;
+  blockReduction?: number;
 };
 
 type MatchResult = {
@@ -321,6 +327,7 @@ const CardBack = ({ character, opponent, canAfford, fighting, onFight, onFlipBac
 
 type ScreenState =
   | { kind: "select" }
+  | { kind: "stance"; opponentId: string }
   | { kind: "battle"; matchResult: MatchResult }
   | { kind: "result"; matchResult: MatchResult };
 
@@ -337,7 +344,6 @@ function ArenaContent() {
   const [screen, setScreen] = useState<ScreenState>({ kind: "select" });
   const [error, setError] = useState<string | null>(null);
   const [flippedCard, setFlippedCard] = useState<string | null>(null);
-  const carouselRef = useRef<HTMLDivElement>(null);
 
   /* ── Load character ── */
   useEffect(() => {
@@ -374,6 +380,9 @@ function ArenaContent() {
       const res = await fetch(`/api/pvp/opponents?characterId=${characterId}`, { signal: controller.signal });
       const data = await res.json();
       if (res.ok) {
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'arena/page.tsx:loadOpponents',message:'API response opponents',data:{count:data.opponents?.length,opponents:data.opponents?.map((o:Record<string,unknown>)=>({id:o.id,characterName:o.characterName,class:o.class,origin:o.origin,level:o.level,pvpRating:o.pvpRating,strength:o.strength,agility:o.agility,vitality:o.vitality,intelligence:o.intelligence,luck:o.luck}))},timestamp:Date.now(),hypothesisId:'H4-data'})}).catch(()=>{});
+        // #endregion
         setOpponents(data.opponents ?? []);
       } else {
         setError(data.error ?? "Failed to load opponents");
@@ -390,20 +399,28 @@ function ArenaContent() {
     loadOpponents();
   }, [loadOpponents]);
 
-  /* ── Fight opponent ── */
-  const handleFight = async (opponentId: string) => {
+  /* ── Select opponent → go to stance selection ── */
+  const handleFight = (opponentId: string) => {
     if (!characterId || fighting) return;
+    setError(null);
+    setScreen({ kind: "stance", opponentId });
+  };
+
+  /* ── Stance confirmed → start fight ── */
+  const handleStanceConfirm = async (stance: CombatStance) => {
+    if (!characterId || fighting || screen.kind !== "stance") return;
     setError(null);
     setFighting(true);
     try {
       const res = await fetch("/api/pvp/find-match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId, opponentId }),
+        body: JSON.stringify({ characterId, opponentId: screen.opponentId, stance }),
       });
       const data = (await res.json()) as MatchResult;
       if (!res.ok) {
         setError((data as unknown as { error: string }).error ?? "Error");
+        setScreen({ kind: "select" });
         return;
       }
       setCharacter((c) =>
@@ -424,6 +441,16 @@ function ArenaContent() {
     }
   };
 
+  /* ── Save stance as default ── */
+  const handleSaveStance = async (stance: CombatStance) => {
+    if (!characterId) return;
+    await fetch(`/api/characters/${characterId}/stance`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stance }),
+    });
+  };
+
   /* ── Battle complete → show result modal ── */
   const handleBattleComplete = () => {
     if (screen.kind === "battle") {
@@ -440,6 +467,27 @@ function ArenaContent() {
   /* ── Loading state ── */
   if (loading || !character) {
     return <PageLoader icon={<GameIcon name="arena" size={32} />} text="Loading arena…" />;
+  }
+
+  /* ── Stance selection screen ── */
+  if (screen.kind === "stance") {
+    return (
+      <PageContainer>
+        <PageHeader title="Arena" />
+        <div className="flex min-h-[60vh] items-center justify-center p-4 lg:p-6">
+          <StanceSelector
+            onConfirm={handleStanceConfirm}
+            onSaveDefault={handleSaveStance}
+            onBack={() => setScreen({ kind: "select" })}
+            loading={fighting}
+            confirmLabel="Fight!"
+          />
+        </div>
+        {error && (
+          <p className="mt-2 text-center text-sm text-red-400">{error}</p>
+        )}
+      </PageContainer>
+    );
   }
 
   /* ── Battle screen ── */
@@ -499,70 +547,35 @@ function ArenaContent() {
       ) : (
         <>
           {/* ── Opponent carousel (unified for mobile & desktop) ── */}
-          <div className="flex flex-1 items-center">
-            <div className="relative w-full">
-              {/* Navigation arrows */}
-              <button
-                type="button"
-                onClick={() => {
-                  const el = carouselRef.current;
-                  if (!el) return;
-                  const card = el.querySelector<HTMLElement>(".hero-card-container--default");
-                  if (!card) return;
-                  el.scrollBy({ left: -(card.offsetWidth + 20), behavior: "smooth" });
-                }}
-                aria-label="Previous opponent"
-                className="carousel-nav-btn left-0"
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const el = carouselRef.current;
-                  if (!el) return;
-                  const card = el.querySelector<HTMLElement>(".hero-card-container--default");
-                  if (!card) return;
-                  el.scrollBy({ left: card.offsetWidth + 20, behavior: "smooth" });
-                }}
-                aria-label="Next opponent"
-                className="carousel-nav-btn right-0"
-              >
-                ›
-              </button>
+          <CardCarousel ariaLabelPrev="Previous opponent" ariaLabelNext="Next opponent">
+            {opponents.map((opp) => {
+              const cls = opp.class.toLowerCase();
+              const maxHp = getMaxHp(opp.vitality);
 
-              {/* Cards scroll container */}
-              <div ref={carouselRef} className="arena-carousel px-8 py-4">
-                {opponents.map((opp) => {
-                  const cls = opp.class.toLowerCase();
-                  const maxHp = getMaxHp(opp.vitality);
-
-                  return (
-                    <div key={opp.id} className="hero-card-container--default">
-                      <HeroCard
-                        name={opp.characterName}
-                        variant="default"
-                        className={cls}
-                        origin={opp.origin}
-                        level={opp.level}
-                        rating={opp.pvpRating}
-                        hp={{ current: maxHp, max: maxHp }}
-                        onClick={() => setFlippedCard(opp.id)}
-                        ariaLabel={`View stats for ${opp.characterName}`}
-                        stats={{
-                          strength: opp.strength,
-                          agility: opp.agility,
-                          intelligence: opp.intelligence,
-                          vitality: opp.vitality,
-                          luck: opp.luck,
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+              return (
+                <div key={opp.id} className="hero-card-container--default">
+                  <HeroCard
+                    name={opp.characterName}
+                    variant="default"
+                    className={cls}
+                    origin={opp.origin}
+                    level={opp.level}
+                    rating={opp.pvpRating}
+                    hp={{ current: maxHp, max: maxHp }}
+                    onClick={() => setFlippedCard(opp.id)}
+                    ariaLabel={`View stats for ${opp.characterName}`}
+                    stats={{
+                      strength: opp.strength,
+                      agility: opp.agility,
+                      intelligence: opp.intelligence,
+                      vitality: opp.vitality,
+                      luck: opp.luck,
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </CardCarousel>
 
           {/* ── Stat-compare modal (on card click) ── */}
           {flippedCard && (() => {

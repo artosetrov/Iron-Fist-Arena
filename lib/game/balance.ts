@@ -67,6 +67,40 @@ export const ENEMY_SKILL_USE_CHANCE = 0.6;
 export const BASE_SPELL_MULT = 1.2;
 
 /* ──────────────────────────────────────────────────────────────────────
+   §2.5  BODY ZONES
+   ────────────────────────────────────────────────────────────────────── */
+
+import type { BodyZone } from "./types";
+
+/** All body zones in order */
+export const BODY_ZONES: BodyZone[] = ["head", "torso", "waist", "legs"];
+
+/** Damage multiplier per zone — head hits hard, legs hit soft */
+export const ZONE_DAMAGE_MULT: Record<BodyZone, number> = {
+  head: 1.3,
+  torso: 1.0,
+  waist: 0.9,
+  legs: 0.8,
+};
+
+/** Base hit weight per zone (used in weighted random for attack resolution) */
+export const ZONE_HIT_WEIGHT: Record<BodyZone, number> = {
+  head: 15,
+  torso: 35,
+  waist: 30,
+  legs: 20,
+};
+
+/** +15% hit chance when focusing on a single attack zone */
+export const ZONE_FOCUS_BONUS = 0.15;
+
+/** Maximum block points to distribute across zones */
+export const MAX_BLOCK_POINTS = 3;
+
+/** Damage reduction per block point on a zone (1=25%, 2=50%, 3=75%) */
+export const BLOCK_REDUCTION_PER_POINT = 0.25;
+
+/* ──────────────────────────────────────────────────────────────────────
    §3  PROGRESSION
    ────────────────────────────────────────────────────────────────────── */
 
@@ -385,20 +419,20 @@ export const BOSS_ARMOR_FACTOR = 0.8;
 export const BOSS_INDEX_SCALING = 0.15;
 
 /** Dungeon gold reward: base + dungeonIndex * perDungeon */
-export const DUNGEON_GOLD_BASE = 20;
-export const DUNGEON_GOLD_PER_DUNGEON = 30;
+export const DUNGEON_GOLD_BASE = 30;
+export const DUNGEON_GOLD_PER_DUNGEON = 40;
 export const DUNGEON_GOLD_BOSS_SCALE = 0.2;
 
 /** Dungeon XP reward */
-export const DUNGEON_XP_BASE = 30;
-export const DUNGEON_XP_PER_DUNGEON = 25;
+export const DUNGEON_XP_BASE = 80;
+export const DUNGEON_XP_PER_DUNGEON = 50;
 export const DUNGEON_XP_BOSS_SCALE = 0.15;
 
 /** Dungeon completion bonus */
-export const DUNGEON_COMPLETION_GOLD_BASE = 200;
-export const DUNGEON_COMPLETION_GOLD_PER_DUNGEON = 150;
-export const DUNGEON_COMPLETION_XP_BASE = 300;
-export const DUNGEON_COMPLETION_XP_PER_DUNGEON = 200;
+export const DUNGEON_COMPLETION_GOLD_BASE = 300;
+export const DUNGEON_COMPLETION_GOLD_PER_DUNGEON = 200;
+export const DUNGEON_COMPLETION_XP_BASE = 600;
+export const DUNGEON_COMPLETION_XP_PER_DUNGEON = 400;
 
 /** Item level variance when dropping from dungeon: level + random(-2 to +3) */
 export const ITEM_LEVEL_VARIANCE_MIN = -2;
@@ -463,6 +497,12 @@ export const TRAINING_DUMMY_STAT_MULT = 0.6;
 
 /** Max trainings per day (reset 00:00 UTC) */
 export const TRAINING_MAX_DAILY = 10;
+
+/** Buy extra training sessions for gems */
+export const TRAINING_EXTRA_SESSIONS = 5;
+export const TRAINING_EXTRA_COST_GEMS = 30;
+/** Max purchases per day */
+export const TRAINING_EXTRA_MAX_BUYS = 3;
 
 /* ──────────────────────────────────────────────────────────────────────
    DUNGEON RUSH — GDD Appendix C (5 waves)

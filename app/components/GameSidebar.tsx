@@ -385,7 +385,7 @@ const GameSidebar = () => {
                     </span>
                   )}
                 </div>
-                <span className="absolute -bottom-1 -right-1 z-10 rounded bg-slate-700 px-1.5 font-display text-xs text-white">
+                <span className="absolute -bottom-2 -right-2 z-10 rounded bg-slate-700 px-2 py-0.5 font-display text-sm font-bold text-white">
                   {character.level}
                 </span>
               </Link>
@@ -409,6 +409,22 @@ const GameSidebar = () => {
                   )}
                 </div>
               </div>
+
+              {/* Shop button */}
+              <Link
+                href={buildHref("/shop") + (characterId ? "&tab=potions" : "?tab=potions")}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition hover:bg-slate-800/60"
+                aria-label="Buy potions"
+                tabIndex={0}
+              >
+                <Image
+                  src="/images/ui/icon-potion-shop.png"
+                  alt="Buy potions"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                />
+              </Link>
             </div>
 
             {/* XP bar */}
@@ -655,15 +671,6 @@ const GameSidebar = () => {
         `}
         aria-label="Game Menu"
       >
-        {/* Close button */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen(false)}
-          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"
-          aria-label="Close Menu"
-        >
-          ✕
-        </button>
         {sidebarContent}
       </aside>
 

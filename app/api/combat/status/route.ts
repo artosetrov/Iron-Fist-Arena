@@ -1,14 +1,30 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { TRAINING_MAX_DAILY } from "@/lib/game/balance";
+import {
+  TRAINING_MAX_DAILY,
+  TRAINING_EXTRA_COST_GEMS,
+  TRAINING_EXTRA_MAX_BUYS,
+} from "@/lib/game/balance";
+
+import { startOfTodayUTC } from "@/lib/game/date-utils";
 
 export const dynamic = "force-dynamic";
 
-/** Get start of today (UTC) */
-const startOfTodayUTC = (): Date => {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+/** Get bonus trainings for today (auto-resets if date mismatch) */
+const getBonusForToday = (character: {
+  bonusTrainings: number;
+  bonusTrainingsDate: Date | null;
+  bonusTrainingsBuys: number;
+}) => {
+  const todayStart = startOfTodayUTC();
+  if (
+    !character.bonusTrainingsDate ||
+    character.bonusTrainingsDate.getTime() !== todayStart.getTime()
+  ) {
+    return { bonus: 0, buys: 0 };
+  }
+  return { bonus: character.bonusTrainings, buys: character.bonusTrainingsBuys };
 };
 
 export async function GET(request: Request) {
@@ -29,7 +45,12 @@ export async function GET(request: Request) {
 
     const character = await prisma.character.findFirst({
       where: { id: characterId, userId: authUser.id },
-      select: { id: true },
+      select: {
+        id: true,
+        bonusTrainings: true,
+        bonusTrainingsDate: true,
+        bonusTrainingsBuys: true,
+      },
     });
     if (!character) {
       return NextResponse.json({ error: "Character not found" }, { status: 404 });
@@ -40,10 +61,18 @@ export async function GET(request: Request) {
       where: { characterId: character.id, playedAt: { gte: todayStart } },
     });
 
+    const { bonus, buys } = getBonusForToday(character);
+    const totalMax = TRAINING_MAX_DAILY + bonus;
+
     return NextResponse.json({
       used: todayCount,
-      remaining: Math.max(0, TRAINING_MAX_DAILY - todayCount),
-      max: TRAINING_MAX_DAILY,
+      remaining: Math.max(0, totalMax - todayCount),
+      max: totalMax,
+      baseMax: TRAINING_MAX_DAILY,
+      bonus,
+      buys,
+      maxBuys: TRAINING_EXTRA_MAX_BUYS,
+      buyCostGems: TRAINING_EXTRA_COST_GEMS,
     });
   } catch (error) {
     console.error("[api/combat/status GET]", error);

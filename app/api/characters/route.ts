@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { CharacterClass, CharacterOrigin } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { STARTING_GOLD, STARTING_STAMINA, STARTING_MAX_STAMINA } from "@/lib/game/balance";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -123,6 +124,11 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(user.id, { prefix: "create-char", windowMs: 60_000, maxRequests: 3 });
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
     await ensureUserExists(

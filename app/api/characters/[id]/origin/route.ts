@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { CharacterOrigin } from "@prisma/client";
 import { ORIGIN_CHANGE_COST } from "@/lib/game/origins";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,11 @@ export async function PATCH(
     } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(user.id, { prefix: "origin-change", windowMs: 60_000, maxRequests: 3 });
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
     const { id: characterId } = await params;

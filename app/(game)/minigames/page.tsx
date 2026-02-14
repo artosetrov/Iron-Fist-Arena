@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
+import GameModal from "@/app/components/ui/GameModal";
 import GameIcon from "@/app/components/ui/GameIcon";
 
 /* ────────────────── Constants ────────────────── */
@@ -116,6 +117,17 @@ const TavernContent = () => {
   const hasDragged = useRef(false);
   const dragState = useRef({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0, pointerId: 0 });
   const [hoveredActivity, setHoveredActivity] = useState<string | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<TavernActivity | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  /* Detect mobile viewport */
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 768px)");
+    const handleChange = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile(e.matches);
+    handleChange(mql);
+    mql.addEventListener("change", handleChange);
+    return () => mql.removeEventListener("change", handleChange);
+  }, []);
 
   /* Center scroll on mount */
   useEffect(() => {
@@ -188,11 +200,22 @@ const TavernContent = () => {
 
   const handleActivityClick = useCallback(
     (activity: TavernActivity) => {
-      if (hasDragged.current || !activity.available) return;
+      if (hasDragged.current) return;
+      if (isMobile) {
+        setSelectedActivity(activity);
+        return;
+      }
+      if (!activity.available) return;
       router.push(buildHref(activity.href));
     },
-    [router, buildHref],
+    [router, buildHref, isMobile],
   );
+
+  const handleMobileEnter = useCallback(() => {
+    if (!selectedActivity) return;
+    router.push(buildHref(selectedActivity.href));
+    setSelectedActivity(null);
+  }, [router, buildHref, selectedActivity]);
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
@@ -263,7 +286,7 @@ const TavernContent = () => {
                 key={a.id}
                 type="button"
                 data-pin
-                className="absolute outline-none bg-transparent"
+                className="absolute outline-none bg-transparent p-2"
                 style={{
                   top: `${a.top}%`,
                   left: `${a.left}%`,
@@ -271,6 +294,7 @@ const TavernContent = () => {
                   cursor: isDragging ? "grabbing" : isDisabled ? "not-allowed" : "pointer",
                   zIndex: isHovered ? 30 : 10,
                   opacity: isDisabled ? 0.5 : 1,
+                  touchAction: "manipulation",
                 }}
                 onClick={() => handleActivityClick(a)}
                 onMouseEnter={() => setHoveredActivity(a.id)}
@@ -341,6 +365,44 @@ const TavernContent = () => {
           })}
         </div>
       </div>
+
+      {/* Mobile activity popup */}
+      <GameModal
+        open={!!selectedActivity}
+        onClose={() => setSelectedActivity(null)}
+        size="sm"
+        title={selectedActivity?.label}
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-relaxed text-slate-300">
+            {selectedActivity?.description}
+          </p>
+          {selectedActivity?.tag && (
+            <span
+              className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                selectedActivity.available
+                  ? "border border-amber-500/40 bg-amber-900/80 text-amber-300"
+                  : "border border-slate-600/40 bg-slate-800/80 text-slate-500"
+              }`}
+            >
+              {selectedActivity.tag}
+            </span>
+          )}
+          {selectedActivity?.available ? (
+            <button
+              type="button"
+              onClick={handleMobileEnter}
+              className="w-full rounded-xl border border-amber-500/40 bg-gradient-to-b from-amber-600 to-amber-700 px-4 py-3 font-display text-sm font-bold text-white shadow-lg shadow-amber-900/30 transition hover:from-amber-500 hover:to-amber-600 active:scale-[0.98]"
+            >
+              Enter
+            </button>
+          ) : (
+            <p className="text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Coming Soon
+            </p>
+          )}
+        </div>
+      </GameModal>
     </div>
   );
 };

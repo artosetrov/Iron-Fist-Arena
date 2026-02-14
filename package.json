@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "build": "prisma generate && next build",
     "build:analyze": "ANALYZE=true prisma generate && ANALYZE=true next build",
     "start": "next start",
@@ -17,7 +17,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts"
+    "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
+    "optimize:images": "node scripts/optimize-images.mjs",
+    "optimize:images:dry": "node scripts/optimize-images.mjs --dry"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -44,6 +46,7 @@
     "jsdom": "^28.0.0",
     "postcss": "^8.4.47",
     "prisma": "^5.22.0",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.0",

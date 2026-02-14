@@ -589,19 +589,22 @@ body {
 }
 
 
-/* ── Dungeon carousel ── */
-.dungeon-carousel {
+/* ── Unified card carousel (used by CardCarousel component) ── */
+.card-carousel {
+  position: relative;
+  z-index: 0;
   display: flex;
-  gap: 1.25rem;
+  align-items: stretch;
+  gap: 12px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding-bottom: 0.5rem;
+  padding: 1rem 2rem 0.5rem;
 }
 
-.dungeon-carousel::-webkit-scrollbar {
+.card-carousel::-webkit-scrollbar {
   display: none;
 }
 
@@ -632,6 +635,27 @@ body {
 
 .dungeon-card-locked:hover {
   transform: none;
+}
+
+/* ── Navigation loader shimmer (gradient sweep) ── */
+@keyframes shimmer-sweep {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer-sweep {
+  background: linear-gradient(
+    90deg,
+    rgb(30 41 59) 0%,
+    rgb(51 65 85) 50%,
+    rgb(30 41 59) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.5s ease-in-out infinite;
 }
 
 /* ── Card image shimmer ── */
@@ -665,7 +689,7 @@ body {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 20;
+  z-index: 30;
   width: 48px;
   height: 48px;
   display: flex;
@@ -700,23 +724,7 @@ body {
   box-shadow: none;
 }
 
-/* ── Arena opponent carousel ── */
-.arena-carousel {
-  display: flex;
-  gap: 1.25rem;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: 0.5rem;
-}
-
-.arena-carousel::-webkit-scrollbar {
-  display: none;
-}
-
-/* .arena-card is now .hero-card-container--default (see below) */
+/* .arena-carousel replaced by .card-carousel — see unified card carousel above */
 
 /* ── Custom scrollbar for dungeon boss map ── */
 .custom-scrollbar::-webkit-scrollbar {
@@ -826,7 +834,7 @@ body {
 
 /* Default: carousel cards (arena, combat select, dungeon) */
 .hero-card-container--default {
-  flex: 0 0 min(300px, 75vw);
+  flex: 0 0 min(300px, 85vw);
   scroll-snap-align: center;
   transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
     box-shadow 0.35s ease;

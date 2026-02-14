@@ -85,3 +85,46 @@ export const aggregateEquipmentStats = (
 export const aggregateArmor = (equipped: EquippedItem[]): number => {
   return aggregateEquipmentStats(equipped).ARMOR;
 };
+
+/* ──────────────────────────────────────────────────────────────────────
+   Per-Zone Armor Aggregation (Body Zone Combat System)
+   ────────────────────────────────────────────────────────────────────── */
+
+import type { BodyZone } from "./types";
+import { SLOT_TO_ZONE } from "./body-zones";
+import { BODY_ZONES } from "./balance";
+
+/**
+ * Aggregate ARMOR stat per body zone from equipped items.
+ * Items mapped to a specific zone contribute to that zone only.
+ * Items without a zone mapping (weapons, accessories) split evenly across all 4 zones.
+ */
+export const aggregateZoneArmor = (equipped: EquippedItem[]): Record<BodyZone, number> => {
+  const zoneArmor: Record<BodyZone, number> = { head: 0, torso: 0, waist: 0, legs: 0 };
+  let sharedArmor = 0;
+
+  for (const eq of equipped) {
+    const bs = eq.item.baseStats as Record<string, number> | null;
+    if (!bs) continue;
+
+    const armor = bs.ARMOR ?? bs.armor ?? 0;
+    if (armor <= 0) continue;
+
+    const slot = eq.equippedSlot;
+    const zone = slot ? SLOT_TO_ZONE[slot] ?? null : null;
+
+    if (zone) {
+      zoneArmor[zone] += armor;
+    } else {
+      sharedArmor += armor;
+    }
+  }
+
+  // Distribute shared armor evenly
+  const perZoneShare = Math.floor(sharedArmor / BODY_ZONES.length);
+  for (const zone of BODY_ZONES) {
+    zoneArmor[zone] += perZoneShare;
+  }
+
+  return zoneArmor;
+};

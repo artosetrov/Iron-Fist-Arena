@@ -13,6 +13,10 @@ export async function GET(request: NextRequest) {
     ? rawRedirect
     : "/hub";
 
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth/callback/route.ts:entry',message:'Callback route entered',data:{hasCode:!!code,redirect,rawRedirect,allParams:Object.fromEntries(searchParams.entries())},timestamp:Date.now(),hypothesisId:'A,B'})}).catch(()=>{});
+  // #endregion
+
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);
   }
@@ -37,6 +41,10 @@ export async function GET(request: NextRequest) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth/callback/route.ts:exchangeCode',message:'exchangeCodeForSession result',data:{hasError:!!error,errorMessage:error?.message??null,cookiesAfterExchange:cookieStore.getAll().map((c:{name:string})=>c.name)},timestamp:Date.now(),hypothesisId:'B,E'})}).catch(()=>{});
+  // #endregion
+
   if (error) {
     console.error("[auth/callback] exchangeCodeForSession error:", error.message);
     return NextResponse.redirect(`${origin}/login?error=auth_failed`);
@@ -45,12 +53,23 @@ export async function GET(request: NextRequest) {
   // Sync user to DB (same as email login)
   try {
     const syncUrl = new URL("/api/auth/sync-user", origin);
-    await fetch(syncUrl.toString(), {
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth/callback/route.ts:preSyncUser',message:'About to call sync-user',data:{syncUrl:syncUrl.toString(),cookieHeader:cookieStore.toString().substring(0,200)},timestamp:Date.now(),hypothesisId:'C,D'})}).catch(()=>{});
+    // #endregion
+    const syncRes = await fetch(syncUrl.toString(), {
       method: "POST",
       headers: { cookie: cookieStore.toString() },
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth/callback/route.ts:postSyncUser',message:'sync-user response',data:{status:syncRes.status,ok:syncRes.ok},timestamp:Date.now(),hypothesisId:'C,D'})}).catch(()=>{});
+    // #endregion
   } catch (syncErr) {
     console.error("[auth/callback] sync-user error:", syncErr);
+  }
+
+  // Skip character check for password reset flow
+  if (redirect === "/reset-password") {
+    return NextResponse.redirect(`${origin}/reset-password`);
   }
 
   // Check if user has characters — if not, send to onboarding
@@ -70,6 +89,10 @@ export async function GET(request: NextRequest) {
   } catch (charErr) {
     console.error("[auth/callback] character check error:", charErr);
   }
+
+  // #region agent log
+  fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth/callback/route.ts:finalRedirect',message:'Final redirect from callback',data:{destination,redirect,fullUrl:`${origin}${destination}`},timestamp:Date.now(),hypothesisId:'A,E'})}).catch(()=>{});
+  // #endregion
 
   return NextResponse.redirect(`${origin}${destination}`);
 }

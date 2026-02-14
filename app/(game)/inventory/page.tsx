@@ -511,7 +511,7 @@ const EquipmentSlot = ({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`group relative flex h-16 w-16 items-center justify-center rounded-lg border-2 transition-all
+      className={`group relative flex h-14 w-14 items-center justify-center rounded-lg border-2 transition-all
         ${isDragOver && !locked
           ? "ring-2 ring-indigo-400 border-indigo-400 scale-110 bg-indigo-900/30"
           : isValidTarget && !locked
@@ -549,21 +549,21 @@ const EquipmentSlot = ({
                 <Image
                   src={imgPath}
                   alt={item.item.itemName}
-                  width={48}
-                  height={48}
+                  width={40}
+                  height={40}
                   className="object-contain"
                 />
               );
             }
-            return <GameIcon name={SLOT_ICONS[slotKey === "weapon_offhand" ? "weapon_offhand" : (item.item.itemType as SlotKey)] ?? "chest"} size={32} />;
+            return <GameIcon name={SLOT_ICONS[slotKey === "weapon_offhand" ? "weapon_offhand" : (item.item.itemType as SlotKey)] ?? "chest"} size={28} />;
           })()}
         </span>
       ) : (
         <Image
           src={SLOT_IMAGES[slotKey]}
           alt={SLOT_LABELS[slotKey]}
-          width={40}
-          height={40}
+          width={36}
+          height={36}
           className="pointer-events-none opacity-60 brightness-150"
         />
       )}
@@ -771,23 +771,23 @@ const StatRow = ({ row: r, upgradeMode, gold, canUpgradeWithPoints, hasMode, onA
   const holdProps = useHoldRepeat(handleAllocate);
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
+    <div className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className={`text-xs font-bold ${r.color}`}>{r.label}</p>
-        <p className="text-[10px] text-slate-400">
+        <p className={`text-sm font-bold ${r.color}`}>{r.label}</p>
+        <p className="text-xs text-slate-400">
           {r.secondary}
           <span className="ml-1 text-slate-300">{r.secondaryValue}</span>
         </p>
       </div>
-      <div className="flex items-center gap-1.5">
-        <span className="font-display text-xl text-white">{r.value}</span>
+      <div className="flex items-center gap-2">
+        <span className="font-display text-2xl text-white">{r.value}</span>
         {isUpgradeable && (
           <div className="group/btn relative">
             <button
               type="button"
               disabled={!canUpgrade}
               {...(canUpgrade ? holdProps : {})}
-              className={`flex h-6 w-6 select-none items-center justify-center rounded-md text-xs font-bold transition
+              className={`flex h-7 w-7 select-none items-center justify-center rounded-md text-sm font-bold transition
                 ${canUpgrade
                   ? upgradeMode === "points"
                     ? "bg-amber-600 text-white hover:bg-amber-500 active:scale-90"
@@ -857,12 +857,12 @@ const AttributesTab = ({
   return (
     <div className="space-y-2">
       {/* Mode toggle + info bar */}
-      <div className="flex items-center justify-between rounded-lg bg-slate-800/80 px-3 py-2">
+      <div className="flex items-center justify-between rounded-lg bg-slate-800/80 px-3 py-2.5">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onToggleMode}
-            className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${
+            className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${
               upgradeMode === "points"
                 ? "bg-amber-600 text-white"
                 : "bg-slate-700 text-slate-400 hover:text-white"
@@ -875,7 +875,7 @@ const AttributesTab = ({
           <button
             type="button"
             onClick={onToggleMode}
-            className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${
+            className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${
               upgradeMode === "gold"
                 ? "bg-yellow-600 text-white"
                 : "bg-slate-700 text-slate-400 hover:text-white"
@@ -886,13 +886,13 @@ const AttributesTab = ({
             Gold: {gold.toLocaleString()}
           </button>
         </div>
-        <span className="text-[10px] text-slate-500">
+        <span className="text-xs text-slate-500">
           {upgradeMode === "points" ? "Free points" : "Gold training"}
         </span>
       </div>
 
       {/* Stat rows */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2.5">
         {rows.map((r) => (
           <StatRow
             key={r.label}
@@ -908,55 +908,6 @@ const AttributesTab = ({
     </div>
   );
 };
-
-/* ────────────────── Tab: Description ────────────────── */
-
-type DescTabProps = {
-  character: CharacterData;
-};
-
-const DescriptionTab = ({ character }: DescTabProps) => (
-  <div className="space-y-3 text-sm text-slate-300">
-    <div className="flex items-center gap-3">
-      <GameIcon name="warrior" size={24} />
-      <div>
-        <p className="font-bold text-white">{character.characterName}</p>
-        <p className="text-xs text-slate-400">{CLASS_LABEL[character.class] ?? character.class}</p>
-      </div>
-    </div>
-    <div className="grid grid-cols-2 gap-2 text-xs">
-      <div className="rounded bg-slate-800/50 px-2 py-1.5">
-        <span className="text-slate-400">Level:</span>{" "}
-        <span className="font-bold text-white">{character.level}</span>
-      </div>
-      <div className="rounded bg-slate-800/50 px-2 py-1.5">
-        <span className="text-slate-400">Prestige:</span>{" "}
-        <span className="font-bold text-amber-400">P{character.prestigeLevel}</span>
-      </div>
-      <div className="rounded bg-slate-800/50 px-2 py-1.5">
-        <span className="text-slate-400">Gold:</span>{" "}
-        <span className="font-bold text-yellow-400">{character.gold}</span>
-      </div>
-      <div className="rounded bg-slate-800/50 px-2 py-1.5">
-        <span className="text-slate-400">Rating:</span>{" "}
-        <span className="font-bold text-white">{character.pvpRating}</span>
-      </div>
-      <div className="rounded bg-slate-800/50 px-2 py-1.5">
-        <span className="text-slate-400">Wins:</span>{" "}
-        <span className="font-bold text-green-400">{character.pvpWins}</span>
-      </div>
-      <div className="rounded bg-slate-800/50 px-2 py-1.5">
-        <span className="text-slate-400">Losses:</span>{" "}
-        <span className="font-bold text-red-400">{character.pvpLosses}</span>
-      </div>
-    </div>
-    {character.statPointsAvailable > 0 && (
-      <p className="rounded bg-amber-900/30 px-2 py-1.5 text-xs text-amber-300">
-        <GameIcon name="xp" size={14} /> Stat points available: {character.statPointsAvailable}
-      </p>
-    )}
-  </div>
-);
 
 /* ────────────────── Tab: Info (full stats) ────────────────── */
 
@@ -1502,7 +1453,7 @@ function InventoryContent() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"attributes" | "description" | "info">("attributes");
+  const [activeTab, setActiveTab] = useState<"attributes" | "info">("attributes");
   const [hoveredItem, setHoveredItem] = useState<{ inv: InventoryItem; x: number; y: number } | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [upgradeMode, setUpgradeMode] = useState<"points" | "gold">("points");
@@ -2002,7 +1953,6 @@ function InventoryContent() {
 
   const tabs = [
     { key: "attributes" as const, label: "Attributes" },
-    { key: "description" as const, label: "Description" },
     { key: "info" as const, label: "Info" },
   ];
 
@@ -2032,6 +1982,30 @@ function InventoryContent() {
             )}
             {/* Dark overlay for readability */}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/60" />
+
+            {/* Quick stats bar */}
+            <div className="relative z-10 mb-3 grid grid-cols-5 gap-1.5 text-xs">
+              <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-2 py-1.5">
+                <GameIcon name="gold" size={14} />
+                <span className="font-bold text-yellow-400">{character.gold.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-2 py-1.5">
+                <GameIcon name="pvp-rating" size={14} />
+                <span className="font-bold text-white">{character.pvpRating}</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-2 py-1.5">
+                <GameIcon name="wins" size={14} />
+                <span className="font-bold text-green-400">{character.pvpWins}</span>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-2 py-1.5">
+                <GameIcon name="losses" size={14} />
+                <span className="font-bold text-red-400">{character.pvpLosses}</span>
+              </div>
+              <div className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 ${character.statPointsAvailable > 0 ? "bg-amber-900/30" : "bg-slate-800/60"}`}>
+                <GameIcon name="xp" size={14} />
+                <span className={`font-bold ${character.statPointsAvailable > 0 ? "text-amber-300" : "text-slate-500"}`}>{character.statPointsAvailable}</span>
+              </div>
+            </div>
 
             {/* Equipment paper-doll layout */}
             <div className="relative z-10 flex gap-4">
@@ -2079,7 +2053,7 @@ function InventoryContent() {
                   </div>
 
                   <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-6">
-                    <p className="text-center text-sm font-bold text-white">{character.characterName}</p>
+                    <p className="text-center text-lg font-bold text-white">{character.characterName}</p>
                   </div>
                 </div>
                 {/* Level bar */}
@@ -2182,7 +2156,6 @@ function InventoryContent() {
                   onAllocate={handleAllocateStat}
                 />
               )}
-              {activeTab === "description" && <DescriptionTab character={character} />}
               {activeTab === "info" && <InfoTab stats={character.stats} derived={character.derived} armor={character.armor} />}
             </div>
           </div>
@@ -2266,7 +2239,7 @@ function InventoryContent() {
               <p className="text-xs text-slate-500">Drag to equip · Double-click · Right-click slot to unequip</p>
             </div>
 
-            <div className="relative z-10 grid grid-cols-5 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-8">
+            <div className="relative z-10 flex flex-wrap gap-2">
               {Array.from({ length: INVENTORY_SLOTS_TOTAL }).map((_, i) => (
                 <InventoryCell
                   key={i}

@@ -2,9 +2,9 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import PageLoader from "@/app/components/PageLoader";
+import PageHeader from "@/app/components/PageHeader";
 import GameIcon from "@/app/components/ui/GameIcon";
 import { GameButton, PageContainer } from "@/app/components/ui";
 import {
@@ -300,31 +300,11 @@ const ShellGameContent = () => {
 
   return (
     <div className="flex min-h-full flex-col items-center px-4 py-4">
-      {/* Header */}
-      <div className="relative mb-4 flex w-full items-center">
-        <Link
-          href={`/minigames${characterId ? `?characterId=${characterId}` : ""}`}
-          className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-          aria-label="Back to Minigames"
-          tabIndex={0}
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <h1 className="absolute inset-x-0 text-center font-display text-3xl font-bold uppercase tracking-tight text-white sm:text-4xl">
-          Shell Game
-        </h1>
-        <div className="flex-1" />
-        <Link
-          href="/hub"
-          className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-          aria-label="Back to Hub"
-          tabIndex={0}
-        >
-          ✕
-        </Link>
-      </div>
+      <PageHeader
+        title="Shell Game"
+        leftHref={`/minigames${characterId ? `?characterId=${characterId}` : ""}`}
+        leftLabel="Back to Tavern"
+      />
 
       {/* Gold display */}
       {state.gold !== null && (
