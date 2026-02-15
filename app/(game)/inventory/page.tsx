@@ -1998,8 +1998,6 @@ function InventoryContent() {
               ))}
             </div>
 
-            {activeTab === "attributes" && (
-            <>
             {/* Quick stats bar */}
             <div className="relative z-10 mb-3 grid grid-cols-5 gap-1.5 text-xs">
               <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-2 py-1.5">
@@ -2140,8 +2138,6 @@ function InventoryContent() {
                 ))}
               </div>
             </div>
-            </>
-            )}
           </div>
 
           {/* Tab content */}

@@ -1190,9 +1190,9 @@ function DungeonContent() {
               const current = boss.index === dungeon.bossIndex && !dungeon.completed;
 
               return (
-                <div key={boss.index} className="hero-card-container--default">
+                <div key={boss.index} className="hero-card-container--default flex flex-col">
                   {/* Status badge */}
-                  <div className="mb-2 flex items-center justify-center gap-2">
+                  <div className="mb-2 flex !h-auto shrink-0 items-center justify-center gap-2">
                     <p className="text-xs font-bold text-slate-400">
                       Boss {boss.index + 1}/{dungeon.bosses.length} · Lv.{boss.level}
                     </p>
@@ -1208,28 +1208,33 @@ function DungeonContent() {
                     )}
                   </div>
 
-                  <HeroCard
-                    name={locked ? "???" : boss.name}
-                    variant="compact"
-                    level={boss.level}
-                    icon={locked ? "🔒" : undefined}
-                    imageSrc={!locked ? getBossImagePath(boss.name) : undefined}
-                    description={
-                      locked
-                        ? "Defeat the previous boss to reveal this enemy."
-                        : boss.description
-                    }
-                    hp={
-                      stats
-                        ? { current: stats.maxHp, max: stats.maxHp }
-                        : undefined
-                    }
-                    hideStats
-                    hideDescription={false}
-                    disabled={locked}
-                  />
+                  <div className="flex-1 min-h-0">
+                    <HeroCard
+                      name={locked ? "???" : boss.name}
+                      variant="compact"
+                      level={boss.level}
+                      icon={locked ? "🔒" : undefined}
+                      imageSrc={!locked ? getBossImagePath(boss.name) : undefined}
+                      description={
+                        locked
+                          ? "Defeat the previous boss to reveal this enemy."
+                          : boss.description
+                      }
+                      hp={
+                        stats
+                          ? { current: stats.maxHp, max: stats.maxHp }
+                          : undefined
+                      }
+                      hideStats
+                      hideDescription={false}
+                      disabled={locked}
+                      fillHeight
+                    />
+                  </div>
 
-                  {renderFightAction(boss.index)}
+                  <div className="!h-auto shrink-0">
+                    {renderFightAction(boss.index)}
+                  </div>
                 </div>
               );
             })}
