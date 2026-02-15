@@ -6,6 +6,8 @@ import GameIcon from "@/app/components/ui/GameIcon";
 import type { GameIconKey } from "@/app/components/ui/GameIcon";
 import { ORIGIN_IMAGE } from "@/app/components/HeroCard";
 import { BOSS_NAMES, getBossImagePath } from "@/lib/game/boss-catalog";
+import { getBossAssetKey, getOriginAvatarAssetKey } from "@/lib/game/asset-registry";
+import { useAssetUrl } from "@/lib/hooks/useAssetOverrides";
 import { GameButton } from "@/app/components/ui";
 
 /* ────────────────── Types ────────────────── */
@@ -83,6 +85,17 @@ const CombatLootScreen = ({
   };
   const iconKey = CLASS_ICON_KEY[cls];
 
+  const bossKey = BOSS_NAMES.has(enemy.name) ? getBossAssetKey(enemy.name) : "";
+  const originKey = enemy.origin ? getOriginAvatarAssetKey(enemy.origin) : "";
+  const bossImageUrl = useAssetUrl(
+    bossKey,
+    bossKey ? getBossImagePath(enemy.name) : ""
+  );
+  const originImageUrl = useAssetUrl(
+    originKey,
+    originKey ? ORIGIN_IMAGE[enemy.origin!] : ""
+  );
+
   return (
     <div
       ref={overlayRef}
@@ -105,21 +118,23 @@ const CombatLootScreen = ({
           <div className={`relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl ${BOSS_NAMES.has(enemy.name) ? "bg-transparent" : "border border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900"}`}>
             {BOSS_NAMES.has(enemy.name) ? (
               <Image
-                src={getBossImagePath(enemy.name)}
+                src={bossImageUrl}
                 alt={enemy.name}
                 width={1024}
                 height={1024}
                 className="h-full w-full object-contain"
                 sizes="80px"
+                unoptimized={bossImageUrl.startsWith("http")}
               />
-            ) : enemy.origin && ORIGIN_IMAGE[enemy.origin] ? (
+            ) : enemy.origin && originImageUrl ? (
               <Image
-                src={ORIGIN_IMAGE[enemy.origin]}
+                src={originImageUrl}
                 alt={enemy.origin}
                 width={1024}
                 height={1024}
                 className="h-full w-full object-cover"
                 sizes="80px"
+                unoptimized={originImageUrl.startsWith("http")}
               />
             ) : iconKey ? (
               <span aria-hidden="true">

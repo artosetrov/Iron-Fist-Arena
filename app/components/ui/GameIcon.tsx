@@ -17,7 +17,7 @@ export type GameIconKey =
   | "helmet" | "weapon" | "weapon-offhand" | "chest" | "gloves"
   | "legs" | "boots" | "ring" | "accessory" | "amulet" | "belt" | "relic"
   /* Admin & utility */
-  | "admin" | "balance" | "design-system" | "settings" | "switch-char";
+  | "admin" | "balance" | "design-system" | "settings" | "switch-char" | "wiki";
 
 const I = "/images/ui/icons/sidebar";
 
@@ -76,6 +76,7 @@ export const GAME_ICON_MAP: Record<GameIconKey, string> = {
   "design-system": `${I}/icon-design-system.png`,
   settings: `${I}/icon-settings.png`,
   "switch-char": `${I}/icon-switch-char.png`,
+  wiki: `${I}/icon-dungeons.png`,
 };
 
 /* ────────────────── Component ────────────────── */

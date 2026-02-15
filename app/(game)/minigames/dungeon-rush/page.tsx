@@ -8,6 +8,7 @@ import PageHeader from "@/app/components/PageHeader";
 import GameIcon from "@/app/components/ui/GameIcon";
 import GameModal from "@/app/components/ui/GameModal";
 import { GameButton } from "@/app/components/ui";
+import { safeJson } from "@/lib/safe-fetch";
 /* ────────────────── Types ────────────────── */
 
 type Character = {
@@ -170,7 +171,7 @@ const DungeonRushContent = () => {
         body: JSON.stringify({ characterId }),
       });
       if (!res.ok) {
-        const data = await res.json();
+        const data = await safeJson(res);
         setError(data.error ?? "Error abandoning run");
         return;
       }
@@ -197,7 +198,7 @@ const DungeonRushContent = () => {
         body: JSON.stringify({ characterId }),
       });
       if (!res.ok) {
-        const data = await res.json();
+        const data = await safeJson(res);
         setError(data.error ?? "Error claiming rewards");
         return;
       }
@@ -226,7 +227,7 @@ const DungeonRushContent = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ characterId }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         // If there's already an active run, reload status to recover it
         if (data.error?.includes("active run")) {
@@ -265,7 +266,7 @@ const DungeonRushContent = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ runId }),
       });
-      const data = (await res.json()) as FightResult;
+      const data = (await safeJson(res)) as FightResult;
 
       if (data.playerSnapshot && data.enemySnapshot && data.log) {
         setScreen({ kind: "battle", runId, wave, fightResult: data });

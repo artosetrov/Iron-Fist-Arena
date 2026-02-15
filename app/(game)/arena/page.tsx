@@ -10,7 +10,10 @@ import StanceSelector from "@/app/components/StanceSelector";
 import type { CombatStance } from "@/lib/game/types";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard, { CLASS_ICON, ORIGIN_IMAGE } from "@/app/components/HeroCard";
+import { getOriginAvatarAssetKey } from "@/lib/game/asset-registry";
+import { useAssetUrl } from "@/lib/hooks/useAssetOverrides";
 import GameIcon from "@/app/components/ui/GameIcon";
+import { safeJson } from "@/lib/safe-fetch";
 import GameModal from "@/app/components/ui/GameModal";
 import { GameButton, PageContainer } from "@/app/components/ui";
 import CardCarousel from "@/app/components/ui/CardCarousel";
@@ -163,8 +166,14 @@ type CardBackProps = {
 const CardBack = ({ character, opponent, canAfford, fighting, onFight, onFlipBack }: CardBackProps) => {
   const router = useRouter();
   const [showStaminaModal, setShowStaminaModal] = useState(false);
-  const playerImg = character.origin ? ORIGIN_IMAGE[character.origin] : undefined;
-  const opponentImg = opponent.origin ? ORIGIN_IMAGE[opponent.origin] : undefined;
+  const playerKey = character.origin ? getOriginAvatarAssetKey(character.origin) : "";
+  const playerFallback = character.origin ? ORIGIN_IMAGE[character.origin] : "";
+  const playerImgUrl = useAssetUrl(playerKey, playerFallback);
+  const opponentKey = opponent.origin ? getOriginAvatarAssetKey(opponent.origin) : "";
+  const opponentFallback = opponent.origin ? ORIGIN_IMAGE[opponent.origin] : "";
+  const opponentImgUrl = useAssetUrl(opponentKey, opponentFallback);
+  const playerImg = character.origin && playerImgUrl ? playerImgUrl : undefined;
+  const opponentImg = opponent.origin && opponentImgUrl ? opponentImgUrl : undefined;
   const playerIcon = CLASS_ICON[character.class?.toLowerCase()] ?? "👤";
   const opponentIcon = CLASS_ICON[opponent.class.toLowerCase()] ?? "👤";
 
@@ -335,6 +344,7 @@ type ScreenState =
 
 function ArenaContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const characterId = searchParams.get("characterId");
   const [character, setCharacter] = useState<Character | null>(null);
   const [opponents, setOpponents] = useState<Opponent[]>([]);
@@ -344,6 +354,7 @@ function ArenaContent() {
   const [screen, setScreen] = useState<ScreenState>({ kind: "select" });
   const [error, setError] = useState<string | null>(null);
   const [flippedCard, setFlippedCard] = useState<string | null>(null);
+  const arenaBgUrl = useAssetUrl("ui/arena-background", "/images/ui/arena-background.png");
 
   /* ── Load character ── */
   useEffect(() => {
@@ -378,7 +389,7 @@ function ArenaContent() {
     setFlippedCard(null);
     try {
       const res = await fetch(`/api/pvp/opponents?characterId=${characterId}`, { signal: controller.signal });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (res.ok) {
         setOpponents(data.opponents ?? []);
       } else {
@@ -414,7 +425,7 @@ function ArenaContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ characterId, opponentId: screen.opponentId, stance }),
       });
-      const data = (await res.json()) as MatchResult;
+      const data = (await safeJson(res)) as MatchResult;
       if (!res.ok) {
         setError((data as unknown as { error: string }).error ?? "Error");
         setScreen({ kind: "select" });
@@ -470,12 +481,11 @@ function ArenaContent() {
   if (screen.kind === "stance") {
     return (
       <PageContainer>
-        <PageHeader title="Arena" />
+        <PageHeader title="Arena" leftOnClick={() => setScreen({ kind: "select" })} leftLabel="Back to opponents" />
         <div className="flex min-h-[60vh] items-center justify-center p-4 lg:p-6">
           <StanceSelector
             onConfirm={handleStanceConfirm}
             onSaveDefault={handleSaveStance}
-            onBack={() => setScreen({ kind: "select" })}
             loading={fighting}
             confirmLabel="Fight!"
           />
@@ -509,7 +519,7 @@ function ArenaContent() {
   const canAfford = character.currentStamina >= STAMINA_COST;
 
   return (
-    <PageContainer bgImage="/images/ui/arena-background.png">
+    <PageContainer bgImage={arenaBgUrl}>
       <PageHeader title="Arena" />
 
       {/* Choose opponent */}
@@ -526,11 +536,11 @@ function ArenaContent() {
 
       {/* Opponent cards */}
       {loadingOpponents ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="relative mx-auto h-12 w-12">
+        <div className="flex min-h-[calc(14/9*min(300px,85vw))] items-center justify-center">
+          <div className="relative mx-auto h-48 w-48">
             <div className="absolute inset-0 animate-spin rounded-full border-2 border-slate-700 border-t-indigo-400" />
-            <div className="absolute inset-1.5 animate-spin rounded-full border-2 border-slate-700 border-t-purple-400" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
-            <span className="absolute inset-0 flex items-center justify-center"><GameIcon name="arena" size={24} /></span>
+            <div className="absolute inset-6 animate-spin rounded-full border-2 border-slate-700 border-t-purple-400" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
+            <span className="absolute inset-0 flex items-center justify-center"><GameIcon name="arena" size={96} /></span>
           </div>
         </div>
       ) : opponents.length === 0 ? (

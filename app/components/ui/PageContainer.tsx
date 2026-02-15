@@ -53,6 +53,7 @@ const PageContainer = forwardRef<HTMLDivElement, PageContainerProps>(
               fill
               className="object-cover opacity-20"
               priority
+              unoptimized={bgImage.startsWith("http")}
             />
             <div className={`absolute inset-0 ${bgGradient}`} />
           </div>

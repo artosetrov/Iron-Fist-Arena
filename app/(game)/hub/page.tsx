@@ -6,7 +6,20 @@ import Image from "next/image";
 import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
 import GameModal from "@/app/components/ui/GameModal";
+import GameIcon from "@/app/components/ui/GameIcon";
 import { WORLD, ARENA_LORE, NPC_QUOTES, HUB_BUILDING_LORE } from "@/lib/game/lore";
+import { ORIGIN_DEFS, ORIGIN_ACCENT, type CharacterOrigin } from "@/lib/game/origins";
+
+const ORIGIN_AVATAR: Record<string, string> = {
+  human: "/images/origins/Avatar/origin-human_avatar_1.png",
+  orc: "/images/origins/Avatar/origin-orc_avatar_1.png",
+  skeleton: "/images/origins/Avatar/origin-skeleton_avatar_1.png",
+  demon: "/images/origins/Avatar/origin-demon_avatar_1.png",
+  dogfolk: "/images/origins/Avatar/origin-dogfolk_avatar_1.png",
+};
+import { getBuildingPinAssetKey, getNpcAssetKey } from "@/lib/game/asset-registry";
+import { safeJson } from "@/lib/safe-fetch";
+import { useAssetUrl } from "@/lib/hooks/useAssetOverrides";
 import { STARTING_GOLD, STARTING_STAMINA } from "@/lib/game/balance";
 import dynamic from "next/dynamic";
 
@@ -62,6 +75,51 @@ const HubWeatherFx = dynamic(
   () => import("@/app/components/HubWeatherFx"),
   { ssr: false },
 );
+
+const HubBgImage = () => {
+  const url = useAssetUrl("ui/hub-bg", "/images/ui/hub-bg.png");
+  return (
+    <Image
+      src={url}
+      alt="Stray City — Hub"
+      fill
+      className="absolute inset-0 h-full w-full object-cover pointer-events-none"
+      sizes="100vw"
+      priority
+      unoptimized={url.startsWith("http")}
+    />
+  );
+};
+
+const HubPinImage = ({ buildingId, pinIcon, alt, ...imgProps }: { buildingId: string; pinIcon: string; alt: string } & Omit<React.ComponentProps<typeof Image>, "src" | "alt">) => {
+  const url = useAssetUrl(getBuildingPinAssetKey(buildingId), pinIcon);
+  return <Image src={url} alt={alt} unoptimized={url.startsWith("http")} {...imgProps} />;
+};
+
+const NpcVoiceItem = ({ npc }: { npc: (typeof NPC_QUOTES)[number] }) => {
+  const url = useAssetUrl(getNpcAssetKey(npc.id), npc.imagePath);
+  return (
+    <li className="flex gap-3">
+      <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-slate-700/60 bg-slate-800/60">
+        <Image
+          src={url}
+          alt={npc.name}
+          fill
+          className="object-cover"
+          sizes="48px"
+          unoptimized={url.startsWith("http")}
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="italic text-slate-400">&ldquo;{npc.quote}&rdquo;</p>
+        <p className="mt-0.5 text-xs text-slate-500">
+          — <span className="font-semibold text-slate-400">{npc.name}</span>,{" "}
+          {npc.title}
+        </p>
+      </div>
+    </li>
+  );
+};
 
 /* ────────────────── Constants ────────────────── */
 
@@ -261,6 +319,7 @@ type HubCharacter = {
   id: string;
   characterName: string;
   class: string;
+  origin?: string;
   level: number;
   gold: number;
   currentStamina: number;
@@ -302,8 +361,8 @@ const HubContent = () => {
     const controller = new AbortController();
     const { signal } = controller;
     Promise.all([
-      fetch("/api/user/welcome", { signal }).then((r) => r.json()),
-      fetch("/api/characters", { signal }).then((r) => r.json()),
+      fetch("/api/user/welcome", { signal }).then((r) => safeJson(r)),
+      fetch("/api/characters", { signal }).then((r) => safeJson(r)),
     ])
       .then(([welcomeRes, charRes]) => {
         const seen = welcomeRes.hasSeenWelcome === true;
@@ -316,6 +375,10 @@ const HubContent = () => {
           setShowWelcomeModal(true);
           return;
         }
+        /* Show welcome-back only once per browser session */
+        const alreadyShown = sessionStorage.getItem("hub_welcome_back_shown");
+        if (alreadyShown) return;
+
         const snap = loadSnapshot();
         if (snap && snap.id === char.id) {
           setWelcomeBackDeltas({
@@ -329,6 +392,7 @@ const HubContent = () => {
         } else {
           setWelcomeBackDeltas(null);
         }
+        sessionStorage.setItem("hub_welcome_back_shown", "1");
         setShowWelcomeBackModal(true);
       })
       .catch((err) => {
@@ -519,13 +583,7 @@ const HubContent = () => {
           }}
         >
           {/* Background image */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/ui/hub-bg.png"
-            alt="Stray City — Hub"
-            draggable={false}
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none"
-          />
+          <HubBgImage />
 
           {/* Subtle vignette */}
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/15 via-transparent to-slate-950/25 pointer-events-none" />
@@ -603,8 +661,9 @@ const HubContent = () => {
                       : "animate-hub-pin-float drop-shadow-[0_3px_8px_rgba(0,0,0,0.6)]"
                   }`}
                 >
-                  <Image
-                    src={b.pinIcon}
+                  <HubPinImage
+                    buildingId={b.id}
+                    pinIcon={b.pinIcon}
                     alt={b.label}
                     width={128}
                     height={128}
@@ -730,13 +789,7 @@ const HubContent = () => {
             </h3>
             <ul className="space-y-3">
               {NPC_QUOTES.map((npc) => (
-                <li key={npc.name}>
-                  <p className="italic text-slate-400">&ldquo;{npc.quote}&rdquo;</p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    — <span className="font-semibold text-slate-400">{npc.name}</span>,{" "}
-                    {npc.title}
-                  </p>
-                </li>
+                <NpcVoiceItem key={npc.id} npc={npc} />
               ))}
             </ul>
           </section>
@@ -796,52 +849,131 @@ const HubContent = () => {
         open={showWelcomeBackModal}
         onClose={handleCloseWelcomeBackModal}
         size="md"
-        title="Welcome back"
+        title={
+          <span className="flex items-center gap-2">
+            <Image
+              src="/images/ui/logo.png"
+              alt="Iron Fist Arena"
+              width={24}
+              height={24}
+              className="shrink-0 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]"
+            />
+            <span className="whitespace-nowrap">Welcome back</span>
+          </span>
+        }
       >
-        <div className="space-y-4 text-sm">
-          {hubCharacter && (
-            <>
-              <p className="text-slate-300">
-                <span className="font-semibold text-amber-400">{hubCharacter.characterName}</span> — {formatClass(hubCharacter.class)}, Level {hubCharacter.level}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <span className="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-1.5 text-slate-200">
-                  Gold: {hubCharacter.gold}
-                  {welcomeBackDeltas && welcomeBackDeltas.gold !== 0 && (
-                    <span className={welcomeBackDeltas.gold > 0 ? " ml-1 text-emerald-400" : " ml-1 text-red-400"}>
-                      {welcomeBackDeltas.gold > 0 ? "+" : ""}{welcomeBackDeltas.gold}
-                    </span>
-                  )}
-                </span>
-                <span className="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-1.5 text-slate-200">
-                  Energy: {hubCharacter.currentStamina}/{hubCharacter.maxStamina}
-                  {welcomeBackDeltas && welcomeBackDeltas.stamina !== 0 && (
-                    <span className={welcomeBackDeltas.stamina > 0 ? " ml-1 text-emerald-400" : " ml-1 text-red-400"}>
-                      {welcomeBackDeltas.stamina > 0 ? "+" : ""}{welcomeBackDeltas.stamina}
-                    </span>
-                  )}
-                </span>
-                <span className="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-1.5 text-slate-200">
-                  PvP: {hubCharacter.pvpRating} ({hubCharacter.pvpWins}W / {hubCharacter.pvpLosses}L)
-                  {welcomeBackDeltas && (welcomeBackDeltas.pvpWins !== 0 || welcomeBackDeltas.pvpLosses !== 0) && (
-                    <span className="ml-1 text-slate-400">
-                      ({welcomeBackDeltas.pvpWins > 0 ? "+" : ""}{welcomeBackDeltas.pvpWins}W{" "}
-                      {welcomeBackDeltas.pvpLosses > 0 ? "+" : ""}{welcomeBackDeltas.pvpLosses}L)
-                    </span>
-                  )}
+        {hubCharacter && (
+          <div className="space-y-5">
+            {/* Character identity */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 shadow-inner">
+                {hubCharacter.origin && ORIGIN_AVATAR[hubCharacter.origin] ? (
+                  <Image
+                    src={ORIGIN_AVATAR[hubCharacter.origin]}
+                    alt={hubCharacter.origin}
+                    width={1024}
+                    height={1024}
+                    className="h-full w-full object-cover"
+                    sizes="56px"
+                  />
+                ) : (
+                  <GameIcon name={hubCharacter.class.toLowerCase() as "warrior" | "rogue" | "mage" | "tank"} size={28} />
+                )}
+                <span className="absolute -bottom-0.5 -right-0.5 z-10 rounded-md bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-bold text-amber-400 shadow backdrop-blur-sm">
+                  {hubCharacter.level}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={handleCloseWelcomeBackModal}
-                className="w-full rounded-xl border border-amber-500/40 bg-gradient-to-b from-amber-600 to-amber-700 px-4 py-3 font-display text-sm font-bold text-white shadow-lg shadow-amber-900/30 transition hover:from-amber-500 hover:to-amber-600 active:scale-[0.98]"
-                aria-label="To battle"
-              >
-                To battle!
-              </button>
-            </>
-          )}
-        </div>
+              <div className="min-w-0">
+                <p className="truncate font-display text-lg font-bold text-white">{hubCharacter.characterName}</p>
+                <p className="text-xs text-slate-400">
+                  {formatClass(hubCharacter.class)}
+                  {hubCharacter.origin && ORIGIN_DEFS[hubCharacter.origin as CharacterOrigin] && (
+                    <span className={`ml-1.5 ${ORIGIN_ACCENT[hubCharacter.origin as CharacterOrigin] ?? "text-slate-500"}`}>
+                      · {ORIGIN_DEFS[hubCharacter.origin as CharacterOrigin].icon}{" "}
+                      {ORIGIN_DEFS[hubCharacter.origin as CharacterOrigin].label}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Gold */}
+              <div className="flex items-center gap-2.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-3 py-2.5">
+                <GameIcon name="gold" size={20} />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Gold</p>
+                  <p className="text-sm font-bold text-amber-400">
+                    {hubCharacter.gold.toLocaleString()}
+                    {welcomeBackDeltas && welcomeBackDeltas.gold !== 0 && (
+                      <span className={welcomeBackDeltas.gold > 0 ? " ml-1 text-xs text-emerald-400" : " ml-1 text-xs text-red-400"}>
+                        {welcomeBackDeltas.gold > 0 ? "+" : ""}{welcomeBackDeltas.gold}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Energy */}
+              <div className="flex items-center gap-2.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-3 py-2.5">
+                <GameIcon name="stamina" size={20} />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Energy</p>
+                  <p className="text-sm font-bold text-slate-200">
+                    {hubCharacter.currentStamina}<span className="text-slate-500">/{hubCharacter.maxStamina}</span>
+                    {welcomeBackDeltas && welcomeBackDeltas.stamina !== 0 && (
+                      <span className={welcomeBackDeltas.stamina > 0 ? " ml-1 text-xs text-emerald-400" : " ml-1 text-xs text-red-400"}>
+                        {welcomeBackDeltas.stamina > 0 ? "+" : ""}{welcomeBackDeltas.stamina}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* PvP Rating */}
+              <div className="flex items-center gap-2.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-3 py-2.5">
+                <GameIcon name="pvp-rating" size={20} />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">PvP Rating</p>
+                  <p className="text-sm font-bold text-slate-200">{hubCharacter.pvpRating}</p>
+                </div>
+              </div>
+
+              {/* W/L Record */}
+              <div className="flex items-center gap-2.5 rounded-xl border border-slate-700/60 bg-slate-800/60 px-3 py-2.5">
+                <GameIcon name="arena" size={20} />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Record</p>
+                  <p className="text-sm font-bold">
+                    <span className="text-emerald-400">{hubCharacter.pvpWins}W</span>
+                    <span className="mx-1 text-slate-600">/</span>
+                    <span className="text-red-400">{hubCharacter.pvpLosses}L</span>
+                    {welcomeBackDeltas && (welcomeBackDeltas.pvpWins !== 0 || welcomeBackDeltas.pvpLosses !== 0) && (
+                      <span className="ml-1 text-xs text-slate-500">
+                        ({welcomeBackDeltas.pvpWins > 0 ? "+" : ""}{welcomeBackDeltas.pvpWins}/{welcomeBackDeltas.pvpLosses > 0 ? "+" : ""}{welcomeBackDeltas.pvpLosses})
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA button */}
+            <button
+              type="button"
+              onClick={handleCloseWelcomeBackModal}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-gradient-to-b from-amber-600 to-amber-700 px-4 py-3 font-display text-sm font-bold text-white shadow-lg shadow-amber-900/30 transition hover:from-amber-500 hover:to-amber-600 active:scale-[0.98]"
+              aria-label="To battle"
+            >
+              <GameIcon name="arena" size={18} />
+              To battle!
+            </button>
+          </div>
+        )}
       </GameModal>
     </div>
   );

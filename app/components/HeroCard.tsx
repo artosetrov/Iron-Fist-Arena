@@ -4,6 +4,8 @@ import { memo, useState } from "react";
 import Image from "next/image";
 import { getRankFromRating } from "@/lib/game/elo";
 import { BOSS_NAMES, getBossImagePath } from "@/lib/game/boss-catalog";
+import { getBossAssetKey, getOriginAvatarAssetKey } from "@/lib/game/asset-registry";
+import { useAssetUrl } from "@/lib/hooks/useAssetOverrides";
 import GameIcon from "@/app/components/ui/GameIcon";
 import type { GameIconKey } from "@/app/components/ui/GameIcon";
 
@@ -363,14 +365,18 @@ const HeroCard = memo(({
   const classIconKey = CLASS_ICON[classKey];
   const customIcon = icon; // custom emoji string passed via prop
 
-  // Determine which image to show
-  const resolvedImage =
+  // Determine which image to show (with wiki asset overrides)
+  const fallbackImage =
     imageSrc ?? (BOSS_NAMES.has(name) ? getBossImagePath(name) : undefined) ?? (origin ? ORIGIN_IMAGE[origin] : undefined);
+  const bossKey = name && BOSS_NAMES.has(name) ? getBossAssetKey(name) : null;
+  const originKey = origin ? getOriginAvatarAssetKey(origin) : null;
+  const assetKey = bossKey ?? originKey ?? "";
+  const placeholder = "/images/ui/placeholder-silhouette.png";
+  const resolvedImage = useAssetUrl(assetKey || "\0", fallbackImage ?? placeholder);
+  const finalImage = assetKey ? resolvedImage : (fallbackImage ?? placeholder);
   const isBossImage = Boolean(imageSrc || (BOSS_NAMES.has(name) && getBossImagePath(name)));
   const isOriginImage = !isBossImage && Boolean(origin && ORIGIN_IMAGE[origin]);
-  // #region agent log
-  fetch('http://127.0.0.1:7244/ingest/7c8db375-0ae9-4264-956f-949ed59bd0c2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'HeroCard.tsx:resolveImage',message:'HeroCard image resolve',data:{name,variant,cls:classKey,origin,level,rating,resolvedImage,isBossImage,isOriginImage,hasHp:!!hp,hasStats:!!stats},timestamp:Date.now(),hypothesisId:'H1-H2-image'})}).catch(()=>{});
-  // #endregion
+  const resolvedImageForDisplay = finalImage;
 
   // Battle animations
   const shakeClass = battle?.isShaking ? "animate-combat-shake" : "";
@@ -435,33 +441,36 @@ const HeroCard = memo(({
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.5)_100%)]" />
 
         {/* Image / Icon */}
-        {resolvedImage ? (
+        {resolvedImageForDisplay ? (
           isBossImage ? (
             <Image
-              src={resolvedImage}
+              src={resolvedImageForDisplay}
               alt={name}
               width={1024}
               height={1024}
               className="relative z-10 h-full w-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
               sizes="220px"
+              unoptimized={resolvedImageForDisplay.startsWith("http")}
             />
           ) : isOriginImage ? (
             <Image
-              src={resolvedImage}
+              src={resolvedImageForDisplay}
               alt={origin ?? name}
               width={1024}
               height={1024}
               className="relative z-10 h-full w-full object-cover drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
               sizes="220px"
+              unoptimized={resolvedImageForDisplay.startsWith("http")}
             />
           ) : (
             <Image
-              src={resolvedImage}
+              src={resolvedImageForDisplay}
               alt={name}
               width={1024}
               height={1024}
               className="relative z-10 h-full w-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
               sizes="220px"
+              unoptimized={resolvedImageForDisplay.startsWith("http")}
             />
           )
         ) : (

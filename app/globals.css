@@ -846,12 +846,19 @@ body {
 
 /* ── Standardised HeroCard container sizes ── */
 
-/* Default: carousel cards (arena, combat select, dungeon) */
+/* Default: carousel cards (arena, combat select, dungeon) — same size as .dungeon-card */
 .hero-card-container--default {
   flex: 0 0 min(300px, 85vw);
+  aspect-ratio: 9 / 14;
+  min-height: 0;
   scroll-snap-align: center;
   transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
     box-shadow 0.35s ease;
+}
+.hero-card-container--default > * {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 .hero-card-container--default:hover {
   transform: translateY(-4px);

@@ -9,6 +9,8 @@ import PageLoader from "@/app/components/PageLoader";
 import { xpForLevel } from "@/lib/game/progression";
 import { goldCostForStatTraining } from "@/lib/game/stat-training";
 import { isWeaponTwoHanded, getItemImagePath, getCatalogItemById } from "@/lib/game/item-catalog";
+import { getItemAssetKey, getOriginAvatarAssetKey } from "@/lib/game/asset-registry";
+import { useAssetUrl } from "@/lib/hooks/useAssetOverrides";
 import { MAX_STAT_VALUE } from "@/lib/game/balance";
 import {
   WEAPON_AFFINITY_BONUS,
@@ -23,6 +25,7 @@ import {
   type ConsumableDef,
   getConsumableImagePath,
 } from "@/lib/game/consumable-catalog";
+import { safeJson } from "@/lib/safe-fetch";
 
 /* ────────────────── Types ────────────────── */
 
@@ -293,17 +296,41 @@ const resolveItemFilename = (item: ItemDef): string => {
  *  Falls back to generic rarity/slot image for procedural items without catalogId. */
 const getInvItemImagePath = (inv: InventoryItem): string | undefined => {
   const { catalogId, rarity } = inv.item;
-  // Catalog item — unique image
   if (catalogId) {
     const catalogItem = getCatalogItemById(catalogId);
     if (catalogItem) return getItemImagePath(catalogItem);
   }
-  // Generic item — use rarity + resolved filename
   if (rarity === "common" || rarity === "rare") {
     return `/images/items/${rarity}/${resolveItemFilename(inv.item)}.png`;
   }
   return undefined;
 };
+
+/** Renders inventory item image with wiki asset override support. */
+const InvItemImage = memo(({ inv, width = 40, height = 40, size, className }: { inv: InventoryItem; width?: number; height?: number; size?: number; className?: string }) => {
+  const catalogItem = inv.item.catalogId ? getCatalogItemById(inv.item.catalogId) : null;
+  const path = getInvItemImagePath(inv);
+  const url = useAssetUrl(
+    catalogItem ? getItemAssetKey(catalogItem) : "",
+    catalogItem ? getItemImagePath(catalogItem) : (path ?? "")
+  );
+  const w = size ?? width;
+  const h = size ?? height;
+  if (!url) {
+    return <GameIcon name={SLOT_ICONS[inv.item.itemType as SlotKey] ?? "chest"} size={Math.min(w, h) * 0.7} />;
+  }
+  return (
+    <Image
+      src={url}
+      alt={inv.item.itemName}
+      width={w}
+      height={h}
+      className={className ?? "object-contain"}
+      unoptimized={url.startsWith("http")}
+    />
+  );
+});
+InvItemImage.displayName = "InvItemImage";
 
 /* ────────────────── Helpers ────────────────── */
 
@@ -542,21 +569,7 @@ const EquipmentSlot = ({
         <span className="text-xl opacity-20">🔒</span>
       ) : item ? (
         <span title={item.item.itemName}>
-          {(() => {
-            const imgPath = getInvItemImagePath(item);
-            if (imgPath) {
-              return (
-                <Image
-                  src={imgPath}
-                  alt={item.item.itemName}
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                />
-              );
-            }
-            return <GameIcon name={SLOT_ICONS[slotKey === "weapon_offhand" ? "weapon_offhand" : (item.item.itemType as SlotKey)] ?? "chest"} size={28} />;
-          })()}
+          <InvItemImage inv={item} width={40} height={40} />
         </span>
       ) : (
         <Image
@@ -636,7 +649,7 @@ const InventoryCell = memo(({
   if (!inv) {
     return (
       <div
-        className={`flex h-14 w-14 items-center justify-center rounded-md border transition-all
+        className={`flex aspect-square w-full items-center justify-center rounded-md border transition-all
           ${isDragOver ? "border-indigo-400 bg-indigo-900/30 ring-2 ring-indigo-400 scale-105" : "border-slate-700/40 bg-slate-800/30"}
         `}
         onDragOver={handleDragOver}
@@ -657,7 +670,7 @@ const InventoryCell = memo(({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`relative flex h-14 w-14 items-center justify-center rounded-md border-2 transition-all hover:brightness-125 cursor-grab active:cursor-grabbing
+      className={`relative flex aspect-square w-full items-center justify-center rounded-md border-2 transition-all hover:brightness-125 cursor-grab active:cursor-grabbing
         ${isDragOver ? "ring-2 ring-indigo-400 scale-105" : ""}
         ${RARITY_BORDER[rarity] ?? "border-slate-600"} ${RARITY_BG[rarity] ?? "bg-slate-800/60"}
       `}
@@ -668,21 +681,7 @@ const InventoryCell = memo(({
       onMouseEnter={(e) => onHoverItem(inv, e)}
       onMouseLeave={() => onHoverItem(null)}
     >
-      {(() => {
-        const imgPath = getInvItemImagePath(inv);
-        if (imgPath) {
-          return (
-            <Image
-              src={imgPath}
-              alt={inv.item.itemName}
-              width={40}
-              height={40}
-              className="object-contain"
-            />
-          );
-        }
-        return <GameIcon name={SLOT_ICONS[inv.item.itemType as SlotKey] ?? "chest"} size={24} />;
-      })()}
+      <InvItemImage inv={inv} width={40} height={40} />
       {inv.upgradeLevel > 0 && (
         <span className="absolute -right-0.5 -top-0.5 rounded bg-yellow-600 px-0.5 text-[9px] font-bold text-white">
           +{inv.upgradeLevel}
@@ -1000,21 +999,9 @@ const getInvPrimaryStat = (inv: InventoryItem): { label: string; value: number }
 };
 
 /** Large item image for detail modal */
-const DetailItemImage = ({ inv, size = 176 }: { inv: InventoryItem; size?: number }) => {
-  const imgPath = getInvItemImagePath(inv);
-  if (imgPath) {
-    return (
-      <Image
-        src={imgPath}
-        alt={inv.item.itemName}
-        width={size}
-        height={size}
-        className="object-contain"
-      />
-    );
-  }
-  return <GameIcon name={SLOT_ICONS[inv.item.itemType as SlotKey] ?? "chest"} size={Math.round(size * 0.5)} />;
-};
+const DetailItemImage = ({ inv, size = 176 }: { inv: InventoryItem; size?: number }) => (
+  <InvItemImage inv={inv} size={size} width={size} height={size} />
+);
 
 /* ────────────────── Selected Item Detail Panel ────────────────── */
 
@@ -1772,7 +1759,7 @@ function InventoryContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ characterId, consumableType }),
         });
-        const resData = await res.json();
+        const resData = await safeJson(res);
         if (res.ok) {
           // Update consumable inventory locally
           setConsumables((prev) =>
@@ -1946,6 +1933,10 @@ function InventoryContent() {
   /* Unequipped items for bag grid */
   const bagItems = useMemo(() => data?.unequipped ?? [], [data]);
 
+  const originAvatarKey = data?.character?.origin ? getOriginAvatarAssetKey(data.character.origin) : "";
+  const originAvatarFallback = data?.character?.origin ? ORIGIN_IMAGE[data.character.origin] : "";
+  const originAvatarUrl = useAssetUrl(originAvatarKey, originAvatarFallback);
+
   if (loading || !characterId || !data) {
     const loaderText = !characterId ? "Loading…" : error ? "Retrying…" : "Loading inventory…";
 
@@ -1989,6 +1980,26 @@ function InventoryContent() {
             {/* Dark overlay for readability */}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/60" />
 
+            {/* Tabs — above stats */}
+            <div className="relative z-10 mb-3 flex">
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setActiveTab(t.key)}
+                  className={`flex-1 border-b-2 px-3 py-2 text-xs font-bold uppercase tracking-wider transition
+                    ${activeTab === t.key ? "border-indigo-500 text-white" : "border-transparent text-slate-500 hover:text-slate-300"}
+                  `}
+                  aria-label={t.label}
+                  tabIndex={0}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {activeTab === "attributes" && (
+            <>
             {/* Quick stats bar */}
             <div className="relative z-10 mb-3 grid grid-cols-5 gap-1.5 text-xs">
               <div className="flex items-center gap-1.5 rounded-lg bg-slate-800/60 px-2 py-1.5">
@@ -2035,14 +2046,15 @@ function InventoryContent() {
               {/* Center: avatar + name + level */}
               <div className="flex flex-1 flex-col items-center">
                 <div className="relative mb-2 flex h-[208px] w-[208px] items-center justify-center overflow-hidden rounded-xl border-2 border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900">
-                  {character.origin && ORIGIN_IMAGE[character.origin] ? (
+                  {character.origin && originAvatarUrl ? (
                     <Image
-                      src={ORIGIN_IMAGE[character.origin]}
+                      src={originAvatarUrl}
                       alt={character.origin}
                       width={1024}
                       height={1024}
                       className="h-full w-full object-cover"
                       sizes="208px"
+                      unoptimized={originAvatarUrl.startsWith("http")}
                     />
                   ) : (
                     <GameIcon name={CLASS_ICON[character.class] ?? "warrior"} size={64} />
@@ -2128,42 +2140,25 @@ function InventoryContent() {
                 ))}
               </div>
             </div>
+            </>
+            )}
           </div>
 
-          {/* Tabs */}
-          <div className="border-t border-slate-800">
-            <div className="flex">
-              {tabs.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setActiveTab(t.key)}
-                  className={`flex-1 border-b-2 px-3 py-2 text-xs font-bold uppercase tracking-wider transition
-                    ${activeTab === t.key ? "border-indigo-500 text-white" : "border-transparent text-slate-500 hover:text-slate-300"}
-                  `}
-                  aria-label={t.label}
-                  tabIndex={0}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-3">
-              {activeTab === "attributes" && (
-                <AttributesTab
-                  stats={character.stats}
-                  derived={character.derived}
-                  armor={character.armor}
-                  gold={character.gold}
-                  statPointsAvailable={character.statPointsAvailable}
-                  upgradeMode={upgradeMode}
-                  onToggleMode={handleToggleMode}
-                  onAllocate={handleAllocateStat}
-                />
-              )}
-              {activeTab === "info" && <InfoTab stats={character.stats} derived={character.derived} armor={character.armor} />}
-            </div>
+          {/* Tab content */}
+          <div className="border-t border-slate-800 p-3">
+            {activeTab === "attributes" && (
+              <AttributesTab
+                stats={character.stats}
+                derived={character.derived}
+                armor={character.armor}
+                gold={character.gold}
+                statPointsAvailable={character.statPointsAvailable}
+                upgradeMode={upgradeMode}
+                onToggleMode={handleToggleMode}
+                onAllocate={handleAllocateStat}
+              />
+            )}
+            {activeTab === "info" && <InfoTab stats={character.stats} derived={character.derived} armor={character.armor} />}
           </div>
         </section>
 
@@ -2242,10 +2237,9 @@ function InventoryContent() {
                   {bagItems.length}/{INVENTORY_SLOTS_TOTAL}
                 </span>
               </h2>
-              <p className="text-xs text-slate-500">Drag to equip · Double-click · Right-click slot to unequip</p>
             </div>
 
-            <div className="relative z-10 flex flex-wrap gap-2">
+            <div className="relative z-10 grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
               {Array.from({ length: INVENTORY_SLOTS_TOTAL }).map((_, i) => (
                 <InventoryCell
                   key={i}

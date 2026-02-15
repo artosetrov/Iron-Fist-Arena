@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { useAssetUrl } from "@/lib/hooks/useAssetOverrides";
 import GameIcon from "@/app/components/ui/GameIcon";
 import type { GameIconKey } from "@/app/components/ui/GameIcon";
 
@@ -58,18 +59,20 @@ const CombatLoadingScreen = ({ preset }: CombatLoadingScreenProps) => {
   }, []);
 
   const iconKey = PRESET_ICONS[preset] ?? "warrior";
+  const arenaBgUrl = useAssetUrl("ui/arena-background", "/images/ui/arena-background.png");
 
   return (
     <div className="relative flex min-h-full flex-col items-center justify-center overflow-hidden px-4">
       {/* Background image */}
       <Image
-        src="/images/ui/arena-background.png"
+        src={arenaBgUrl}
         alt=""
         fill
         className="object-cover"
         sizes="100vw"
         priority
         aria-hidden="true"
+        unoptimized={arenaBgUrl.startsWith("http")}
       />
 
       {/* Dark overlay */}

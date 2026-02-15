@@ -12,23 +12,11 @@ import {
   TRAINING_DUMMY_LEVEL_OFFSET,
   TRAINING_DUMMY_STAT_MULT,
 } from "@/lib/game/balance";
+import { DUMMY_CLASS_WEIGHTS } from "@/lib/game/training-dummies";
 import type { CharacterClass, CharacterOrigin } from "@prisma/client";
 import { startOfTodayUTC } from "@/lib/game/date-utils";
 
 export const dynamic = "force-dynamic";
-
-/** Class-flavored base stats for training dummies — later scaled by player stats */
-const DUMMY_CLASS_WEIGHTS: Record<string, {
-  class: "warrior" | "rogue" | "mage" | "tank";
-  name: string;
-  strW: number; agiW: number; vitW: number; endW: number;
-  intW: number; wisW: number; lckW: number; chaW: number;
-}> = {
-  warrior: { class: "warrior", name: "Training Dummy — Warrior", strW: 1.4, agiW: 0.6, vitW: 1.0, endW: 0.8, intW: 0.3, wisW: 0.3, lckW: 0.5, chaW: 0.3 },
-  rogue:   { class: "rogue",   name: "Training Dummy — Rogue",   strW: 0.8, agiW: 1.4, vitW: 0.6, endW: 0.5, intW: 0.3, wisW: 0.3, lckW: 1.2, chaW: 0.3 },
-  mage:    { class: "mage",    name: "Training Dummy — Mage",    strW: 0.3, agiW: 0.6, vitW: 0.7, endW: 0.3, intW: 1.5, wisW: 1.0, lckW: 0.5, chaW: 0.3 },
-  tank:    { class: "tank",    name: "Training Dummy — Tank",     strW: 0.7, agiW: 0.4, vitW: 1.3, endW: 1.2, intW: 0.3, wisW: 0.5, lckW: 0.3, chaW: 0.3 },
-};
 
 export async function POST(request: Request) {
   try {

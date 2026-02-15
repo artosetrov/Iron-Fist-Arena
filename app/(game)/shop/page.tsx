@@ -15,6 +15,8 @@ import {
   getItemImagePath,
   getCatalogItemById,
 } from "@/lib/game/item-catalog";
+import { getItemAssetKey } from "@/lib/game/asset-registry";
+import { useAssetUrl } from "@/lib/hooks/useAssetOverrides";
 import {
   WEAPON_AFFINITY_BONUS,
   getWeaponCategory,
@@ -23,6 +25,7 @@ import {
 import { GameButton, PageContainer } from "@/app/components/ui";
 import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
 import { flyItemToSidebar } from "@/lib/game/fly-item-to-sidebar";
+import { safeJson } from "@/lib/safe-fetch";
 
 /* ────────────────── Constants ────────────────── */
 
@@ -257,7 +260,7 @@ const GoldPurchaseModal = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ characterId, packageId: pkg.id }),
         });
-        const data = await res.json();
+        const data = await safeJson(res);
         if (res.ok) {
           onPurchase(data.goldAdded, data.newBalance);
         } else {
@@ -416,15 +419,21 @@ const resolveItemFilename = (item: Item): string => {
 /** Render item image (catalog → generic → icon fallback) */
 const ItemImage = ({ item, size = 56 }: { item: Item; size?: number }) => {
   const itemType = ITEM_TYPE_CONFIG[item.itemType] ?? { label: item.itemType, icon: "accessory" as GameIconKey };
+  const catalogItem = item.catalogId ? getCatalogItemById(item.catalogId) : null;
+  const itemImageUrl = useAssetUrl(
+    catalogItem ? getItemAssetKey(catalogItem) : "",
+    catalogItem ? getItemImagePath(catalogItem) : ""
+  );
 
-  if (item.catalogId && getCatalogItemById(item.catalogId)) {
+  if (catalogItem && itemImageUrl) {
     return (
       <Image
-        src={getItemImagePath(getCatalogItemById(item.catalogId)!)}
+        src={itemImageUrl}
         alt={item.itemName}
         width={size}
         height={size}
         className="object-contain"
+        unoptimized={itemImageUrl.startsWith("http")}
       />
     );
   }
@@ -469,16 +478,22 @@ const hashStringToHue = (str: string): number => {
 const TileImage = ({ item }: { item: Item }) => {
   const itemType = ITEM_TYPE_CONFIG[item.itemType] ?? { label: item.itemType, icon: "accessory" as GameIconKey };
   const hue = hashStringToHue(item.catalogId ?? item.itemName);
+  const catalogItem = item.catalogId ? getCatalogItemById(item.catalogId) : null;
+  const tileImageUrl = useAssetUrl(
+    catalogItem ? getItemAssetKey(catalogItem) : "",
+    catalogItem ? getItemImagePath(catalogItem) : ""
+  );
 
-  if (item.catalogId && getCatalogItemById(item.catalogId)) {
+  if (catalogItem && tileImageUrl) {
     return (
       <Image
-        src={getItemImagePath(getCatalogItemById(item.catalogId)!)}
+        src={tileImageUrl}
         alt={item.itemName}
         fill
         sizes="(max-width: 640px) 25vw, (max-width: 1024px) 20vw, 12.5vw"
         className="object-contain p-1.5"
         style={{ filter: `hue-rotate(${hue}deg) saturate(1.15)` }}
+        unoptimized={tileImageUrl.startsWith("http")}
       />
     );
   }
@@ -1151,7 +1166,7 @@ function ShopContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ characterId, itemId }),
         });
-        const data = await res.json();
+        const data = await safeJson(res);
         if (res.ok) {
           const item = items.find((i) => i.id === itemId);
           setCharacter((c) => (c ? { ...c, gold: c.gold - (item?.buyPrice ?? 0) } : null));
@@ -1189,7 +1204,7 @@ function ShopContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ characterId, consumableType }),
         });
-        const data = await res.json();
+        const data = await safeJson(res);
         if (res.ok) {
           // Update gold/gems from response
           setCharacter((c) =>

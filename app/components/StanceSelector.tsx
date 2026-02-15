@@ -4,8 +4,8 @@ import { memo, useCallback, useState } from "react";
 import type { BodyZone, CombatStance } from "@/lib/game/types";
 import { BODY_ZONES, MAX_BLOCK_POINTS, ZONE_DAMAGE_MULT } from "@/lib/game/balance";
 import { defaultStance, validateStance } from "@/lib/game/body-zones";
-import BodyZoneDiagram from "@/app/components/BodyZoneDiagram";
 import { GameButton } from "@/app/components/ui";
+import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
 
 /* ── Zone metadata ── */
 
@@ -16,11 +16,11 @@ const ZONE_LABELS: Record<BodyZone, string> = {
   legs: "Legs",
 };
 
-const ZONE_ICONS: Record<BodyZone, string> = {
-  head: "👤",
-  torso: "🛡",
-  waist: "⚔",
-  legs: "🦵",
+const ZONE_GAME_ICONS: Record<BodyZone, GameIconKey> = {
+  head: "helmet",
+  torso: "chest",
+  waist: "belt",
+  legs: "legs",
 };
 
 /* ── Props ── */
@@ -34,7 +34,7 @@ type StanceSelectorProps = {
   onConfirm: (stance: CombatStance) => void;
   /** Called when user wants to save stance as default */
   onSaveDefault?: (stance: CombatStance) => void;
-  /** Called when user wants to go back */
+  /** Called when user presses back */
   onBack?: () => void;
   /** Whether the fight button is loading */
   loading?: boolean;
@@ -134,38 +134,12 @@ const StanceSelector = memo(({
   return (
     <div className="mx-auto w-full max-w-2xl">
       {/* Header */}
-      <div className="mb-4 flex items-center gap-3">
-        {onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 text-slate-400 transition hover:bg-slate-700 hover:text-white"
-            aria-label="Go back"
-            tabIndex={0}
-          >
-            ←
-          </button>
-        )}
-        <h2 className="text-lg font-bold uppercase tracking-wider text-slate-200 lg:text-xl">
-          Choose Your Stance
-        </h2>
-      </div>
+      <h2 className="mb-4 text-lg font-bold uppercase tracking-wider text-slate-200 lg:text-xl">
+        Choose Your Stance
+      </h2>
 
-      {/* Main layout: two-column on desktop, stacked on mobile */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-        {/* Left: Body Zone Diagram */}
-        <div className="flex shrink-0 items-start justify-center lg:justify-start">
-          <BodyZoneDiagram
-            stance={stance}
-            mode="both"
-            onZoneClick={handleToggleAttack}
-            zoneArmor={zoneArmor}
-            size="lg"
-          />
-        </div>
-
-        {/* Right: Controls */}
-        <div className="flex flex-1 flex-col gap-4">
+      {/* Controls */}
+      <div className="flex flex-col gap-4">
           {/* Attack Zones */}
           <div className="rounded-xl border border-slate-700/60 bg-slate-800/40 p-3 lg:p-4">
             <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-red-400">
@@ -192,7 +166,7 @@ const StanceSelector = memo(({
                         : "border-slate-700 bg-slate-800/60 text-slate-500 hover:border-slate-600 hover:text-slate-300",
                     ].join(" ")}
                   >
-                    <span className="text-base lg:text-sm">{ZONE_ICONS[zone]}</span>
+                    <GameIcon name={ZONE_GAME_ICONS[zone]} size={20} />
                     <span>{ZONE_LABELS[zone]}</span>
                     {isActive && (
                       <span className="text-[10px] text-red-500 lg:ml-auto">
@@ -221,7 +195,8 @@ const StanceSelector = memo(({
                     key={zone}
                     className="flex items-center gap-2 rounded-lg border border-slate-700/40 bg-slate-900/30 px-3 py-2"
                   >
-                    <span className="w-14 text-xs font-semibold text-slate-400 lg:w-16">
+                    <span className="flex w-14 items-center gap-1 text-xs font-semibold text-slate-400 lg:w-20">
+                      <GameIcon name={ZONE_GAME_ICONS[zone]} size={16} />
                       {ZONE_LABELS[zone]}
                     </span>
 
@@ -286,7 +261,6 @@ const StanceSelector = memo(({
               ))}
             </div>
           )}
-        </div>
       </div>
 
       {/* Validation error */}
@@ -298,6 +272,17 @@ const StanceSelector = memo(({
 
       {/* Action buttons */}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center sm:gap-3">
+        {onBack && (
+          <GameButton
+            variant="secondary"
+            size="md"
+            onClick={onBack}
+            aria-label="Go back"
+          >
+            Back
+          </GameButton>
+        )}
+
         <GameButton
           variant="action"
           size="lg"

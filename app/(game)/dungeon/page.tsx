@@ -12,10 +12,13 @@ import type { CombatStance } from "@/lib/game/types";
 import PageLoader from "@/app/components/PageLoader";
 import HeroCard from "@/app/components/HeroCard";
 import { BOSS_CATALOG, getBossImagePath } from "@/lib/game/boss-catalog";
+import { getBossAssetKey, getDungeonAssetKey } from "@/lib/game/asset-registry";
+import { useAssetUrl } from "@/lib/hooks/useAssetOverrides";
 import { BOSS_ABILITIES } from "@/lib/game/boss-abilities";
 import CardCarousel from "@/app/components/ui/CardCarousel";
 import { getBossStats } from "@/lib/game/dungeon";
 import GameIcon, { type GameIconKey } from "@/app/components/ui/GameIcon";
+import { safeJson } from "@/lib/safe-fetch";
 import SkillIcon from "@/app/components/ui/SkillIcon";
 import { GameButton, GameCard, GameModal, PageContainer } from "@/app/components/ui";
 
@@ -445,6 +448,41 @@ const DUNGEON_IMAGES: Record<string, string> = {
   infernal_throne: "/images/dungeons/dungeon-infernal-throne.png",
 };
 
+const DungeonBgImage = ({ dungeonId, className, sizes = "100vw", priority = true }: { dungeonId: string; className?: string; sizes?: string; priority?: boolean }) => {
+  const url = useAssetUrl(
+    getDungeonAssetKey(dungeonId),
+    DUNGEON_IMAGES[dungeonId] ?? ""
+  );
+  if (!url) return null;
+  return (
+    <Image
+      src={url}
+      alt=""
+      fill
+      sizes={sizes}
+      className={className ?? "object-cover"}
+      priority={priority}
+      unoptimized={url.startsWith("http")}
+    />
+  );
+};
+
+const BossImage = ({ name, fill, width, height, className, sizes }: { name: string; fill?: boolean; width?: number; height?: number; className?: string; sizes?: string }) => {
+  const url = useAssetUrl(getBossAssetKey(name), getBossImagePath(name));
+  return (
+    <Image
+      src={url}
+      alt={name}
+      fill={fill}
+      width={width}
+      height={height}
+      className={className ?? "object-contain"}
+      sizes={sizes ?? "44px"}
+      unoptimized={url.startsWith("http")}
+    />
+  );
+};
+
 /* ────────────────── Component ────────────────── */
 
 function DungeonContent() {
@@ -508,7 +546,7 @@ function DungeonContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ characterId, dungeonId: dungeon.id }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         if (data.error === "You already have an active dungeon run") {
           const dungeonRes = await fetch(`/api/dungeons?characterId=${characterId}`);
@@ -567,7 +605,7 @@ function DungeonContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stance }),
       });
-      const data = (await res.json()) as FightResult;
+      const data = (await safeJson(res)) as FightResult;
 
       if (data.playerSnapshot && data.enemySnapshot && data.log) {
         setScreen({ kind: "battle", dungeon: screen.dungeon, runId: screen.runId, fightResult: data });
@@ -689,7 +727,7 @@ function DungeonContent() {
     setAbandoning(true);
     try {
       const res = await fetch(`/api/dungeons/run/${activeRun.runId}/abandon`, { method: "POST" });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setError(data.error ?? "Failed to end run");
         return;
@@ -824,8 +862,6 @@ function DungeonContent() {
   if (screen.kind === "boss") {
     const { boss, dungeon } = screen;
     const bossIndex = dungeon.bossIndex ?? 0;
-    const dungeonImage = DUNGEON_IMAGES[dungeon.id];
-    const bossImageSrc = getBossImagePath(boss.name);
 
     const hpClamped = Math.max(0, Math.min(boss.maxHp, boss.hp));
     const hpPct = boss.maxHp > 0 ? Math.max(0, Math.min(100, (hpClamped / boss.maxHp) * 100)) : 0;
@@ -849,15 +885,8 @@ function DungeonContent() {
       <div className="relative min-h-full">
         {/* Background: dungeon image or gradient, then dark overlay */}
         <div className="absolute inset-0 bg-slate-900">
-          {dungeonImage ? (
-            <Image
-              src={dungeonImage}
-              alt=""
-              fill
-              sizes="100vw"
-              className="object-cover"
-              priority
-            />
+          {DUNGEON_IMAGES[dungeon.id] ? (
+            <DungeonBgImage dungeonId={dungeon.id} className="object-cover" />
           ) : (
             <div className={`h-full w-full bg-gradient-to-br ${dungeon.theme.gradient}`} />
           )}
@@ -894,10 +923,9 @@ function DungeonContent() {
 
             {/* Large boss image — no card, no borders; fallback to random other boss image */}
             <div className="relative flex w-full max-w-2xl justify-center">
-              {bossImageSrc ? (
-                <Image
-                  src={bossImageSrc}
-                  alt={boss.name}
+              {getBossImagePath(boss.name) ? (
+                <BossImage
+                  name={boss.name}
                   width={1024}
                   height={1024}
                   className="max-h-[55vh] w-auto object-contain"
@@ -1299,14 +1327,7 @@ function DungeonContent() {
                         >
                           {locked ? "🔒" : getBossImagePath(boss.name) ? (
                             <div className="h-full w-full overflow-hidden rounded-xl">
-                              <Image
-                                src={getBossImagePath(boss.name)!}
-                                alt={boss.name}
-                                width={1024}
-                                height={1024}
-                                className="h-full w-full object-contain"
-                                sizes="44px"
-                              />
+                              <BossImage name={boss.name} width={1024} height={1024} className="h-full w-full object-contain" sizes="44px" />
                             </div>
                           ) : avatarIcon ? (
                             <GameIcon name={avatarIcon} size={24} />
@@ -1419,13 +1440,7 @@ function DungeonContent() {
                 <div className="relative flex items-start gap-4">
                   {!isBossLocked && (
                     <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl">
-                      <Image
-                        src={getBossImagePath(activeBoss.name)}
-                        alt={activeBoss.name}
-                        fill
-                        className="object-cover object-center"
-                        sizes="96px"
-                      />
+                      <BossImage name={activeBoss.name} fill className="object-cover object-center" sizes="96px" />
                     </div>
                   )}
                   <div className="min-w-0 flex-1 space-y-2">
@@ -1642,7 +1657,6 @@ function DungeonContent() {
               (dungeon.bossIndex / dungeon.bosses.length) * 100
             );
             const isLocked = !dungeon.unlocked;
-            const dungeonImage = DUNGEON_IMAGES[dungeon.id];
             const lore = DUNGEON_LORE[dungeon.id];
 
             return (
@@ -1669,14 +1683,12 @@ function DungeonContent() {
               >
                 {/* ── Full-height background image ── */}
                 <div className="absolute inset-0 bg-slate-900">
-                  {dungeonImage ? (
-                    <Image
-                      src={dungeonImage}
-                      alt={dungeon.name}
-                      fill
-                      sizes="640px"
+                  {DUNGEON_IMAGES[dungeon.id] ? (
+                    <DungeonBgImage
+                      dungeonId={dungeon.id}
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      priority
+                      sizes="640px"
+                      priority={false}
                     />
                   ) : (
                     <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${dungeon.theme.gradient}`}>

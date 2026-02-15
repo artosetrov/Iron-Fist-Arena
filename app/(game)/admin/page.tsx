@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import PageHeader from "@/app/components/PageHeader";
 import PageLoader from "@/app/components/PageLoader";
 import { PageContainer } from "@/app/components/ui";
@@ -84,12 +85,16 @@ const AdminPageContent = () => {
     window.history.replaceState({}, "", url.toString());
   }, []);
 
+  const characterId = searchParams.get("characterId");
+  const wikiHref = characterId ? `/wiki?characterId=${encodeURIComponent(characterId)}` : "/wiki";
+
   return (
     <PageContainer maxWidth="7xl">
       <PageHeader title="Admin Panel" />
 
-      {/* Tab bar */}
-      <div className="mb-4 flex flex-wrap gap-1.5 rounded-xl border border-slate-800 bg-slate-900/50 p-1.5">
+      {/* Tab bar + Wiki link */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900/50 p-1.5">
+        <div className="flex flex-wrap gap-1.5">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -113,6 +118,15 @@ const AdminPageContent = () => {
             </button>
           );
         })}
+        </div>
+        <Link
+          href={wikiHref}
+          className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800/60 hover:text-amber-400"
+          aria-label="Open Wiki"
+        >
+          <GameIcon name="wiki" size={20} />
+          <span className="hidden sm:inline">Wiki</span>
+        </Link>
       </div>
 
       {/* Tab content */}

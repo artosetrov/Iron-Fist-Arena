@@ -12,6 +12,7 @@ import {
   GOLD_MINE_MAX_SLOTS,
   GOLD_MINE_FREE_SLOTS,
 } from "@/lib/game/balance";
+import { safeJson } from "@/lib/safe-fetch";
 
 /* ────────────────── Types ────────────────── */
 
@@ -88,12 +89,11 @@ const GoldMineContent = () => {
     if (!characterId) return;
     try {
       const res = await fetch(`/api/minigames/gold-mine?characterId=${characterId}`);
+      const data = await safeJson(res);
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         setState((s) => ({ ...s, loading: false, error: data.error ?? "Failed to load" }));
         return;
       }
-      const data = await res.json();
       setState((s) => ({
         ...s,
         sessions: data.sessions,
@@ -147,7 +147,7 @@ const GoldMineContent = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ characterId }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
 
       if (!res.ok) {
         setState((s) => ({ ...s, actionLoading: null, error: data.error ?? "Failed to start" }));
@@ -176,7 +176,7 @@ const GoldMineContent = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ characterId, sessionId }),
         });
-        const data = await res.json();
+        const data = await safeJson(res);
 
         if (!res.ok) {
           setState((s) => ({ ...s, actionLoading: null, error: data.error ?? "Failed to collect" }));
@@ -210,7 +210,7 @@ const GoldMineContent = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ characterId, sessionId }),
         });
-        const data = await res.json();
+        const data = await safeJson(res);
 
         if (!res.ok) {
           setState((s) => ({ ...s, actionLoading: null, error: data.error ?? "Failed to boost" }));
@@ -245,7 +245,7 @@ const GoldMineContent = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ characterId }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
 
       if (!res.ok) {
         setState((s) => ({ ...s, actionLoading: null, error: data.error ?? "Failed to buy slot" }));

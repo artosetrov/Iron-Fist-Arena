@@ -24,10 +24,12 @@ import GameIcon from "@/app/components/ui/GameIcon";
 import type { GameIconKey } from "@/app/components/ui/GameIcon";
 import CardCarousel from "@/app/components/ui/CardCarousel";
 import { getBossImagePath } from "@/lib/game/boss-catalog";
+import { DUMMY_CLASS_WEIGHTS, TRAINING_DUMMY_PRESET_IDS } from "@/lib/game/training-dummies";
 import {
   collectBattleAssets,
   preloadImages,
 } from "@/lib/game/preload-combat-assets";
+import { safeJson } from "@/lib/safe-fetch";
 
 /* ────────────────── Types ────────────────── */
 
@@ -122,40 +124,25 @@ type PresetCard = {
   imageSrc: string;
 };
 
-const PRESETS: PresetCard[] = [
-  {
-    id: "warrior",
-    label: "Warrior Dummy",
-    icon: "warrior",
-    description: "High STR, moderate VIT. Hits hard but predictable.",
-    vitW: 1.0,
-    imageSrc: getBossImagePath("Straw Dummy"),
-  },
-  {
-    id: "rogue",
-    label: "Rogue Dummy",
-    icon: "rogue",
-    description: "High AGI & LCK. Fast and evasive, but fragile.",
-    vitW: 0.6,
-    imageSrc: getBossImagePath("Flying Francis"),
-  },
-  {
-    id: "mage",
-    label: "Mage Dummy",
-    icon: "mage",
-    description: "High INT & WIS. Devastating spells, low HP.",
-    vitW: 0.7,
-    imageSrc: getBossImagePath("Scarecrow Mage"),
-  },
-  {
-    id: "tank",
-    label: "Tank Dummy",
-    icon: "tank",
-    description: "High VIT & END. Extremely tanky but slow.",
-    vitW: 1.3,
-    imageSrc: getBossImagePath("Barrel Golem"),
-  },
-];
+const PRESET_ICON_IMAGE: Record<string, { icon: GameIconKey; imageSrc: string }> = {
+  warrior: { icon: "warrior", imageSrc: getBossImagePath("Straw Dummy") },
+  rogue: { icon: "rogue", imageSrc: getBossImagePath("Flying Francis") },
+  mage: { icon: "mage", imageSrc: getBossImagePath("Scarecrow Mage") },
+  tank: { icon: "tank", imageSrc: getBossImagePath("Barrel Golem") },
+};
+
+const PRESETS: PresetCard[] = TRAINING_DUMMY_PRESET_IDS.map((id) => {
+  const w = DUMMY_CLASS_WEIGHTS[id];
+  const { icon, imageSrc } = PRESET_ICON_IMAGE[id] ?? { icon: "warrior" as GameIconKey, imageSrc: getBossImagePath("Straw Dummy") };
+  return {
+    id,
+    label: w.name.replace("Training Dummy — ", "").replace(" — ", " "),
+    icon,
+    description: w.description,
+    vitW: w.vitW,
+    imageSrc,
+  };
+});
 
 /* ── Dummy stat helpers (mirrors server logic) ── */
 const DUMMY_STAT_MULT = 0.6;
@@ -335,7 +322,7 @@ function CombatContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ characterId: character.id }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         throw new Error(data.error ?? "Purchase failed");
       }
@@ -372,11 +359,10 @@ function CombatContent() {
           opponentPreset: selectedPreset,
         }),
       });
+      const data = (await safeJson(res)) as CombatResult;
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Battle error" }));
-        throw new Error(err.error ?? "Battle error");
+        throw new Error((data as unknown as { error: string }).error ?? "Battle error");
       }
-      const data = (await res.json()) as CombatResult;
 
       /* Preload all VFX assets needed for this specific battle */
       const assets = collectBattleAssets(

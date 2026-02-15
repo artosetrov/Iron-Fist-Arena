@@ -17,6 +17,7 @@ import {
   ORIGIN_CHANGE_COST,
   type CharacterOrigin,
 } from "@/lib/game/origins";
+import { safeJson } from "@/lib/safe-fetch";
 
 /* ────────────────── Types ────────────────── */
 
@@ -293,7 +294,7 @@ const CharacterTab = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ origin: selectedOrigin }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setError(data.error ?? "Failed to change origin");
         return;
@@ -527,7 +528,7 @@ const AccountTab = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setFormError(data.error ?? "Failed to change password");
         return;
@@ -555,7 +556,7 @@ const AccountTab = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newEmail }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setFormError(data.error ?? "Failed to change email");
         return;

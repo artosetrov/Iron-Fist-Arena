@@ -35,9 +35,12 @@ export type ClassLore = {
 };
 
 export type NpcQuote = {
+  id: string;
   name: string;
   title: string;
   quote: string;
+  /** Default portrait path under /public/images/npcs/ */
+  imagePath: string;
 };
 
 export type ItemRarityLore = {
@@ -84,6 +87,8 @@ export const ARENA_LORE = {
 export type HubBuildingLore = {
   name: string;
   description: string;
+  /** Background / scene image for the location page & wiki card */
+  imagePath: string;
 };
 
 export const HUB_BUILDING_LORE: Record<string, HubBuildingLore> = {
@@ -91,43 +96,55 @@ export const HUB_BUILDING_LORE: Record<string, HubBuildingLore> = {
     name: "The Iron Fist",
     description:
       "If you are not brave enough to start life-threatening fights for some gold and honor you are not a true hero.",
+    imagePath: "/images/buildings/location-arena.png",
   },
   dungeon: {
     name: "The Catacombs",
     description:
       "Dark tunnels beneath the city, crawling with monsters and treasure. The deeper you go, the richer — or deader — you get.",
+    imagePath: "/images/buildings/location-dungeon.png",
   },
   shop: {
     name: "Market Square",
     description:
       "Weapons, armor, potions — if it exists, someone here is selling it. Prices are fair. Refunds are not.",
+    imagePath: "/images/buildings/location-shop.png",
   },
   tavern: {
     name: "Mama Grog's Tavern",
     description:
       "Sit down, drink up, lose your gold in the shell game. That's what the tavern's for. Therapy is extra.",
+    imagePath: "/images/buildings/location-tavern.png",
   },
   training: {
     name: "Training Grounds",
     description:
       "If you can't beat wood — the darkness will swallow you whole. Practice here before the Arena eats you alive.",
+    imagePath: "/images/buildings/location-training.png",
   },
   leaderboard: {
     name: "Hall of Fame",
     description:
       "The eternal records of the greatest fighters. Golden plaques, dusty trophies, and a very long list of names — most of them crossed out.",
+    imagePath: "/images/buildings/location-leaderboard.png",
   },
   blacksmith: {
     name: "The Rusty Nail",
     description:
       "Every blade is a work of art. Every art has a price. Bring your gear for repairs, upgrades, and unsolicited opinions.",
+    imagePath: "/images/buildings/location-blacksmith.png",
   },
   warehouse: {
     name: "Warehouse",
     description:
       "Store your loot, sort your gear, and pretend you have a system. The warehouse doesn't judge. Much.",
+    imagePath: "/images/buildings/location-warehouse.png",
   },
 } as const;
+
+/** Get location scene image path by building id. */
+export const getLocationImagePath = (buildingId: string): string =>
+  `/images/buildings/location-${buildingId}.png`;
 
 /* ═══════════════════════════════════════════════════════════════════
    Common Prologue Slides (shown to ALL new players)
@@ -173,7 +190,7 @@ export const ORIGIN_LORE: Record<CharacterOrigin, OriginLore> = {
       id: "origin-human",
       title: "A Fresh Start",
       text: "You were a simple farmer — or a guard, or a merchant — from a village that now only exists on old maps. You walked to Stray City looking for a better life. You got a registration card and directions to the Arena. \"Newcomer?\" the registrar asked. \"Don't worry. Everyone here is a newcomer. Some — for the second time.\"",
-      bgImage: "/images/ui/onboarding/origin-human.png",
+      bgImage: "/images/origins/origin-human.png",
       artPrompt: `${ART_PROMPT_BASE} Fantasy RPG character scene. A weary but determined human traveller approaching a large city gate. They carry a small pack and look up at the imposing walls of Stray City. A bored orc guard leans against the gate, pointing lazily toward a sign. Warm sunset lighting, dusty road, a sense of new beginnings mixed with exhaustion. Character is cartoonish with big eyes and simple armour.`,
     },
   },
@@ -185,7 +202,7 @@ export const ORIGIN_LORE: Record<CharacterOrigin, OriginLore> = {
       id: "origin-dogfolk",
       title: "The Last of the Pack",
       text: "Your pack died protecting a caravan. You were the only one who made it to Stray City. Wounded, starving, but with a growl that made the gate guards step back. \"A dog? In the Arena?\" laughed an orc bouncer. Five minutes later he was apologising. From the floor.",
-      bgImage: "/images/ui/onboarding/origin-dogfolk.png",
+      bgImage: "/images/origins/origin-dogfolk.png",
       artPrompt: `${ART_PROMPT_BASE} Fantasy RPG character scene. A muscular anthropomorphic dog warrior limping through a city gate, bandaged but fierce. Behind them, a dusty road stretches to the horizon. An intimidated orc guard steps aside nervously. The dog-warrior has loyal determined eyes, scarred armor, and clenched fists. Warm amber light, dramatic mood with a touch of comedy.`,
     },
   },
@@ -197,7 +214,7 @@ export const ORIGIN_LORE: Record<CharacterOrigin, OriginLore> = {
       id: "origin-orc",
       title: "Fists Need Work",
       text: "The Thunderfist Clan fell apart after the Cataclysm. You could've become a mercenary, a bandit, a philosopher… but your fists were itching. The Arena is the only place where fighting pays instead of getting you fined. \"Why are you here?\" — \"Because I can.\" — \"…Fair enough. Next!\"",
-      bgImage: "/images/ui/onboarding/origin-orc.png",
+      bgImage: "/images/origins/origin-orc.png",
       artPrompt: `${ART_PROMPT_BASE} Fantasy RPG character scene. A large green-skinned orc with oversized fists standing in front of an Arena registration desk. A tiny goblin clerk looks up at the orc nervously while stamping a paper. The orc grins with one tusk poking out. Behind them, a queue of diverse fighters. Warm interior tavern-like lighting, humorous tone.`,
     },
   },
@@ -209,7 +226,7 @@ export const ORIGIN_LORE: Record<CharacterOrigin, OriginLore> = {
       id: "origin-demon",
       title: "The Deserter",
       text: "You're a deserter. You fled the Seventh Bureaucratic Circle of Inferno when you found out your contract was extended for eternity. Literally. On the surface — fresh air, strange food, and people who look at you with suspicion. The Arena is the only place where reputation is forged by fists, not seals.",
-      bgImage: "/images/ui/onboarding/origin-demon.png",
+      bgImage: "/images/origins/origin-demon.png",
       artPrompt: `${ART_PROMPT_BASE} Fantasy RPG character scene. A medium-sized demon with small horns and a tired office-worker expression, stepping out of a glowing red portal into a sunny medieval street. They carry a singed briefcase and look relieved. Nearby townsfolk stare suspiciously. Contrast between the hellish red glow behind and the warm daylight ahead. Comedy meets fantasy.`,
     },
   },
@@ -221,7 +238,7 @@ export const ORIGIN_LORE: Record<CharacterOrigin, OriginLore> = {
       id: "origin-skeleton",
       title: "Rude Awakening",
       text: "You woke up. That would be normal if not for two facts: first — you only remember your name, second — you're dead. Technically. The graveyard spat you out along with a couple dozen other annoyed skeletons. \"Undead? In the Arena?\" — \"Where else? Back in the pit?\"",
-      bgImage: "/images/ui/onboarding/origin-skeleton.png",
+      bgImage: "/images/origins/origin-skeleton.png",
       artPrompt: `${ART_PROMPT_BASE} Fantasy RPG character scene. A cartoon skeleton climbing out of an open grave in a moonlit cemetery, looking confused and annoyed. They dust off old armour pieces. Other skeletons in the background are also climbing out, some stretching, one checking a pocket watch. A living guard at the cemetery gate looks horrified. Blue-purple moonlight, comedic gothic atmosphere.`,
     },
   },
@@ -276,31 +293,45 @@ export const ITEM_RARITY_LORE: ItemRarityLore[] = [
 
 export const NPC_QUOTES: NpcQuote[] = [
   {
+    id: "registrar-grims",
     name: "Registrar Grims",
     title: "Arena Registrar",
     quote: "Name? Class? Race? Good. Here's your starter kit. No refunds. No complaints. No crying in the lobby.",
+    imagePath: "/images/npcs/npc-registrar-grims.png",
   },
   {
+    id: "bram-one-eye",
     name: "Bram One-Eye",
     title: "Blacksmith, 'The Rusty Nail'",
     quote: "I forge common gear. What'd you expect, enchanted mithril? Pay common prices, get common quality. Now scram.",
+    imagePath: "/images/npcs/npc-bram-one-eye.png",
   },
   {
+    id: "blue-anvil-masters",
     name: "The Blue Anvil Masters",
     title: "Master Smiths Guild",
     quote: "Every blade is a work of art. Every art has a price. Usually more than you can afford.",
+    imagePath: "/images/npcs/npc-blue-anvil-masters.png",
   },
   {
+    id: "mama-grog",
     name: "Mama Grog",
     title: "Tavern Owner",
     quote: "Sit down, drink up, lose your gold in the shell game. That's what the tavern's for. Therapy is extra.",
+    imagePath: "/images/npcs/npc-mama-grog.png",
   },
   {
+    id: "old-instructor-fang",
     name: "Old Instructor Fang",
     title: "Training Master",
     quote: "If you can't beat wood — the darkness will swallow you whole.",
+    imagePath: "/images/npcs/npc-old-instructor-fang.png",
   },
 ];
+
+/** Get NPC image path by NPC id. */
+export const getNpcImagePath = (npcId: string): string =>
+  `/images/npcs/npc-${npcId}.png`;
 
 /* ═══════════════════════════════════════════════════════════════════
    Season Templates

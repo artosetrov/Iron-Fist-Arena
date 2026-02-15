@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useRef, useState } from "react";
 
 /* ────────────────────────────────────────────────────────────
  * PageLoader
@@ -85,7 +85,11 @@ const PageLoader = ({ emoji = "⚔️", icon, text = "Loading…" }: PageLoaderP
         {/* Icon — natural size when custom icon, else emoji */}
         <div className="flex h-48 w-48 items-center justify-center rounded-full border border-amber-900/40 bg-slate-900/80 shadow-lg shadow-amber-950/20">
           {icon ? (
-            <span className="flex items-center justify-center">{icon}</span>
+            <span className="flex items-center justify-center">
+              {isValidElement<{ size?: number }>(icon)
+                ? cloneElement(icon, { size: 96 })
+                : icon}
+            </span>
           ) : (
             <span className="text-6xl">{emoji}</span>
           )}

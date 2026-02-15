@@ -11,6 +11,8 @@ import {
   getConsumableImagePath,
 } from "@/lib/game/consumable-catalog";
 import { xpForLevel } from "@/lib/game/progression";
+import { getOriginAvatarAssetKey } from "@/lib/game/asset-registry";
+import { useAssetUrl } from "@/lib/hooks/useAssetOverrides";
 import { useMobileSidebar } from "@/app/components/MobileSidebarProvider";
 
 /* ────────────────── Types ────────────────── */
@@ -64,6 +66,7 @@ const NAV_ITEMS: NavItem[] = [
   { kind: "link", href: "/combat", label: "TRAINING", icon: "training" },
   { kind: "link", href: "/shop", label: "SHOP", icon: "shop" },
   { kind: "link", href: "/leaderboard", label: "LEADERBOARD", icon: "leaderboard" },
+  { kind: "link", href: "/wiki", label: "WIKI", icon: "wiki" },
 ];
 
 const ADMIN_HREF = "/admin";
@@ -278,6 +281,9 @@ const GameSidebar = () => {
   const isGroupActive = (item: Extract<NavItem, { kind: "group" }>) =>
     item.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"));
 
+  const originAvatarKey = character?.origin ? getOriginAvatarAssetKey(character.origin) : "";
+  const originAvatarFallback = character?.origin ? ORIGIN_IMAGE[character.origin] : "";
+  const originAvatarUrl = useAssetUrl(originAvatarKey, originAvatarFallback);
 
   /* ── Available potions for quick use ── */
   const availablePotions = consumables
@@ -382,14 +388,15 @@ const GameSidebar = () => {
                 aria-label="Open Inventory"
               >
                 <div className="absolute inset-0 overflow-hidden rounded-[10px]">
-                  {character.origin && ORIGIN_IMAGE[character.origin] ? (
+                  {character.origin && originAvatarUrl ? (
                     <Image
-                      src={ORIGIN_IMAGE[character.origin]}
+                      src={originAvatarUrl}
                       alt={character.origin}
                       width={1024}
                       height={1024}
                       className="h-full w-full object-cover"
                       sizes="96px"
+                      unoptimized={originAvatarUrl.startsWith("http")}
                     />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center">

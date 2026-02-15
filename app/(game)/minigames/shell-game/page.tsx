@@ -12,6 +12,7 @@ import {
   SHELL_GAME_MAX_BET,
   SHELL_GAME_CUPS,
 } from "@/lib/game/minigames/shell-game";
+import { safeJson } from "@/lib/safe-fetch";
 
 /* ────────────────── Types ────────────────── */
 
@@ -128,7 +129,7 @@ const ShellGameContent = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ characterId, betAmount: bet }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
 
       if (!res.ok) {
         setState((s) => ({ ...s, loading: false, error: data.error ?? "Failed to start game" }));
@@ -223,7 +224,7 @@ const ShellGameContent = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ gameId: state.gameId, chosenCup: cupIndex }),
         });
-        const data = await res.json();
+        const data = await safeJson(res);
 
         if (!res.ok) {
           setState((s) => ({ ...s, loading: false, error: data.error ?? "Failed to submit" }));

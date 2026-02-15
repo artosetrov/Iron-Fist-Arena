@@ -30,6 +30,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# typescript
+tsconfig.tsbuildinfo
+
 # prisma
 prisma/migrations/**/migration_lock.toml
 
