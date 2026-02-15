@@ -72,13 +72,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check level requirement
-    if (character.level < dungeon.minLevel) {
-      return NextResponse.json(
-        { error: `Requires level ${dungeon.minLevel}` },
-        { status: 400 }
-      );
-    }
+    // minLevel is advisory — no hard block (unlock is based on prev dungeon completion only)
 
     // Check if there's already an active run
     const existingRun = await prisma.dungeonRun.findFirst({

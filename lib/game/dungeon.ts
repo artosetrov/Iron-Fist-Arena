@@ -84,13 +84,13 @@ export type DungeonProgressRecord = {
   completed: boolean;
 };
 
-/** Check if a dungeon is unlocked for this character given their progress records. */
+/** Check if a dungeon is unlocked for this character given their progress records.
+ *  Unlock condition: previous dungeon must be completed (minLevel is advisory only). */
 export const isDungeonUnlocked = (
   dungeon: DungeonDefinition,
-  playerLevel: number,
+  _playerLevel: number,
   progressMap: Map<string, DungeonProgressRecord>,
 ): boolean => {
-  if (playerLevel < dungeon.minLevel) return false;
   if (!dungeon.prevDungeonId) return true;
 
   const prev = progressMap.get(dungeon.prevDungeonId);

@@ -1707,20 +1707,13 @@ function DungeonContent() {
 
                 {/* Lock overlay */}
                 {isLocked && (() => {
-                  const needsLevel = character.level < dungeon.minLevel;
                   const prevDungeon = dungeon.prevDungeonId
                     ? dungeons.find((d) => d.id === dungeon.prevDungeonId)
                     : null;
-                  const needsPrevComplete = !!prevDungeon && !prevDungeon.completed;
                   return (
                     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/60">
                       <span className="text-6xl">🔒</span>
-                      {needsLevel && (
-                        <span className="text-sm font-medium text-slate-400">
-                          Lv. {dungeon.minLevel}+ required
-                        </span>
-                      )}
-                      {needsPrevComplete && (
+                      {prevDungeon && !prevDungeon.completed && (
                         <span className="text-xs text-slate-500">
                           Complete {prevDungeon.name} first
                         </span>
@@ -1779,12 +1772,19 @@ function DungeonContent() {
                     </div>
                   )}
 
-                  {/* Level requirement */}
+                  {/* Level requirement — hard lock when prev dungeon incomplete, soft warning when underleveled */}
                   {isLocked && (
                     <div className="flex items-center gap-2 pt-2">
                       <div className="h-1 w-1 rounded-full bg-slate-600" />
                       <span className="text-[10px] text-slate-600">
-                        Reach level {dungeon.minLevel}
+                        Complete previous dungeon
+                      </span>
+                    </div>
+                  )}
+                  {!isLocked && !dungeon.completed && character.level < dungeon.minLevel && (
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <span className="text-[10px] font-medium text-orange-400/80">
+                        ⚠ Recommended Lv. {dungeon.minLevel}+
                       </span>
                     </div>
                   )}
